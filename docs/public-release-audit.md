@@ -99,7 +99,7 @@ The public contributor identity must be explicit when inspecting history:
 
 ```sh
 python3 scripts/audit-public-source.py \
-  --allow-identity 'Project Contributors <contributors@example.invalid>'
+  --allow-identity 'Audifern contributors <contributors@example.invalid>'
 ```
 
 For the owner's final local review, place exact private values in an ignored
@@ -109,7 +109,7 @@ material. The file itself must never be staged or included in an export:
 
 ```sh
 python3 scripts/audit-public-source.py \
-  --allow-identity 'Project Contributors <contributors@example.invalid>' \
+  --allow-identity 'Audifern contributors <contributors@example.invalid>' \
   --private-pattern-file private/public-audit-patterns.json
 ```
 
@@ -134,3 +134,41 @@ The parsing follows the [W3C PNG specification](https://www.w3.org/TR/png-3/).
 Before publication, also review the source license, third-party notices, feature
 claims, tested hardware scope and independent-project wording. Do not imply
 vendor endorsement or that an untested fitting/firmware operation is supported.
+
+## Completed local preparation: Audifern 0.6.0
+
+The local repository was rebuilt from a sanitized clone after preserving private
+recovery archives. The first post-rewrite audit covered **six reachable and
+stored commits, 227 stored blobs and 129 working source files**, with **zero
+findings**. The later documentation commit uses the same neutral identity.
+
+- Every historical author and committer is now
+  `Audifern contributors <contributors@example.invalid>`. Embedded personal
+  signatures were removed. Fresh Git objects replaced the old object database;
+  old reflogs, backup refs, remotes and dangling private commits were not retained
+  in the prepared repository.
+- The historical owner-derived application namespace was replaced by
+  `org.audifern.app`. A historical passage describing an individual's EQ setting
+  was generalized. Current source bytes were verified unchanged by the rewrite.
+- Exact comparisons include the locally provisioned authentication key in text
+  and raw-byte forms, both real serials, both device identifiers, contributor
+  identities and local owner paths. None is included in the prepared source or
+  stored Git objects. The pattern input stays private.
+- Public PNG copies omit nonessential content-credentials metadata; original
+  pixel/alpha data were verified unchanged. The generation tool and prompts are
+  documented in [the design provenance](design/prompts.md). Public screenshots
+  use synthetic preview devices; originals and real-device captures stay private.
+- GPL-3.0-only, privacy/security/contribution guides, independently authored
+  translations, original branding and local build/verification instructions are
+  included. Proprietary inputs, authentication material and signed build
+  products remain excluded.
+
+The shareable source archive and sanitized history bundle are generated under
+`build/public/`, using `git archive` and `git bundle` from the reviewed refs.
+A fresh clone/export is audited independently before handoff. These artifacts
+contain reviewed source, rather than a ZIP of the investigation directory.
+No remote has been created and nothing has been uploaded or published.
+
+The ignored private research and recovery files remain locally available. They
+are deliberately outside the public artifacts and must not be copied with them.
+The audit remains a bounded technical check, not legal or trademark clearance.
