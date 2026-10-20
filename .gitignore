@@ -1,0 +1,11 @@
+/private/
+/artifacts/
+/decompiled/
+/.build/
+/build/
+/.env*
+.DS_Store
+*.xcuserstate
+xcuserdata/
+__pycache__/
+*.pyc

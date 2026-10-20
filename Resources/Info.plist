@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key><string>org.audifern.app</string>
+    <key>CFBundleName</key><string>Open Companion</string>
+    <key>CFBundleDisplayName</key><string>Open Companion</string>
+    <key>CFBundleExecutable</key><string>OpenCompanion</string>
+    <key>CFBundleIconFile</key><string>OpenCompanion</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Open Companion connects directly to your hearing aids over Bluetooth to display status and adjust volume, mute, or programs when you choose a control.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Open Companion discovers and inspects your hearing aids over Bluetooth.</string>
+</dict>
+</plist>
