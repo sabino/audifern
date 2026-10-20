@@ -140,7 +140,7 @@ vendor endorsement or that an untested fitting/firmware operation is supported.
 The local repository was rebuilt from a sanitized clone after preserving private
 recovery archives. The first post-rewrite audit covered **six reachable and
 stored commits, 227 stored blobs and 129 working source files**, with **zero
-findings**. The later documentation commit uses the same neutral identity.
+findings**. Later documentation commits use the same neutral identity.
 
 - Every historical author and committer is now
   `Audifern contributors <contributors@example.invalid>`. Embedded personal

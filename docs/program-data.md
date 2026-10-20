@@ -226,3 +226,8 @@ the legacy metadata fallback completed and released its selector. This confirms
 the consumer read path, rather than establishing access to full fitted-program
 bytes or clinical program creation. Two simultaneous live connections were not
 stable in this run; see [hardware verification](hardware-verification.md).
+
+After reconnection, a single snapshot also completed for **both aids together**,
+including final program/link checks and four decoded EQ payloads. This verifies
+the paired consumer export path during that bounded connection; it does not
+establish long-term reconnect reliability or clinical program creation.

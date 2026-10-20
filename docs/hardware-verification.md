@@ -301,3 +301,11 @@ strings. The native bundle built and passed strict signature verification.
 Private evidence: `gui-060-program-snapshot-current-ax.txt`,
 `gui-060-final-read-current-ax.txt`, `gui-060-window-lifecycle.log`,
 `gui-060-after-lifecycle-ax.txt` and `gui-060-portable-connected.png`.
+
+A subsequent recovered-pair connection succeeded on both sides. A single fresh
+**two-ear snapshot** then completed with both connections present, Geral on each
+side, and all four consumer EQ payloads decoded. The snapshot's final link and
+program checks passed. The final Listen page showed both aids connected. This
+bounds the earlier timeout observation: recovery and a paired read were verified,
+while longer-term connection reliability remains untested. Private final evidence
+is `gui-060-two-ear-snapshot-final-ax.txt` and `gui-060-handoff-listen-ax.txt`.
