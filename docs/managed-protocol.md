@@ -1,7 +1,9 @@
 # Managed protocol investigation
 
-These findings describe the installed Android artifact, not observed behavior of
-the hearing aids. No hearing settings were changed for this investigation.
+The protocol findings below come from the installed Android artifact. Later
+runtime results are identified separately in [hardware verification](hardware-verification.md)
+and [advanced controls](advanced-controls.md); static support alone does not
+establish that an operation works on the hearing aids.
 
 ## Recovering the managed code
 
@@ -80,8 +82,9 @@ The inspected implementation includes an application-embedded 16-byte shared
 secret and uses random 14-byte client challenges. Server authentication checks
 the first 14 bytes of SHA-256(server challenge || client challenge || secret).
 Client authentication reverses the challenge order. This path did not call
-cloud authentication. Whether a given device/firmware accepts this flow remains
-unverified until an intentional runtime test.
+cloud authentication. A later intentional runtime test completed this mutual
+authentication on the owner's Intent 3 and read its dynamic service registry.
+That result is specific to the tested hardware and firmware.
 
 The secret and reconstructed proprietary implementation remain in ignored
 private analysis files. They are not copied into this repository's source,
@@ -163,21 +166,24 @@ packets remain data until an explicit transport integration sends them.
 Volume service `0x0200000D`, contract versions 1.1–1.3, uses command 0 for a
 signed-eight-bit current/minimum/maximum triple. Program service `0x0200000E`,
 versions 2.0–2.1, uses command 0 for one unsigned-byte program ID. These are
-version-bounded static mappings, not evidence of a discovered UTL service
-registry on this hardware. Service responses carry status in the message code
+version-bounded mappings. A later consumer-channel test read the Intent 3
+registry, including volume 1.3 and program 2.1. Service responses carry status in the message code
 field; they do not echo the request opcode. The codec rejects non-success and
 malformed/out-of-range values.
 
 The volume/program contracts explicitly declare status 0xD9 for a missing
-transaction. A correctly encoded query may therefore still require the
-appropriate runtime session/transaction state. The pure codec does not open a
-fitting session or infer that state from a Bluetooth connection.
+transaction. Further SDK tracing established the ordinary consumer envelope:
+an Interactive session, command pipeline and type-5 COMMAND transaction.
+[Advanced controls](advanced-controls.md) records its operation numbers and
+evidence. This is distinct from exclusive fitting and RAM/NVRAM transactions.
+The pure codec has no runtime operations; the app's `UTLSession` supplies the
+explicit consumer lifecycle.
 
 The codec deliberately rejects secure transport bodies, fragmented events,
-unknown control PDUs and unknown service versions. This is a tested foundation
-for future advanced controls, not a complete replacement for the SDK. The
-runtime app currently uses the independently discovered legacy GATT path,
-which avoids a proprietary UTL channel and its embedded secret.
+unknown control PDUs and unknown service versions. It is not a complete SDK
+replacement. Ordinary volume/mute continues to use the direct GATT path.
+Explicit advanced-EQ loading uses a free UTL channel and a private key file
+outside the repository and app bundle.
 
 Validation: all 477 extracted files passed SHA-256 and PE-signature checks; six
 synthetic Python unpacker tests passed. Thirteen UTL Swift tests cover byte
@@ -197,10 +203,9 @@ write interface is exposed by the prototype.
 
 ## Scope and remaining work
 
-This is static artifact evidence plus a local unpacking/decompilation result.
-It does not establish that a Mac completed UTL bonding, authentication, remote
-control, or audio streaming. The legacy direct GATT service and standard LE
-Audio services provide separate, potentially simpler routes for this hardware.
-Prefer verified read-only GATT discovery before opening proprietary channels.
-Fitting, firmware-update, memory-map, and persistent end-user-setting operations
-are outside the initial companion prototype.
+The initial investigation established the artifact and codec, not UTL runtime
+operation. Subsequent work verified direct remote control and intentional UTL
+authentication/consumer-session discovery; the linked hardware report records
+the current EQ test results and limits. Audio streaming remains the system's
+separate responsibility. Clinical fitting, firmware updates, memory maps and
+generic persistent end-user-setting writes are not implemented.

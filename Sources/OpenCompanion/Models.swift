@@ -37,6 +37,13 @@ struct AidConnection: Identifiable {
     var volumeRanges: OticonRemoteProtocol.VolumeRanges?
     var programIDs: [Int] = []
     var activeProgram: Int?
+    var programNames: [Int: String] = [:]
+    var microphoneEqualizer: OticonEqualizer.State?
+    var streamingEqualizer: OticonEqualizer.State?
+    var writableMicrophoneEqualizer = false
+    var writableStreamingEqualizer = false
+    var advancedBusy = false
+    var advancedStatus: String?
     var writableVolume = false
     var writableProgram = false
     var actionPending = false
@@ -45,8 +52,11 @@ struct AidConnection: Identifiable {
     var error: String?
 
     var isConnected: Bool { phase == .connected }
-    var canChangeVolume: Bool { isConnected && !actionPending && writableVolume && volume != nil && volumeRanges != nil }
-    var canChangeProgram: Bool { isConnected && !actionPending && writableProgram && activeProgram != nil && !programIDs.isEmpty }
+    var canChangeVolume: Bool { isConnected && !actionPending && !advancedBusy && writableVolume && volume != nil && volumeRanges != nil }
+    var canChangeProgram: Bool { isConnected && !actionPending && !advancedBusy && writableProgram && activeProgram != nil && !programIDs.isEmpty }
+    var canChangeMicrophoneEqualizer: Bool { isConnected && !actionPending && !advancedBusy && writableMicrophoneEqualizer && microphoneEqualizer != nil }
+    var canChangeStreamingEqualizer: Bool { isConnected && !actionPending && !advancedBusy && writableStreamingEqualizer && streamingEqualizer != nil }
+    var activeProgramName: String? { activeProgram.flatMap { programNames[$0] } }
     var sideLabel: String {
         if sinkAudioLocations == 1 { return "Left" }
         if sinkAudioLocations == 2 { return "Right" }
@@ -66,6 +76,13 @@ struct AidConnection: Identifiable {
         volumeRanges = nil
         programIDs = []
         activeProgram = nil
+        programNames = [:]
+        microphoneEqualizer = nil
+        streamingEqualizer = nil
+        writableMicrophoneEqualizer = false
+        writableStreamingEqualizer = false
+        advancedBusy = false
+        advancedStatus = nil
         writableVolume = false
         writableProgram = false
         actionPending = false

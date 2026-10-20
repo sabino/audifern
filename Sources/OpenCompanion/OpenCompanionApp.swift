@@ -24,10 +24,19 @@ enum OpenCompanionEntryPoint {
 
 struct OpenCompanionApp: App {
     @StateObject private var store = BluetoothStore()
+    @StateObject private var presetStore = SoundPresetStore()
 
     var body: some Scene {
-        WindowGroup("Open Companion") { ContentView(store: store) }
-            .defaultSize(width: 1080, height: 760)
+        WindowGroup("Open Companion") {
+            ContentView(store: store).environmentObject(presetStore)
+        }
+            .defaultSize(width: 1250, height: 880)
             .commands { CommandGroup(replacing: .newItem) {} }
+        Window("Audiogram", id: "audiogram") {
+            AudiogramEditorView(onSaved: { exam in
+                presetStore.linkedAudiogramID = exam.id
+                presetStore.linkedAudiogramLabel = exam.name + (exam.examDate.map { " · \($0)" } ?? "")
+            })
+        }.defaultSize(width: 1100, height: 850)
     }
 }

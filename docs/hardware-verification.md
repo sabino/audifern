@@ -25,7 +25,7 @@ The following full logs contain local identifiers and remain ignored:
 - Program switching beyond the current single program; no alternative program is configured on the tested pair.
 - Long-term simultaneous operation is untested; the native GUI did establish both application-level connections at once.
 - Long-term reconnect behavior, sleep/wake, loss of one aid, or audio handoff.
-- Every Companion feature. UTL authentication and advanced controls remain static research; no extracted app secret is needed for the direct GATT reads above.
+- Every Companion feature. Later intentional UTL consumer EQ reads are described below; no extracted app secret is needed for the initial direct GATT reads above.
 
 ## Native dashboard and user confirmation
 
@@ -36,3 +36,56 @@ The user explicitly confirmed **“Volume and mute both work”** after lowering
 The final source adds stale-state invalidation after ambiguous writes, disconnects and service changes. No fitting, firmware or persistent UTL setting operation was used.
 
 After the final build and relaunch, the native dashboard again showed both Left/Right aids connected and unmuted. The private final accessibility snapshot and screenshot are `gui-final-ax.txt` and `mac-dashboard-final.png`. The source passes 28 Swift tests and six Python tests; bundle/signature checks also passed.
+
+## Consumer equalizers, program names and audiograms
+
+The 0.2.0 GUI read program metadata from both aids. Both reported the name
+**Geral**. The metadata selector was restored to `0xff`; these queries do not
+select a different listening program. Both aids still reported the same single
+configured direct-service program.
+
+Intentional **Load advanced controls** queries completed mutual UTL
+authentication, transport negotiation, dynamic service discovery, an ordinary
+nonexclusive Interactive session and type-5 COMMAND transactions. The actual
+registry advertises session service 1.1 and equalizer service 1.2. Both aid
+cards subsequently displayed **Advanced equalizers read from hearing aid**,
+with populated microphone EQ controls; that status is set only after both
+microphone and streaming EQ reads decode successfully. This establishes actual
+read interoperability, rather than only a synthetic handshake.
+
+The first prototype authenticated but omitted the consumer transaction wrapper
+and received `0xD9`. A subsequent read exposed the older EQ contract's unused
+range vectors. Both issues were resolved against the installed SDK's consumer
+paths. Contract 1.x uses the SDK's fixed consumer limits and historical gain
+scale; the UI identifies those limits rather than labeling them device-reported.
+No exclusive/fitting state, semaphore takeover, RAM/NVRAM transaction or reset
+was used. The agent's hardware checks issued no EQ change; user-visible
+adjustments still require **Apply equalizer**. Physical/perceived EQ effects
+remain pending user confirmation.
+
+During the user's subsequent GUI test, the left aid displayed **Microphone EQ
+confirmed by hearing aid**. That status requires the requested eight
+coefficients to match the aid's UTL readback exactly. It establishes a real
+microphone-EQ write/readback, while audible perception remains a separate user
+check. Streaming-EQ writes and right-aid EQ writes have not yet been verified.
+The additional private snapshot is `gui-eq-user-check-ax.txt`.
+
+Private GUI evidence: `gui-consumer-connected-ax.txt`,
+`gui-left-consumer-events-ax.txt`, `gui-left-rangefix-advanced-ax.txt`,
+`gui-both-rangefix-recheck-ax.txt`. The last snapshot shows both aid cards
+connected, both program names and both successful advanced-read statuses.
+Snapshots contain local device data and remain ignored.
+
+The native **Audiogram** window was opened and captured with an empty draft.
+Its table, plot, measurement conditions and export controls were inspected;
+no real exam values were entered or saved. `audiogram-blank.png` and
+`audiogram-blank-ax.txt` are private UI evidence. Persistence and XML export were
+tested using synthetic records, including actual validation against the
+official HIMSA 502 XSD. Noah-side import and audiogram-based fitting are untested.
+
+Local checks for this revision: **63 Swift tests and six Python tests passed**,
+the native app built, and signature verification passed. Later builds support
+an optional stable Apple Development signing identity. The latest running
+bundle uses that identity and again has Bluetooth permission and both aid
+connections. Fresh pairing, long-term sleep/reconnect behavior and compatibility
+with other aid models remain untested.

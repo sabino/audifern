@@ -20,6 +20,6 @@ if [[ -f "$project_dir/scripts/make-icon.swift" ]]; then
         echo "Icon rendering failed; continuing with the application build." >&2
     fi
 fi
-codesign --force --sign - --identifier org.audifern.app "$app_dir"
+codesign --force --sign "${OPEN_COMPANION_SIGN_IDENTITY:--}" --identifier org.audifern.app "$app_dir"
 codesign --verify --strict "$app_dir"
 printf 'Built %s\n' "$app_dir"

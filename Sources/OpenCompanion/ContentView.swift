@@ -3,21 +3,28 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var store: BluetoothStore
+    @Environment(\.openWindow) private var openWindow
     @State private var showAllDevices = false
     @State private var showInspector = false
     @State private var showEvents = false
 
     private var visibleDevices: [NearbyDevice] { store.devices.filter { showAllDevices || $0.isCandidate } }
+    private var aidColumns: [GridItem] {
+        store.orderedConnections.count > 1
+            ? [GridItem(.flexible(minimum: 330)), GridItem(.flexible(minimum: 330))]
+            : [GridItem(.flexible(minimum: 330, maximum: 700))]
+    }
 
     var body: some View {
         HSplitView {
-            discoveryPane.frame(minWidth: 260, idealWidth: 290, maxWidth: 370)
-            dashboard.frame(minWidth: 620, maxWidth: .infinity)
+            discoveryPane.frame(minWidth: 260, idealWidth: 290, maxWidth: 320)
+            dashboard.frame(minWidth: 730, maxWidth: .infinity)
         }
-        .frame(minWidth: 940, minHeight: 650)
+        .frame(minWidth: 1050, minHeight: 700)
         .tint(Color.teal)
         .toolbar {
             ToolbarItem(placement: .principal) { Label("Open Companion", systemImage: "ear.badge.waveform").font(.headline) }
+            ToolbarItem { Button("Audiogram", systemImage: "chart.xyaxis.line") { openWindow(id: "audiogram") } }
             ToolbarItem {
                 Label(store.bluetoothStatus, systemImage: store.isPoweredOn ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
                     .font(.caption).foregroundStyle(store.isPoweredOn ? Color.secondary : Color.orange)
@@ -133,11 +140,12 @@ struct ContentView: View {
                         Text("Choose your hearing aids in the sidebar, or connect both when the pair is available.")
                     }.frame(minHeight: 310)
                 } else {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 270), spacing: 16)], spacing: 16) {
+                    LazyVGrid(columns: aidColumns, spacing: 16) {
                         ForEach(store.orderedConnections) { state in aidCard(state) }
                     }
                 }
                 if store.connectedPair.count == 2 { pairControls }
+                SoundPresetPanelView(store: store)
 
                 Text("Controls adjust the microphone level on the selected aid. Changes are confirmed from the device; streaming audio volume is separate.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -203,11 +211,21 @@ struct ContentView: View {
                 Spacer()
                 if let active = state.activeProgram {
                     Picker("Program", selection: Binding(get: { active }, set: { store.selectProgram(state.id, program: $0) })) {
-                        ForEach(state.programIDs, id: \.self) { id in Text("Program \(id)").tag(id) }
-                        if !state.programIDs.contains(active) { Text("Program \(active)").tag(active) }
+                        ForEach(Array(state.programIDs.enumerated()), id: \.element) { offset, id in
+                            Text(state.programNames[id] ?? "Program \(offset + 1)").tag(id)
+                        }
+                        if !state.programIDs.contains(active) { Text(state.programNames[active] ?? "Current program").tag(active) }
                     }.labelsHidden().frame(maxWidth: 145).disabled(!state.canChangeProgram || state.programIDs.count < 2)
                 } else { Text("—").foregroundStyle(.secondary) }
             }
+            if state.programNames.isEmpty && state.isConnected {
+                Button("Read program names") { store.refreshProgramInfo(state.id) }
+                    .font(.caption).buttonStyle(.borderless)
+                    .disabled(state.actionPending || state.advancedBusy)
+            }
+            Divider()
+            EqualizerControlsView(store: store, aidID: state.id)
+            Divider()
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
                     if state.actionPending || state.phase == .connecting { ProgressView().controlSize(.mini) }
