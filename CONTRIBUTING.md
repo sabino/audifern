@@ -79,3 +79,5 @@ you cannot license accordingly; this does not relicense third-party SDKs,
 credentials or research inputs. Read [LICENSE](LICENSE), [PRIVACY.md](PRIVACY.md),
 [SECURITY.md](SECURITY.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 before contributing data or research.
+
+Release and download automation is documented in [the distribution guide](docs/distribution.md).

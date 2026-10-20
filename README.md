@@ -1,5 +1,8 @@
 # Audifern
 
+[![CI](https://github.com/sabino/audifern/actions/workflows/ci.yml/badge.svg)](https://github.com/sabino/audifern/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/sabino/audifern)](https://github.com/sabino/audifern/releases/latest)
+
 <img src="branding/mark.svg" width="76" alt="Audifern fern and listening mark">
 
 **A quiet place to control your hearing aids on the Mac.**
@@ -38,6 +41,18 @@ The initial languages are **English, Português (Brasil) and Español**, with
 system-language selection. Appearance follows macOS unless you choose an
 override. Closing the window leaves connections and battery monitoring in the
 menu bar; **Quit Audifern** ends them.
+
+## Download and install
+
+[Download the latest release](https://github.com/sabino/audifern/releases/latest)
+for **macOS 14 or later**, on Apple Silicon or Intel. Open the universal DMG and
+drag Audifern to Applications; a ZIP is also available. Downloads include
+checksums, build information, the license and exact source links.
+
+The initial downloads are **ad hoc signed, not Apple-notarized**. Read the
+[installation and release guide](docs/distribution.md) for macOS's per-app
+Open Anyway flow, continuous-build artifacts and tag-triggered releases.
+Advanced credentials are provisioned locally and are excluded from downloads.
 
 ## Build and try it
 
@@ -136,8 +151,8 @@ python3 scripts/audit-public-source.py \
 The optional HIMSA schema check needs a locally acquired `Audiogram-1-502.xsd`:
 set `HIMSA_AUDIOGRAM_SCHEMA` to its path when running Swift tests. The schema is
 not distributed. CI tests synthetic protocol/data cases, audits translations,
-builds the app and verifies its signature; it cannot establish physical aid
-behavior. [Hardware verification](docs/hardware-verification.md) distinguishes
+tests both CPU architectures, packages downloadable universal DMG/ZIP artifacts
+and verifies signatures; it cannot establish physical aid behavior. [Hardware verification](docs/hardware-verification.md) distinguishes
 audible confirmation, device readback, synthetic tests and remaining gaps.
 
 Contributions are welcome: start with [CONTRIBUTING.md](CONTRIBUTING.md), and

@@ -167,8 +167,25 @@ The shareable source archive and sanitized history bundle are generated under
 `build/public/`, using `git archive` and `git bundle` from the reviewed refs.
 A fresh clone/export is audited independently before handoff. These artifacts
 contain reviewed source, rather than a ZIP of the investigation directory.
-No remote has been created and nothing has been uploaded or published.
+At the end of that local preparation, no remote had been created and nothing
+had been uploaded or published.
 
 The ignored private research and recovery files remain locally available. They
 are deliberately outside the public artifacts and must not be copied with them.
 The audit remains a bounded technical check, not legal or trademark clearance.
+
+## Public distribution
+
+The owner subsequently authorized publication under
+[`sabino/audifern`](https://github.com/sabino/audifern). That GitHub namespace is
+intentional public metadata; the other known private patterns remain excluded.
+The release work is reviewed through a pull request before a version tag is
+pushed. Contributor identities in the prepared Git history remain neutral.
+
+The distribution workflow builds on clean GitHub runners, rather than uploading
+locally compiled apps or investigation artifacts. Packaging permits only the
+executable, reviewed resources, localizations, license/source notices and code
+signature files. It verifies the app after ZIP extraction and a temporary DMG
+mount. Releases include source-commit metadata and verified asset checksums.
+See [the distribution guide](distribution.md) for signing limits and release
+procedures.

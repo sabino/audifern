@@ -2,45 +2,116 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Existing version tag to validate before packaging
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
-  macos:
-    runs-on: macos-15
-    timeout-minutes: 20
+  lint:
+    name: Workflow and packaging checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.release_tag || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Workflow syntax
+        env:
+          GOMAXPROCS: '2'
+        run: |
+          go install -p 2 github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          "$(go env GOPATH)/bin/actionlint" -color
+      - name: Python and shell checks
+        run: |
+          python3 -m unittest discover -s Tests -p 'test_*.py'
+          python3 scripts/test-audit-localization.py
+          python3 scripts/audit-localization.py --strict
+          bash -n scripts/build-app.sh scripts/package-release.sh
 
+  test:
+    name: Tests (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Apple Silicon
+            runner: macos-15
+          - platform: Intel
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.release_tag || github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Toolchain
         run: |
           swift --version
           python3 --version
-
+          uname -m
       - name: Swift tests
         run: swift test --jobs 2
 
-      - name: Python tests
+  package:
+    name: Universal DMG and ZIP
+    needs: [lint, test]
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      AUDIFERN_BUILD_JOBS: '2'
+      AUDIFERN_BUILD_ARCH: universal
+      AUDIFERN_SIGN_IDENTITY: '-'
+      RELEASE_TAG: ${{ inputs.release_tag || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.release_tag || github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate release source
+        if: env.RELEASE_TAG != ''
         run: |
-          python3 -m unittest discover -s Tests -p 'test_*.py'
-          python3 scripts/test-audit-localization.py
-
-      - name: Localization audit
-        run: python3 scripts/audit-localization.py --strict
-
-      - name: Build local app
-        run: ./scripts/build-app.sh
-
-      - name: Verify bundle
+          python3 scripts/release_metadata.py version --tag "$RELEASE_TAG"
+          test "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" = "$(git rev-parse HEAD)"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor HEAD origin/main
+      - name: Build and verify downloads
+        run: ./scripts/package-release.sh "$RELEASE_TAG"
+      - name: Download summary
         run: |
-          plutil -lint "build/Audifern.app/Contents/Info.plist"
-          codesign --verify --strict "build/Audifern.app"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          data = json.loads(Path('build/release/build-info.json').read_text())
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as report:
+              report.write(f"### Audifern {data['releaseVersion']}\n\n")
+              report.write('Verified universal DMG and application ZIP for macOS 14 or later.\n\n')
+              report.write('Ad hoc signed; not Apple-notarized. See the installation instructions.\n\n')
+              report.write('Includes SHA256SUMS, build information, GPL license and exact source links.\n')
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-universal
+          path: |
+            build/release/*.dmg
+            build/release/*.zip
+            build/release/SHA256SUMS
+            build/release/build-info.json
+          if-no-files-found: error
+          retention-days: 14

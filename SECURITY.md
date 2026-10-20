@@ -34,3 +34,5 @@ report.
 Clinical fitting, firmware updates, arbitrary memory access and guessed device
 writes are outside the implemented companion scope. A contract found in static
 research does not by itself establish a safe or supported runtime operation.
+
+Use [GitHub private vulnerability reporting](https://github.com/sabino/audifern/security/advisories/new) for a private report.

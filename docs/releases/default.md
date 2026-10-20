@@ -1,0 +1,21 @@
+Audifern is an independent local Bluetooth remote for
+compatible hearing aids on macOS 14 or later.
+
+- Native daily volume/mute, paired or separate ear controls, consumer EQ,
+  supported SpeechBooster, local sound presets and fitted-program snapshots.
+- Device versions, battery estimates/alerts, local audiogram records and
+  expandable protocol diagnostics.
+- English, Português (Brasil), Español; System, Light and Dark appearance.
+- Universal Apple Silicon/Intel DMG and ZIP, checksums and exact source metadata.
+
+Open the DMG and drag Audifern to Applications. The initial builds are **ad hoc
+signed and not Apple-notarized**; see the [installation instructions](https://github.com/sabino/audifern/blob/main/docs/distribution.md).
+Allow Bluetooth access when prompted. Advanced UTL features require compatible
+authentication material provisioned locally; it is not included.
+
+This is an early release tested on one Intent 3 pair. Fresh pairing, other models
+and long-term reconnection need further testing. Consumer presets/snapshots do
+not create or restore clinical fitted programs. See the README for capabilities
+and the hardware evidence ledger for the scope of physical verification.
+
+GPL-3.0-only. Not affiliated with or endorsed by the hearing-aid manufacturer.
