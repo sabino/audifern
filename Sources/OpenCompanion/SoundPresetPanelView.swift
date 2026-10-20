@@ -4,7 +4,7 @@ import SwiftUI
 struct SoundPresetPanelView: View {
     @ObservedObject var store: BluetoothStore
     @EnvironmentObject private var library: SoundPresetStore
-    @Environment(\.openWindow) private var openWindow
+    @EnvironmentObject private var navigation: AppNavigation
     @State private var name = ""
     @State private var selectedID: UUID?
     @State private var status: String?
@@ -49,7 +49,7 @@ struct SoundPresetPanelView: View {
                     }
                 }
                 HStack {
-                    Button("Audiogram…") { openWindow(id: "audiogram") }
+                    Button("Audiogram") { navigation.page = .audiogram }
                     if let label = library.linkedAudiogramLabel {
                         Text("Linked exam: \(label)").font(.caption).foregroundStyle(.secondary)
                         Button("Unlink") { library.linkedAudiogramID = nil; library.linkedAudiogramLabel = nil }.font(.caption)

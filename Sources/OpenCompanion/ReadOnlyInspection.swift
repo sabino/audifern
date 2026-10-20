@@ -6,6 +6,8 @@ enum ReadOnlyInspection {
     static let vendorCharacteristicNames: [String: String] = [
         "D28617FE-0AD5-40C5-A04A-BC89051FF755": "Ear",
         "1454E9D6-F658-4190-8589-22AA9E3021EB": "Main volume",
+        OticonRemoteProtocol.tinnitusVolume: "Tinnitus volume",
+        OticonRemoteProtocol.streamingVolume: "Streaming source volume",
         "58BBCCC5-5A57-4E00-98D5-18C6A0408DFD": "Volume ranges",
         "535442F7-0FF7-4FEC-9780-742F3EB00EDA": "Active program",
         "DCBE7A3E-A742-4527-AEB5-CD8DEE63167F": "Available programs",
@@ -44,7 +46,7 @@ enum ReadOnlyInspection {
         let characteristic = HearingAidDiscovery.normalizedUUID(characteristic)
         if service == OticonRemoteProtocol.service {
             switch characteristic {
-            case OticonRemoteProtocol.mainVolume:
+            case OticonRemoteProtocol.mainVolume, OticonRemoteProtocol.tinnitusVolume, OticonRemoteProtocol.streamingVolume:
                 if let volume = OticonRemoteProtocol.Volume(data: data) { return "Level \(volume.level) · \(volume.muted ? "muted" : "unmuted")" }
             case OticonRemoteProtocol.volumeRanges:
                 if let ranges = OticonRemoteProtocol.VolumeRanges(data: data) { return "Microphone \(ranges.main.lowerBound)…\(ranges.main.upperBound) · Streaming \(ranges.streaming.lowerBound)…\(ranges.streaming.upperBound) · Tinnitus \(ranges.tinnitus.lowerBound)…\(ranges.tinnitus.upperBound)" }
@@ -79,7 +81,9 @@ enum ReadOnlyInspection {
         let characteristic = HearingAidDiscovery.normalizedUUID(characteristic)
         if service == StandardGATT.batteryService, characteristic == StandardGATT.batteryLevel { return true }
         if service == OticonRemoteProtocol.service {
-            return [OticonRemoteProtocol.mainVolume, OticonRemoteProtocol.activeProgram, OticonRemoteProtocol.volumeRanges, OticonEqualizer.legacyCharacteristic, OticonProgramInfo.version, OticonSpeechBooster.legacyCharacteristic].contains(characteristic)
+            return [OticonRemoteProtocol.mainVolume, OticonRemoteProtocol.tinnitusVolume, OticonRemoteProtocol.streamingVolume,
+                    OticonRemoteProtocol.activeProgram, OticonRemoteProtocol.volumeRanges, OticonEqualizer.legacyCharacteristic,
+                    OticonProgramInfo.version, OticonSpeechBooster.legacyCharacteristic].contains(characteristic)
         }
         return (service == "1844" && characteristic == "2B7D") || (service == "1854" && characteristic == "2BDC")
     }

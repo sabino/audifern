@@ -1,6 +1,12 @@
 # Local audiogram records
 
-Open Companion's **Audiogram…** window stores values copied from an existing exam. It does not play test tones, calculate a hearing-aid prescription, or send audiometric values to an aid. A local sound preset can reference an exam UUID as metadata; that association performs no conversion or fitting.
+Open Companion's **Audiogram** tab stores values copied from an existing exam. It does not play test tones, calculate a hearing-aid prescription, or send audiometric values to an aid. A local sound preset can reference an exam UUID as metadata; that association performs no conversion or fitting.
+
+The editor, Settings and device information share the main application window.
+The app owns the draft for its lifetime, so switching tabs or closing and
+reopening the main window preserves edits. Quitting still requires saving an
+exam to retain it. HIMSA export options expand inline; choosing an actual file
+uses the normal attached macOS file picker.
 
 The editor records both ears at 125, 250, 500, 1000, 2000, 3000, 4000, 6000 and 8000 Hz. Air and bone conduction, masked and unmasked conditions, and no-response flags remain distinct. Empty cells mean unrecorded, including an unknown exam date. A no-response entry stores the presentation level from the exam rather than claiming a threshold was measured. Values are not extrapolated or filled from the opposite ear.
 

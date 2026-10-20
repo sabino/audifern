@@ -1,8 +1,8 @@
 import Foundation
 
 /// Read-only identification recovered from Companion's detect_info / HIID path.
-/// Only the interface version and per-aid serial are retained; other HIID data
-/// (which may contain private fitting information) is skipped without exposing it.
+/// Only an allowlist of identity and version fields is retained; private fitting
+/// data and credentials are skipped without exposing them.
 public enum OticonIdentification {
     public static let serviceID: UInt32 = 0x02000004
     public static let hiidInfoOpcode: UInt8 = 3
@@ -19,6 +19,22 @@ public enum OticonIdentification {
         public let hiidMajor: UInt8
         public let hiidMinor: UInt8
         public let serialNumber: String?
+        public let metadata: Metadata
+    }
+
+    public struct Metadata: Equatable, Sendable {
+        public let hiidVersion: String
+        public let manufacturer: String?
+        public let model: String?
+        public let hardwareRevision: String?
+        public let firmwareRevision: String?
+        public let softwareRevision: String?
+        public let runtimeMemoryMapVersion: String?
+        public let releasePackageVersion: String?
+        public let primaryAppVersion: String?
+        public let maintenanceAppVersion: String?
+        /// Labels only: no raw HIID values, identifiers or fitting information.
+        public let invalidFields: [String]
     }
 
     public static func supports(_ service: UTLProtocol.Service) -> Bool {
@@ -33,12 +49,15 @@ public enum OticonIdentification {
         let root = try reader.header()
         guard root.major == 5, root.argument <= 256 else { throw DecodeError.malformed }
         var keys = Set<String>(), version: Data?, serial: Data?
+        var metadataBlocks: [String: Data] = [:]
         for _ in 0..<Int(root.argument) {
             let key = try reader.key()
             guard keys.insert(key).inserted else { throw DecodeError.malformed }
             switch key {
             case "1001": version = try reader.byteString()
             case "2003": serial = try reader.byteString()
+            case "1012", "2007", "2009", "2019", "2020":
+                metadataBlocks[key] = try reader.byteString()
             default: try reader.skip(depth: 0)
             }
         }
@@ -51,7 +70,48 @@ public enum OticonIdentification {
             throw DecodeError.unsupportedHIIDVersion
         }
         return Identity(hiidMajor: major, hiidMinor: minor,
-                        serialNumber: try serial.flatMap { try serialNumber($0) })
+                        serialNumber: try serial.flatMap { try serialNumber($0) },
+                        metadata: metadata(major: major, minor: minor, blocks: metadataBlocks))
+    }
+
+    private static func metadata(major: UInt8, minor: UInt8, blocks: [String: Data]) -> Metadata {
+        var invalid: [String] = []
+        func text(_ key: String, at offset: Int = 0, label: String) -> String? {
+            guard let data = blocks[key] else { return nil }
+            guard offset + 18 <= data.count else { invalid.append(label); return nil }
+            // WirelessNameStringReader takes at most 18 bytes and stops at NUL.
+            let value = Data(data.dropFirst(offset).prefix(18).prefix { $0 != 0 })
+            guard let decoded = String(data: value, encoding: .utf8) else {
+                invalid.append(label); return nil
+            }
+            let trimmed = decoded.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else {
+                invalid.append(label); return nil
+            }
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        func version(_ key: String, at offset: Int, label: String) -> String? {
+            guard let data = blocks[key] else { return nil }
+            guard offset + 3 <= data.count else { invalid.append(label); return nil }
+            // TripleVersionReader maps these three individual bytes to Version.
+            return data.dropFirst(offset).prefix(3).map(String.init).joined(separator: ".")
+        }
+        // HIID 3.x begins entry 1012 with DefaultProductionSettingsVersion;
+        // supported 4.x removed that first three-byte field.
+        let runtimeOffset = major == 3 ? 3 : 0
+        let manufacturer = text("2009", label: "Manufacturer")
+        let model = text("2009", at: 18, label: "Model")
+        let hardware = text("2009", at: 36, label: "Hardware revision")
+        let firmware = text("2007", label: "Firmware revision")
+        let software = text("2019", label: "Software revision")
+        let runtime = version("1012", at: runtimeOffset, label: "Runtime memory-map version")
+        let release = version("1012", at: runtimeOffset + 3, label: "Release-package version")
+        let primary = version("2020", at: 0, label: "Primary application version")
+        let maintenance = version("2020", at: 3, label: "Maintenance application version")
+        return Metadata(hiidVersion: "\(major).\(minor)", manufacturer: manufacturer, model: model,
+                        hardwareRevision: hardware, firmwareRevision: firmware, softwareRevision: software,
+                        runtimeMemoryMapVersion: runtime, releasePackageVersion: release,
+                        primaryAppVersion: primary, maintenanceAppVersion: maintenance, invalidFields: invalid)
     }
 
     /// Four bytes from DIET entry 2003, not the production or companion serial.

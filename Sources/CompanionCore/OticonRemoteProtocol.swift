@@ -6,6 +6,8 @@ import Foundation
 public enum OticonRemoteProtocol {
     public static let service = "56772EAF-2153-4F74-ACF3-4368D99FBF5A"
     public static let mainVolume = "1454E9D6-F658-4190-8589-22AA9E3021EB"
+    public static let tinnitusVolume = "E5892EBE-97D0-4F97-8F8E-CB85D16A4CC1"
+    public static let streamingVolume = "50632720-4C0F-4BC4-960A-2404BDFDFBCA"
     public static let volumeRanges = "58BBCCC5-5A57-4E00-98D5-18C6A0408DFD"
     public static let activeProgram = "535442F7-0FF7-4FEC-9780-742F3EB00EDA"
     public static let availablePrograms = "DCBE7A3E-A742-4527-AEB5-CD8DEE63167F"

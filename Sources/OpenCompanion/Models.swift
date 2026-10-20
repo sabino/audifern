@@ -38,15 +38,42 @@ struct AidConnection: Identifiable {
     var manufacturer: String?
     var model: String?
     var firmware: String?
+    var standardSoftwareRevision: String?
+    var standardHardwareRevision: String?
+    var softwareRevision: String? { standardSoftwareRevision ?? deviceMetadata?.softwareRevision }
+    var hardwareRevision: String? { standardHardwareRevision ?? deviceMetadata?.hardwareRevision }
+    var softwareRevisionSource: String? {
+        if standardSoftwareRevision != nil { return "Device Information (2A28)" }
+        return deviceMetadata?.softwareRevision == nil ? nil : "HIID (2019)"
+    }
+    var hardwareRevisionSource: String? {
+        if standardHardwareRevision != nil { return "Device Information (2A27)" }
+        return deviceMetadata?.hardwareRevision == nil ? nil : "HIID (2009)"
+    }
+    var deviceMetadata: OticonIdentification.Metadata?
+    var deviceMetadataStatus: String?
+    var batteryHealth: OticonBattery.Health?
+    var coreDumpInfo: OticonDiagnostics.CoreDumpInfo?
+    var advancedServices: [UTLProtocol.Service] = []
     var serialNumber: String?
     var ear: Int?
     var sinkAudioLocations: UInt32?
     var volume: OticonRemoteProtocol.Volume?
+    var tinnitusVolume: OticonRemoteProtocol.Volume?
+    var streamingVolume: OticonRemoteProtocol.Volume?
+    var writableTinnitusVolume = false
+    var writableStreamingVolume = false
+    var tinnitusStatus: String?
+    var streamingVolumeStatus: String?
+    var tinnitusStatusFailed = false
+    var streamingVolumeStatusFailed = false
     var volumeRanges: OticonRemoteProtocol.VolumeRanges?
     var programIDs: [Int] = []
     var activeProgram: Int?
     var programNames: [Int: String] = [:]
     var programBoostable: [Int: Bool] = [:]
+    var programTinnitus: [Int: Bool] = [:]
+    var programStreaming: [Int: Bool] = [:]
     var speechBoosterEnabled: Bool?
     var writableSpeechBooster = false
     var consumerStatus: String?
@@ -67,6 +94,8 @@ struct AidConnection: Identifiable {
     var isConnected: Bool { phase == .connected }
     var canChangeVolume: Bool { isConnected && !actionPending && !advancedBusy && !groupActionPending && writableVolume && volume != nil && volumeRanges != nil }
     var canChangeProgram: Bool { isConnected && !actionPending && !advancedBusy && !groupActionPending && writableProgram && activeProgram != nil && !programIDs.isEmpty }
+    var canChangeTinnitusVolume: Bool { canChangeAuxiliaryVolume(.tinnitus) }
+    var canChangeStreamingVolume: Bool { canChangeAuxiliaryVolume(.streaming) }
     var canChangeMicrophoneEqualizer: Bool { isConnected && !actionPending && !advancedBusy && !groupActionPending && writableMicrophoneEqualizer && microphoneEqualizer != nil }
     var canChangeStreamingEqualizer: Bool { isConnected && !actionPending && !advancedBusy && !groupActionPending && writableStreamingEqualizer && streamingEqualizer != nil }
     var canChangeSpeechBooster: Bool {
@@ -74,10 +103,50 @@ struct AidConnection: Identifiable {
             && activeProgram.flatMap { programBoostable[$0] } == true
     }
     var activeProgramName: String? { activeProgram.flatMap { programNames[$0] } }
+    func auxiliaryVolume(_ source: AuxiliaryHearingControls.Source) -> OticonRemoteProtocol.Volume? {
+        source == .tinnitus ? tinnitusVolume : streamingVolume
+    }
+    func auxiliaryRange(_ source: AuxiliaryHearingControls.Source) -> ClosedRange<Int>? {
+        source == .tinnitus ? volumeRanges?.tinnitus : volumeRanges?.streaming
+    }
+    func auxiliaryProgramEligible(_ source: AuxiliaryHearingControls.Source) -> Bool? {
+        guard let activeProgram else { return nil }
+        if source == .tinnitus { return programTinnitus[activeProgram] }
+        guard programTinnitus[activeProgram] == false else { return nil }
+        return programStreaming[activeProgram]
+    }
+    func canChangeAuxiliaryVolume(_ source: AuxiliaryHearingControls.Source) -> Bool {
+        let writable = source == .tinnitus ? writableTinnitusVolume : writableStreamingVolume
+        guard isConnected, !actionPending, !advancedBusy, !groupActionPending, writable,
+              auxiliaryProgramEligible(source) == true, let value = auxiliaryVolume(source),
+              let range = auxiliaryRange(source) else { return false }
+        return range.contains(value.level)
+    }
     var sideLabel: String {
         if sinkAudioLocations == 1 { return "Left" }
         if sinkAudioLocations == 2 { return "Right" }
         return ear.map { "Side \($0)" } ?? "Hearing aid"
+    }
+
+    /// Namespaces each revision by its actual Device Information characteristic.
+    /// A malformed update invalidates only that field; firmware never fills in
+    /// an absent software revision.
+    mutating func receiveRevision(service: String, characteristic: String, data: Data) -> Bool {
+        guard let field = StandardGATT.revisionField(service: service, characteristic: characteristic) else { return false }
+        let value = StandardGATT.informationString(data)
+        switch field {
+        case .firmware: firmware = value
+        case .hardware: standardHardwareRevision = value
+        case .software: standardSoftwareRevision = value
+        }
+        return true
+    }
+
+    func advertisesDeviceInformationCharacteristic(_ uuid: String) -> Bool {
+        services.contains { service in
+            HearingAidDiscovery.normalizedUUID(service.uuid) == StandardGATT.deviceInformationService
+                && service.characteristics.contains { HearingAidDiscovery.normalizedUUID($0.uuid) == HearingAidDiscovery.normalizedUUID(uuid) }
+        }
     }
 
     mutating func clearLiveValues() {
@@ -89,15 +158,27 @@ struct AidConnection: Identifiable {
         manufacturer = nil
         model = nil
         firmware = nil
+        standardSoftwareRevision = nil
+        standardHardwareRevision = nil
+        deviceMetadata = nil
+        deviceMetadataStatus = nil
+        batteryHealth = nil
+        coreDumpInfo = nil
+        advancedServices = []
         serialNumber = nil
         ear = nil
         sinkAudioLocations = nil
         volume = nil
+        tinnitusVolume = nil; streamingVolume = nil
+        writableTinnitusVolume = false; writableStreamingVolume = false
+        tinnitusStatus = nil; streamingVolumeStatus = nil
+        tinnitusStatusFailed = false; streamingVolumeStatusFailed = false
         volumeRanges = nil
         programIDs = []
         activeProgram = nil
         programNames = [:]
         programBoostable = [:]
+        programTinnitus = [:]; programStreaming = [:]
         speechBoosterEnabled = nil
         writableSpeechBooster = false
         consumerStatus = nil

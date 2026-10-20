@@ -196,3 +196,67 @@ identity, changed program/capabilities during a request, preflight of both
 targets, confirmation of every step, and explicit partial failure. They never
 write to real hearing aids. Hardware execution of restore-default actions,
 audible SpeechBooster changes and real notification banners remain untested.
+
+## Device metadata, one window and source controls (0.5.0)
+
+The signed 0.5.0 native app connected to both Intent 3 aids. Independent
+Device Information reads displayed **Software 1.4.1** and **Firmware
+rel_7.4_27.0** on each side. Software uses characteristic `2A28`; it is not a
+copy of the firmware string. No hardware revision was reported, so that field
+remains unknown.
+
+Explicit **Read additional information** queries completed on both aids using
+ordinary consumer UTL commands. Both supplied HIID format 4.5, release package
+5.0.29, primary application 5.0.1, maintenance application 5.0.1 and runtime
+memory-map version 10.0.0. Battery diagnostic getters decoded successfully;
+their raw counters remain behind a disclosure and are not interpreted as a
+health percentage. Both stored-diagnostic info replies reported zero stored
+crash dumps and a last-dump counter of zero. No dump contents were requested.
+The inspected current registry advertised firmware-update service 2.0 and
+stored-diagnostics service 1.0. Registry presence is not permission to execute
+every operation.
+
+Native Hearing aids, Devices, Audiogram and Settings tabs were selected in
+turn. OmniWM reported the same single main window; screenshots and fresh AX
+trees confirmed their contents. Audiogram includes its local-record purpose
+and fitting boundary. Feature navigation does not create an Audiogram or
+Settings window. Native file pickers and destructive confirmations remain
+attached workflows. The user's previous window focus was restored after each
+bounded check.
+
+The final 0.5.0 build also passed the native main-window close/reopen check.
+Its menu bar retained two connected aids while the window was closed, and
+reopening reused the same process with both connections intact. The window
+workspace and previous focus were restored afterward.
+
+The orange **Tinnitus SoundSupport** section appears directly below Streaming
+EQ and includes fitting/use guidance. Both aids returned tinnitus gain/mute
+values and a −5…0 device-step range, but the active **Geral** program reports
+no tinnitus support. Its adjustment and link controls were verified disabled.
+The separate streaming-source range was 0…18 device steps; Geral also does
+not qualify for that source, and those controls were disabled. A gain range
+or an unmuted field does not establish that tinnitus relief is fitted or
+producing audio.
+
+The automated hardware pass connected and read controls/metadata. It did not
+change volume, mute, EQ, SpeechBooster, therapy, clinical fitting or firmware.
+Subsequent advanced reads confirmed that existing consumer EQ adjustments
+were preserved on both ears. Tinnitus and dedicated streaming-source
+writes and their audible effects remain untested on a fitted eligible program.
+No complete installed firmware image was recovered; the bounded static and
+cache findings are in [device-research.md](device-research.md).
+
+Private evidence: `gui-050-devices-final-ax.txt`, `gui-050-devices.png`,
+`gui-050-settings-ax.txt`, `gui-050-settings.png`, `gui-050-audiogram-ax.txt`,
+`gui-050-audiogram.png`, `gui-050-final-advanced-ax.txt`,
+`gui-050-final-inventory-ax.txt`, `gui-050-final-tinnitus-ax.txt` and
+`gui-050-final-tinnitus.png`. Snapshots retain personal identifiers and remain
+ignored. Final packaged-build checks are also retained as
+`gui-050-release-devices-ax.txt`, `gui-050-release-inventory-ax.txt`,
+`gui-050-release-tinnitus.png`, `gui-050-release-window-lifecycle.log` and
+`gui-050-release-after-reopen-ax.txt`. Synthetic validation passed
+**141 Swift tests and six Python tests**,
+including the optional official HIMSA schema check. New coverage exercises
+version-source separation, HIID layouts, read-only diagnostic contracts,
+source eligibility and paired gain/mute preflight. The signed bundle passed
+strict signature verification.

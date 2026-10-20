@@ -41,6 +41,9 @@ public enum StandardGATT {
     public static let deviceInformationService = "180A"
     public static let batteryService = "180F"
     public static let batteryLevel = "2A19"
+    public enum RevisionField: String, Sendable {
+        case firmware = "2A26", hardware = "2A27", software = "2A28"
+    }
     public static let deviceInformationNames: [String: String] = [
         "2A29": "Manufacturer", "2A24": "Model",
         "2A27": "Hardware revision", "2A26": "Firmware revision", "2A28": "Software revision"
@@ -56,6 +59,11 @@ public enum StandardGATT {
     public static func batteryPercentage(_ data: Data) -> Int? {
         guard data.count == 1, let byte = data.first, byte <= 100 else { return nil }
         return Int(byte)
+    }
+
+    public static func revisionField(service: String, characteristic: String) -> RevisionField? {
+        guard HearingAidDiscovery.normalizedUUID(service) == deviceInformationService else { return nil }
+        return RevisionField(rawValue: HearingAidDiscovery.normalizedUUID(characteristic))
     }
 
     public static func informationString(_ data: Data) -> String? {

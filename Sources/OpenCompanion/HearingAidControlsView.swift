@@ -5,11 +5,14 @@ import SwiftUI
 /// link, and linking alone never sends a command to either hearing aid.
 struct HearingAidControlsView: View {
     @ObservedObject var store: BluetoothStore
+    @EnvironmentObject private var navigation: AppNavigation
     @AppStorage("linkedHearingAidControls") private var linkedVolume = true
     @AppStorage("linkedHearingAidPrograms") private var linkedPrograms = false
     @AppStorage("linkedHearingAidSpeechBooster") private var linkedSpeech = false
     @AppStorage("linkedHearingAidMicrophoneEQ") private var linkedMicrophone = false
     @AppStorage("linkedHearingAidStreamingEQ") private var linkedStreaming = false
+    @AppStorage("linkedHearingAidStreamingVolume") private var linkedStreamingVolume = false
+    @AppStorage("linkedHearingAidTinnitusVolume") private var linkedTinnitusVolume = false
     @State private var restoreRequest: RestoreRequest?
 
     private struct RestoreRequest: Identifiable {
@@ -98,7 +101,9 @@ struct HearingAidControlsView: View {
             Divider()
             PairedEqualizerView(store: store, aids: pair, microphone: true, linked: $linkedMicrophone, canLink: canLink)
             Divider()
+            AuxiliaryVolumeSectionView(store: store, aids: pair, source: .streaming, linked: $linkedStreamingVolume)
             PairedEqualizerView(store: store, aids: pair, microphone: false, linked: $linkedStreaming, canLink: canLink)
+            AuxiliaryVolumeSectionView(store: store, aids: pair, source: .tinnitus, linked: $linkedTinnitusVolume)
             Divider()
             EarSettingsRow {
                 deviceFooter(left)
@@ -130,6 +135,8 @@ struct HearingAidControlsView: View {
             program(aid, ids: [aid.id])
             SpeechBoosterCell(store: store, aid: aid, targetIDs: [aid.id])
             EqualizerControlsView(store: store, aidID: aid.id)
+            AuxiliaryVolumeSectionView(store: store, aids: [aid], source: .streaming, linked: .constant(false))
+            AuxiliaryVolumeSectionView(store: store, aids: [aid], source: .tinnitus, linked: .constant(false))
             Divider()
             deviceFooter(aid)
         }.padding(20).frame(maxWidth: 700)
@@ -213,6 +220,9 @@ struct HearingAidControlsView: View {
     private func deviceFooter(_ aid: AidConnection) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             DeviceDetailsView(store: store, aid: aid)
+            Button("More device information") { store.select(aid.id); navigation.page = .devices }
+                .font(.caption).buttonStyle(.borderless)
+                .accessibilityLabel("More \(aid.sideLabel.lowercased()) device information")
             HStack {
                 Circle().fill(aid.isConnected ? Color.teal : Color.secondary).frame(width: 6, height: 6)
                 Text(aid.actionStatus ?? aid.phase.label).font(.caption)
@@ -245,14 +255,15 @@ struct EarLinkButton: View {
     @Binding var linked: Bool
     var available: Bool
     let identifier: String
+    var accent: Color = .teal
     var body: some View {
         Button { linked.toggle() } label: {
             VStack(spacing: 5) {
                 Image(systemName: linked ? "link" : "link.badge.plus")
                     .font(.system(size: 16, weight: .semibold)).frame(width: 38, height: 30)
-                    .background(linked ? Color.teal.opacity(0.14) : Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
+                    .background(linked ? accent.opacity(0.14) : Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
                 Text(linked ? "Linked" : "Separate").font(.system(size: 9, weight: .medium))
-            }.foregroundStyle(linked ? Color.teal : Color.secondary)
+            }.foregroundStyle(linked ? accent : Color.secondary)
         }.buttonStyle(.plain).disabled(!available)
             .accessibilityLabel("Link \(title.lowercased()) between ears")
             .accessibilityValue(linked ? "Linked" : "Separate")

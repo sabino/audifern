@@ -225,6 +225,15 @@ final class UTLSession {
     }
     var supportsBatteryTelemetry: Bool { services.contains(where: OticonBattery.supports) }
     var supportsIdentification: Bool { services.contains(where: OticonIdentification.supports) }
+    var supportsCoreDumpInfo: Bool { services.contains(where: OticonDiagnostics.supportsCoreDumpInfo) }
+    func coreDumpInfo() async throws -> OticonDiagnostics.CoreDumpInfo {
+        guard let service = services.first(where: OticonDiagnostics.supportsCoreDumpInfo) else {
+            throw SessionError.unavailable("No supported crash-dump information service was advertised.")
+        }
+        let response = try await consumerRequest(handle: service.handle, opcode: OticonDiagnostics.coreDumpInfoOpcode)
+        do { return try OticonDiagnostics.coreDumpInfo(response.payload, service: service) }
+        catch { throw UTLAdvanced.ParseError("Crash-dump counters could not be decoded (\(response.payload.count) bytes).") }
+    }
     func identification() async throws -> OticonIdentification.Identity {
         guard let service = services.first(where: OticonIdentification.supports) else {
             throw SessionError.unavailable("No supported hearing aid identification service was advertised.")
@@ -248,6 +257,14 @@ final class UTLSession {
         diagnostic("Battery telemetry response: bytes=\(response.payload.count), hexPrefix=\(response.payload.prefix(64).hexString)")
         do { return try OticonBattery.fastState(response.payload, service: service) }
         catch { throw UTLAdvanced.ParseError("Battery \(service.major).\(service.minor) telemetry could not be decoded (\(response.payload.count) bytes).") }
+    }
+    func batteryHealth() async throws -> OticonBattery.Health {
+        guard let service = services.first(where: OticonBattery.supports) else {
+            throw SessionError.unavailable("No supported battery health service was advertised.")
+        }
+        let response = try await consumerRequest(handle: service.handle, opcode: OticonBattery.slowInfoOpcode)
+        do { return try OticonBattery.slowHealth(response.payload, service: service) }
+        catch { throw UTLAdvanced.ParseError("Battery health could not be decoded (\(response.payload.count) bytes).") }
     }
     func speechBooster() async throws -> OticonSpeechBooster.State {
         guard supportsSpeechBooster, let service = services.first(where: OticonSpeechBooster.supports) else {

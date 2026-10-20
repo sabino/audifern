@@ -20,7 +20,6 @@ struct AudiogramEditorView: View {
     @State private var showingHIMSAExport = false
     @State private var himsaSignal = HIMSAAudiogramExport.Signal.unknown
     @State private var himsaTransducer: HIMSAAudiogramExport.AirTransducer?
-    @State private var pendingXML: Data?
 
     private enum PendingAction { case new, select(UUID), importFile, revert }
 
@@ -29,18 +28,35 @@ struct AudiogramEditorView: View {
         self.onSaved = onSaved
     }
 
+    init(store: AudiogramEditorStore, onSaved: ((Audiogram) -> Void)? = nil) {
+        _store = StateObject(wrappedValue: store)
+        self.onSaved = onSaved
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                header
-                metadata
-                HStack(alignment: .top, spacing: 24) {
-                    graphPanel.frame(minWidth: 350, maxWidth: .infinity)
-                    entryPanel.frame(width: 400)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    header
+                    GroupBox {
+                        Text("Keep a plotted copy of your exam and export it as JSON or HIMSA XML. A sound preset can reference this exam; applying a preset restores the volume and EQ you saved manually. Exam values do not program the hearing aids.")
+                            .font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(6)
+                    } label: { Label("What this is used for", systemImage: "info.circle") }
+                    metadata
+                    HStack(alignment: .top, spacing: 24) {
+                        graphPanel.frame(minWidth: 350, maxWidth: .infinity)
+                        entryPanel.frame(width: 400)
+                    }
+                    notes
+                    footer
+                    if showingHIMSAExport { himsaExportOptions.id("himsa-export-options") }
+                }.padding(28)
+            }
+            .onChange(of: showingHIMSAExport) { _, visible in
+                if visible {
+                    withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo("himsa-export-options", anchor: .bottom) }
                 }
-                notes
-                footer
-            }.padding(28)
+            }
         }
         .frame(minWidth: 900, minHeight: 700)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -65,14 +81,6 @@ struct AudiogramEditorView: View {
         }
         .fileExporter(isPresented: $exporting, document: exportDocument, contentType: exportType,
                       defaultFilename: "audiogram") { store.reportExport($0) }
-        .sheet(isPresented: $showingHIMSAExport, onDismiss: {
-            if let xml = pendingXML {
-                pendingXML = nil
-                exportDocument = AudiogramExportDocument(data: xml)
-                exportType = .xml
-                exporting = true
-            }
-        }) { himsaExportOptions }
     }
 
     private var header: some View {
@@ -208,7 +216,7 @@ struct AudiogramEditorView: View {
                 .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary))
                 .accessibilityLabel("Exam notes")
-            Text("Saved exam records can be linked to a local sound preset. Hearing-aid fitting is a separate workflow.")
+            Text("Save keeps this exam on this Mac and makes it available as a reference for your sound presets.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -265,18 +273,22 @@ struct AudiogramEditorView: View {
             Text("Exports entered measurements as Audiogram 502 XML. Exam name, date and notes stay in the JSON record. Import into Noah depends on a compatible audiometry module.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
-                Button("Cancel", role: .cancel) { showingHIMSAExport = false }
+                Button("Close export options") { showingHIMSAExport = false }
                 Spacer()
                 Button("Export XML…") {
                     if let data = store.prepareHIMSAExport(signal: himsaSignal, airTransducer: himsaTransducer) {
-                        pendingXML = data
+                        exportDocument = AudiogramExportDocument(data: data)
+                        exportType = .xml
                         showingHIMSAExport = false
+                        exporting = true
                     }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(hasMasked || (hasAir && himsaTransducer == nil))
             }
-        }.padding(24).frame(width: 480)
+        }.padding(20).frame(maxWidth: 700, alignment: .leading)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14))
+            .accessibilityIdentifier("himsa-export-options")
     }
 
     private func request(_ action: PendingAction) {

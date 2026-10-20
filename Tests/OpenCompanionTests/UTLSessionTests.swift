@@ -29,6 +29,7 @@ import Testing
     var advertiseSpeechBooster = false
     var advertiseBattery = false
     var advertiseIdentification = false
+    var advertiseDiagnostics = false
     var batteryTrailingData = Data()
     var speechValues = [0, 1, -2]
     let speechMinimum = [-4, -3, -2]
@@ -76,6 +77,7 @@ import Testing
                     + (advertiseSpeechBooster ? Data([2, 0, 0, 19, 10, 1, 2, 0xFF]) : Data())
                     + (advertiseBattery ? Data([1, 0, 0, 7, 7, 2, 0, 0xFF]) : Data())
                     + (advertiseIdentification ? Data([2, 0, 0, 4, 11, 1, 2, 0xFF]) : Data())
+                    + (advertiseDiagnostics ? Data([2, 0, 0, 12, 12, 1, 0, 0xFF]) : Data())
             } else if request.serviceHandle == 8 {
                 switch request.code {
                 case 0:
@@ -100,15 +102,23 @@ import Testing
             } else if !consumerOpen || !pipelineOpen || transaction == nil {
                 status = 0xD9; payload = Data()
             } else if request.serviceHandle == 7 {
-                #expect(request.code == 2 && request.payload.isEmpty)
-                // Fixed big-endian scalars and MSB-packed flags, not CBOR.
-                payload = Data([0, 0, 0, 50, 0, 0, 0x2E, 0xE0, 0, 0, 3, 0xE8, 0x40])
-                    + batteryTrailingData
+                #expect(request.payload.isEmpty)
+                if request.code == 1 {
+                    payload = Data([0, 0, 0, 90, 0, 0, 0, 60, 0, 0, 3, 0xE8, 0, 0, 0x4E, 0x20])
+                } else {
+                    #expect(request.code == 2)
+                    // Fixed big-endian scalars and MSB-packed flags, not CBOR.
+                    payload = Data([0, 0, 0, 50, 0, 0, 0x2E, 0xE0, 0, 0, 3, 0xE8, 0x40])
+                        + batteryTrailingData
+                }
             } else if request.serviceHandle == 11 {
                 #expect(request.code == 3 && request.payload.isEmpty)
                 // Synthetic HIID4.6 map:1001=>bstr[4,6],2003=>bstrnumericserial.
                 payload = Data([0xA2, 0x19, 0x03, 0xE9, 0x42, 4, 6,
                                 0x19, 0x07, 0xD3, 0x44, 0x80, 0, 0, 0x2A])
+            } else if request.serviceHandle == 12 {
+                #expect(request.code == 0 && request.payload.isEmpty)
+                payload = Data([0x12, 0x34, 0, 2])
             } else if request.serviceHandle == 10 {
                 let opcode = request.code!
                 if opcode == 6 {
@@ -300,4 +310,22 @@ import Testing
     #expect(diagnostics == ["Hearing aid identification read (HIID 4.6)."])
     #expect(!diagnostics.joined().contains("00000042"))
     #expect(!diagnostics.joined().contains("A21903E9"))
+}
+
+@MainActor @Test func deviceMetadataQueriesUseOnlyTheirReadOpcodesAndConsumerTransactions() async throws {
+    let peer = SyntheticUTLPeer()
+    peer.advertiseIdentification = true; peer.advertiseBattery = true; peer.advertiseDiagnostics = true
+    let info = try UTLProtocol.GattInformation(data: Data([1, 0, 1, 0, 0, 244, 1, 1, 0x80, 0x80, 0x80, 0x80]))
+    let session = try UTLSession(info: info, physicalATTMTU: 247) { uuid, data in try await peer.write(uuid, data) }
+    peer.session = session
+    try await session.start(key: peer.key)
+    _ = try await session.identification()
+    let health = try await session.batteryHealth()
+    let dumps = try await session.coreDumpInfo()
+    #expect(health.lifespan == 90 && health.lifespanThreshold == 60)
+    #expect(health.slowAverageCurrentDraw == 1_000 && health.fullChargeCapacity == 20_000)
+    #expect(dumps.lastDumpCounter == 0x1234 && dumps.storedCrashDumps == 2)
+    #expect(peer.serviceTrace.map { "\($0.handle)/\($0.opcode)" }.suffix(9)
+        == ["8/7", "11/3", "8/8", "8/7", "7/1", "8/8", "8/7", "12/0", "8/8"])
+    #expect(peer.serviceTrace.filter { ![UInt8(0), 8].contains($0.handle) }.allSatisfy { $0.payload.isEmpty })
 }

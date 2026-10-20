@@ -3,8 +3,10 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var store: BluetoothStore
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.openSettings) private var openSettings
+    let audiogramStore: AudiogramEditorStore
+    let notifications: BatteryNotificationManager
+    @EnvironmentObject private var navigation: AppNavigation
+    @EnvironmentObject private var presets: SoundPresetStore
     @State private var showAllDevices = false
     @State private var showInspector = false
     @State private var showEvents = false
@@ -12,19 +14,33 @@ struct ContentView: View {
     private var visibleDevices: [NearbyDevice] { store.devices.filter { showAllDevices || $0.isCandidate } }
 
     var body: some View {
-        HSplitView {
-            discoveryPane.frame(minWidth: 260, idealWidth: 290, maxWidth: 320)
-            dashboard.frame(minWidth: 730, maxWidth: .infinity)
+        TabView(selection: $navigation.page) {
+            HSplitView {
+                discoveryPane.frame(minWidth: 260, idealWidth: 290, maxWidth: 320)
+                dashboard.frame(minWidth: 730, maxWidth: .infinity)
+            }
+            .tabItem { Label(AppPage.hearingAids.title, systemImage: AppPage.hearingAids.symbol).accessibilityIdentifier("navigation-hearing-aids") }
+            .tag(AppPage.hearingAids)
+
+            DeviceExplorerView(store: store)
+                .tabItem { Label(AppPage.devices.title, systemImage: AppPage.devices.symbol).accessibilityIdentifier("navigation-devices") }
+                .tag(AppPage.devices)
+
+            AudiogramEditorView(store: audiogramStore, onSaved: { exam in
+                presets.linkedAudiogramID = exam.id
+                presets.linkedAudiogramLabel = exam.name + (exam.examDate.map { " · \($0)" } ?? "")
+            })
+            .tabItem { Label(AppPage.audiogram.title, systemImage: AppPage.audiogram.symbol).accessibilityIdentifier("navigation-audiogram") }
+            .tag(AppPage.audiogram)
+
+            AppSettingsView(notifications: notifications)
+                .tabItem { Label(AppPage.settings.title, systemImage: AppPage.settings.symbol).accessibilityIdentifier("navigation-settings") }
+                .tag(AppPage.settings)
         }
         .frame(minWidth: 1050, minHeight: 700)
         .tint(Color.teal)
         .toolbar {
             ToolbarItem(placement: .principal) { Label("Open Companion", systemImage: "ear.badge.waveform").font(.headline) }
-            ToolbarItem { Button("Audiogram", systemImage: "chart.xyaxis.line") { openWindow(id: "audiogram") } }
-            ToolbarItem {
-                Button("Battery alerts", systemImage: "bell.badge") { openSettings() }
-                    .help("Battery notification settings")
-            }
             ToolbarItem {
                 Label(store.bluetoothStatus, systemImage: store.isPoweredOn ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
                     .font(.caption).foregroundStyle(store.isPoweredOn ? Color.secondary : Color.orange)

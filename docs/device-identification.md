@@ -32,9 +32,11 @@ are:
 | 2002 | Byte string, separate entry | Production serial, **not** the displayed aid serial |
 
 Numeric keys and their text forms are accepted as in the SDK. Duplicate keys
-after that normalization are rejected. The decoder retains only version and
-serial; unknown entries are bounded and skipped. It does not retain fitting
-IDs, fitting credentials, companion IDs, or other HIID contents.
+after that normalization are rejected. The decoder initially retained only
+version and serial. Its later metadata allowlist also retains the documented
+version/model fields described in [device-metadata.md](device-metadata.md);
+unknown entries remain bounded and skipped. It does not retain fitting IDs,
+fitting credentials or companion IDs.
 
 HIID interface/memory-map/reader resources prove the 2003 layout and the same
 serial conversion for versions 3.4, 3.5, 3.7, 4.3, 4.5, and 4.6. Other versions

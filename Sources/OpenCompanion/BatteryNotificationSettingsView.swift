@@ -82,7 +82,7 @@ struct BatteryNotificationSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(minWidth: 490, idealWidth: 570, minHeight: 640)
+        .frame(minWidth: 490, idealWidth: 570)
         .padding(8)
     }
 }
