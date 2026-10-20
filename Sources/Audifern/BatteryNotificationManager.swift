@@ -47,13 +47,20 @@ final class SystemBatteryNotificationDelivery: NSObject, BatteryNotificationDeli
     }
 
     func permission() async -> BatteryNotificationPermission {
-        let settings = await center.notificationSettings()
-        switch settings.authorizationStatus {
-        case .notDetermined: return .notRequested
-        case .denied: return .denied
-        case .authorized: return settings.alertSetting == .disabled ? .alertsDisabled : .allowed
-        case .provisional: return .quietlyAllowed
-        @unknown default: return .unavailable
+        // Older SDKs do not mark UserNotifications objects Sendable. Convert
+        // them within the callback so only value types cross the actor boundary.
+        await withCheckedContinuation { continuation in
+            center.getNotificationSettings { settings in
+                let permission: BatteryNotificationPermission
+                switch settings.authorizationStatus {
+                case .notDetermined: permission = .notRequested
+                case .denied: permission = .denied
+                case .authorized: permission = settings.alertSetting == .disabled ? .alertsDisabled : .allowed
+                case .provisional: permission = .quietlyAllowed
+                @unknown default: permission = .unavailable
+                }
+                continuation.resume(returning: permission)
+            }
         }
     }
 
@@ -63,9 +70,8 @@ final class SystemBatteryNotificationDelivery: NSObject, BatteryNotificationDeli
     }
 
     func containsNotification(identifier: String) async -> Bool {
-        let delivered = await center.deliveredNotifications()
-        if delivered.contains(where: { $0.request.identifier == identifier }) { return true }
-        return await center.pendingNotificationRequests().contains { $0.identifier == identifier }
+        if await deliveredIdentifiers().contains(identifier) { return true }
+        return await pendingIdentifiers().contains(identifier)
     }
 
     func deliver(_ notification: BatteryLocalNotification) async throws {
@@ -78,8 +84,24 @@ final class SystemBatteryNotificationDelivery: NSObject, BatteryNotificationDeli
     }
 
     func cancelPendingBatteryNotifications() async {
-        let requests = await center.pendingNotificationRequests()
-        center.removePendingNotificationRequests(withIdentifiers: requests.map(\.identifier).filter { $0.hasPrefix("battery-alert-") })
+        let identifiers = await pendingIdentifiers()
+        center.removePendingNotificationRequests(withIdentifiers: identifiers.filter { $0.hasPrefix("battery-alert-") })
+    }
+
+    private func deliveredIdentifiers() async -> [String] {
+        await withCheckedContinuation { continuation in
+            center.getDeliveredNotifications { notifications in
+                continuation.resume(returning: notifications.map { $0.request.identifier })
+            }
+        }
+    }
+
+    private func pendingIdentifiers() async -> [String] {
+        await withCheckedContinuation { continuation in
+            center.getPendingNotificationRequests { requests in
+                continuation.resume(returning: requests.map(\.identifier))
+            }
+        }
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,

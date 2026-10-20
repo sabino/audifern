@@ -10,10 +10,10 @@ enum AppResources {
         return Bundle.module
     }()
 
-    static let brandMark = image("BrandMark")
-    static let hearingAid = image("HearingAid")
+    @MainActor static let brandMark = image("BrandMark")
+    @MainActor static let hearingAid = image("HearingAid")
 
-    private static func image(_ name: String) -> NSImage {
+    @MainActor private static func image(_ name: String) -> NSImage {
         guard let url = bundle.url(forResource: name, withExtension: "png"),
               let image = NSImage(contentsOf: url) else {
             preconditionFailure("Required application artwork is missing: \(name)")
