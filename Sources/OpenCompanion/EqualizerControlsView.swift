@@ -46,7 +46,7 @@ struct EqualizerControlsView: View {
                         Text("dB").font(.caption).foregroundStyle(.secondary)
                     }
                 }
-                .disabled(aid?.actionPending == true || aid?.advancedBusy == true)
+                .disabled(aid?.actionPending == true || aid?.advancedBusy == true || aid?.groupActionPending == true)
                 HStack {
                     Button("Use current values") { useCurrentValues() }.buttonStyle(.borderless)
                     Spacer()
@@ -67,7 +67,7 @@ struct EqualizerControlsView: View {
                 Text(microphone ? "Load the aid’s advanced controls to read its microphone equalizer." : "The streaming equalizer has not been read yet.")
                     .font(.callout).foregroundStyle(.secondary)
                 Button("Load advanced controls") { store.refreshAdvanced(aidID) }
-                    .disabled(aid?.isConnected != true || aid?.advancedBusy == true || aid?.actionPending == true)
+                    .disabled(aid?.isConnected != true || aid?.advancedBusy == true || aid?.actionPending == true || aid?.groupActionPending == true)
                     .accessibilityLabel("Load \(aid?.sideLabel.lowercased() ?? "hearing aid") advanced controls")
             }
             if let status = aid?.advancedStatus { Text(status).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }

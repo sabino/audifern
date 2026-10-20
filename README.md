@@ -21,8 +21,10 @@ The native app provides simultaneous Left/Right connections, live battery and vo
 
 ### Sound controls
 
-**Link ears** switches between one shared volume/mute bar and separate per-ear
-controls. Switching the mode leaves device settings unchanged. Linked +/−
+The two ear drawings stay visible, with actual Left/Right sides in fixed columns.
+The links **between** the columns independently join **volume/mute, program,
+SpeechBooster, microphone EQ and streaming EQ**. Switching a link leaves device
+settings unchanged. Linked volume uses one shared control bar; linked +/−
 preserves the current left/right balance; each action checks both aids and their
 reported limits, then confirms each write. If one side fails, the app reports
 the partial outcome rather than claiming both changed.
@@ -30,10 +32,18 @@ the partial outcome rather than claiming both changed.
 **SpeechBooster** uses the installed SDK's consumer control path and each aid's
 reported adjustment limits. Load the device features to read its state; the
 toggle is available only for a program that reports SpeechBooster support.
-Linked mode provides one toggle for both aids; separate mode provides per-ear
-toggles. Each aid confirms its own change.
+Its own link lets either side's toggle change both aids. Each aid confirms its
+own change, and a failed second-side request is reported as a partial result.
 
-Each aid card shows its current **Program** name, read from the aid; the tested pair reports **Geral**. Below it, **Equalizer → Microphone / Streaming** provides **Lows, Mids and Highs**. Use **Load advanced controls** to authenticate a free consumer UTL channel and read the available EQs. Sliders edit a draft; **Apply equalizer** explicitly sends it and checks readback. Loading controls performs no EQ or clinical-fitting write.
+Each side shows its current **Program** name, read from the aid; the tested pair reports **Geral**. Linked program selection requires the same reported program ID and name on both aids. **Microphone EQ** and **Streaming EQ** each provide **Lows, Mids and Highs** side by side. Use **Load advanced controls** to authenticate a free consumer UTL channel and read the available EQs. Sliders edit a draft; **Apply** explicitly sends it and checks readback. With an EQ link on, editing either side updates the shared draft and **Apply to both** converts the requested dB values using each aid's own scale and limits. Loading controls performs no EQ or clinical-fitting write.
+
+Each ear's **Restore…** menu can reset volume/mute, either EQ, SpeechBooster or
+all those sound controls. Each EQ also has **Reset EQ…**, and **Restore both
+ears…** resets the pair. A confirmation describes the selected target and
+settings. Defaults mean volume **0**, unmuted, EQ **0 dB**, and SpeechBooster
+off in supported programs. Controls must be loaded and their limits must allow
+these values. This restores consumer sound adjustments, preserving fitted
+programs, clinical fitting, tinnitus settings and saved audiograms.
 
 **Sound presets on this Mac** saves the current program, volume, mute and loaded equalizers under a name. Selecting a preset leaves the aids unchanged; **Apply** restores it after checking both sides against the current program, ranges and EQ scale. These local presets adjust an existing fitted program. They do not add a program to the hearing aids' firmware.
 
@@ -60,6 +70,14 @@ active while the app runs, including with its main window closed. Reconnects do
 not erase each aid's alert history; a measured recharge re-arms milestones.
 The Settings window includes a user-initiated test alert.
 
+### Menu bar
+
+The ear icon in the macOS menu bar shows connection and per-ear battery status.
+Closing the main window keeps both Bluetooth connections and battery monitoring
+running. Choose **Open Companion** from the icon to reopen the window; audiograms
+and battery alerts are available there too. **Quit Open Companion** explicitly
+ends the app and monitoring.
+
 The program IDs in the direct Oticon service and the standard Bluetooth Hearing Access service use different numbering on the tested pair. The UI must not mix them. Only one Oticon program was reported on this pair; additional programs cannot be invented by the app.
 
 ## Local checks
@@ -71,11 +89,13 @@ python3 -m unittest discover -s Tests -p 'test_*.py'
 
 For the optional HIMSA schema check, set `HIMSA_AUDIOGRAM_SCHEMA` to a locally acquired `Audiogram-1-502.xsd` when running `swift test`. The schema is not redistributed. [Hardware verification](docs/hardware-verification.md) separates physical tests, aid readback, synthetic protocol tests and untested features.
 
-Current validation: **111 Swift tests and six Python tests passed**; the signed
-0.3.0 app built and read distinct serials, independent battery/time estimates,
-program names and SpeechBooster state on both Intent 3 aids. Audible
-SpeechBooster effects, the new linked command sequence and native notification
-delivery still need the user's physical check.
+Current validation: **122 Swift tests and six Python tests passed**. The signed
+0.4.0 app connected to both Intent 3 aids and displayed independent central
+links and restore controls. Closing and reopening through its menu bar retained
+both connections in the same process. A linked streaming-EQ operation during
+the GUI session reported two confirmed changes. Audible SpeechBooster effects,
+restore-default operations on hardware and native notification delivery still
+need the user's check. See the hardware ledger for evidence boundaries.
 
 For a bounded discovery-only hardware probe that creates no main window:
 

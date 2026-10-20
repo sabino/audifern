@@ -5,17 +5,11 @@ struct ContentView: View {
     @ObservedObject var store: BluetoothStore
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
-    @AppStorage("linkedHearingAidControls") private var linkedControls = true
     @State private var showAllDevices = false
     @State private var showInspector = false
     @State private var showEvents = false
 
     private var visibleDevices: [NearbyDevice] { store.devices.filter { showAllDevices || $0.isCandidate } }
-    private var aidColumns: [GridItem] {
-        store.orderedConnections.count > 1
-            ? [GridItem(.flexible(minimum: 330)), GridItem(.flexible(minimum: 330))]
-            : [GridItem(.flexible(minimum: 330, maximum: 700))]
-    }
 
     var body: some View {
         HSplitView {
@@ -132,9 +126,6 @@ struct ContentView: View {
                             .font(.callout).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Toggle("Link ears", isOn: $linkedControls).toggleStyle(.switch)
-                        .fixedSize().accessibilityIdentifier("link-ear-controls")
-                        .help("Use one volume and mute control for both ears")
                     Label("LOCAL", systemImage: "dot.radiowaves.left.and.right")
                         .font(.caption2.weight(.semibold)).foregroundStyle(.teal)
                         .padding(.horizontal, 10).padding(.vertical, 7)
@@ -149,16 +140,7 @@ struct ContentView: View {
                         Text("Choose your hearing aids in the sidebar, or connect both when the pair is available.")
                     }.frame(minHeight: 310)
                 } else {
-                    if linkedControls {
-                        LinkedControlsView(store: store)
-                        if store.connectedPair.count == 2 {
-                            SpeechBoosterView(store: store, ids: store.connectedPair.map(\.id))
-                                .padding(16).background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14))
-                        }
-                    }
-                    LazyVGrid(columns: aidColumns, spacing: 16) {
-                        ForEach(store.orderedConnections) { state in aidCard(state) }
-                    }
+                    HearingAidControlsView(store: store)
                 }
                 SoundPresetPanelView(store: store)
 
@@ -179,97 +161,6 @@ struct ContentView: View {
             .padding(28)
         }
         .background(Color(nsColor: .underPageBackgroundColor).opacity(0.45))
-    }
-
-    private func aidCard(_ state: AidConnection) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(state.sideLabel).font(.title3.weight(.semibold))
-                    Text(state.model ?? state.name).font(.caption).foregroundStyle(.secondary)
-                    if linkedControls {
-                        Text(state.volume.map { $0.muted ? "Muted" : "Sound on" } ?? state.phase.label)
-                            .font(.caption2).foregroundStyle(state.volume?.muted == true ? Color.orange : Color.secondary)
-                    }
-                }
-                Spacer()
-                AidBatteryView(store: store, aid: state)
-            }
-            if !linkedControls {
-              HStack {
-                Image(systemName: "ear").font(.system(size: 58, weight: .ultraLight))
-                    .foregroundStyle(.teal).frame(width: 80, height: 86)
-                    .background(Color.teal.opacity(0.07), in: RoundedRectangle(cornerRadius: 20))
-                    .scaleEffect(x: state.sideLabel == "Right" ? -1 : 1, y: 1)
-                Spacer()
-                VStack(alignment: .trailing, spacing: 5) {
-                    Text(state.volume.map { $0.level > 0 ? "+\($0.level)" : String($0.level) } ?? "—")
-                        .font(.system(size: 42, weight: .light, design: .rounded)).monospacedDigit()
-                    Text("Microphone level").font(.caption).foregroundStyle(.secondary)
-                    Text(state.volume.map { $0.muted ? "Muted" : "Sound on" } ?? state.phase.label)
-                        .font(.caption.weight(.medium)).foregroundStyle(state.isConnected ? Color.teal : Color.secondary)
-                }
-            }
-            HStack(spacing: 10) {
-                Button { store.adjustVolume(state.id, by: -1) } label: { Image(systemName: "minus").frame(maxWidth: .infinity, minHeight: 26) }
-                    .disabled(!state.canChangeVolume || state.volume?.level == state.volumeRanges?.main.lowerBound)
-                    .accessibilityLabel("Decrease \(state.sideLabel.lowercased()) microphone level")
-                Button { store.setMuted(state.id, muted: !(state.volume?.muted ?? false)) } label: {
-                    Label(state.volume?.muted == true ? "Unmute" : "Mute", systemImage: state.volume?.muted == true ? "speaker.wave.2" : "speaker.slash")
-                        .frame(maxWidth: .infinity, minHeight: 26)
-                }.disabled(!state.canChangeVolume)
-                Button { store.adjustVolume(state.id, by: 1) } label: { Image(systemName: "plus").frame(maxWidth: .infinity, minHeight: 26) }
-                    .disabled(!state.canChangeVolume || state.volume?.level == state.volumeRanges?.main.upperBound)
-                    .accessibilityLabel("Increase \(state.sideLabel.lowercased()) microphone level")
-              }.buttonStyle(.bordered).controlSize(.large)
-            }
-            Divider()
-            HStack {
-                Label("Program", systemImage: "waveform").font(.callout).foregroundStyle(.secondary)
-                Spacer()
-                if let active = state.activeProgram {
-                    Picker("Program", selection: Binding(get: { active }, set: { store.selectProgram(state.id, program: $0) })) {
-                        ForEach(Array(state.programIDs.enumerated()), id: \.element) { offset, id in
-                            Text(state.programNames[id] ?? "Program \(offset + 1)").tag(id)
-                        }
-                        if !state.programIDs.contains(active) { Text(state.programNames[active] ?? "Current program").tag(active) }
-                    }.labelsHidden().frame(maxWidth: 145).disabled(!state.canChangeProgram || state.programIDs.count < 2)
-                } else { Text("—").foregroundStyle(.secondary) }
-            }
-            if state.programNames.isEmpty && state.isConnected {
-                Button("Read program names") { store.refreshProgramInfo(state.id) }
-                    .font(.caption).buttonStyle(.borderless)
-                    .disabled(state.actionPending || state.advancedBusy || state.groupActionPending)
-            }
-            if !linkedControls {
-                SpeechBoosterView(store: store, ids: [state.id])
-            }
-            Divider()
-            EqualizerControlsView(store: store, aidID: state.id)
-            Divider()
-            DeviceDetailsView(store: store, aid: state)
-            Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    if state.actionPending || state.phase == .connecting { ProgressView().controlSize(.mini) }
-                    else { Circle().fill(state.isConnected ? Color.teal : Color.secondary).frame(width: 6, height: 6) }
-                    Text(state.actionStatus ?? (state.isConnected ? "Live status from your hearing aid" : state.phase.label))
-                        .font(.caption).foregroundStyle(state.actionFailed ? Color.orange : Color.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }.frame(minHeight: 30, alignment: .top)
-                if let error = state.error { Text(error).font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true) }
-                HStack {
-                    Button("Details") { store.select(state.id); showInspector = true }.buttonStyle(.borderless)
-                    Spacer()
-                    Button { store.refresh(state.id) } label: { Image(systemName: "arrow.clockwise") }
-                        .buttonStyle(.borderless).disabled(!state.isConnected || state.actionPending || state.advancedBusy || state.groupActionPending).help("Refresh current values")
-                        .accessibilityLabel("Refresh \(state.sideLabel.lowercased()) values")
-                }.font(.caption)
-            }
-        }
-        .padding(20)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.06)))
     }
 
     private var inspector: some View {

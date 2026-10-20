@@ -152,3 +152,47 @@ Validation: **111 Swift tests and six Python tests passed**, including HIMSA
 schema validation. The 0.3.0 app built with the stable local development identity
 and passed signature verification. Delivered notifications, physical paired
 changes and audible SpeechBooster confirmation remain user checks.
+
+## Central links and menu bar (0.4.0)
+
+The running native app connected to both aids and displayed two ear drawings
+with separate volume/mute, program, SpeechBooster, microphone-EQ and streaming-EQ
+links in the middle. Its columns use the standard reported physical side, not
+connection or discovery order. Both EQ sources are visible together. Each ear
+has a consumer restore menu, with individual EQ reset buttons and a pair-wide
+restore action. Reset actions ask for confirmation and describe their targets.
+
+During the GUI session, streaming EQ was linked and the app reported **All 2
+sound changes confirmed by the hearing aids**. This status requires each
+requested EQ to complete its write and exact readback. The agent's automated
+controls only connected and read the aids; it did not apply EQ, toggle booster,
+adjust volume or confirm a reset. Perceived changes remain a user check.
+
+A bounded native-window test closed the main window, verified the process
+remained running and its menu bar still reported two connected aids, then
+reopened through that menu's **Open Companion** action. The same process and
+both live connections survived; both ear portraits, program names, five links
+and loaded controls were still present. The window was returned to its original
+workspace and the user's focus restored. Native AX returned an error for the
+status-item press despite actually expanding its menu; the corrected harness
+scopes the Open action to that status menu and verifies the observed window
+state rather than treating the AX return alone as proof of failure.
+
+The final signed build was inspected with both microphone and streaming EQs
+loaded on each aid. The pair-wide reset stayed disabled until both sides were
+ready. Its confirmation was then opened, checked for the exact target/defaults
+and preservation of fitted programs, and cancelled without applying a reset.
+The ear drawings and center links were captured at the top of the dashboard;
+the previous scroll position and window focus were restored afterward.
+
+Private evidence: `gui-040-ear-portraits.png`, `gui-040-final-visible.png`,
+`gui-040-window-lifecycle.log`, `gui-040-after-menu-reopen-ax.txt`,
+`gui-040-restore-confirmation-ax.txt`, and `gui-040-final-ax.txt`.
+These files include personal identifiers and remain excluded from Git.
+
+The additional synthetic tests cover distinct per-aid EQ scales and limits,
+unsupported or unloaded defaults, single-setting scope, reported program
+identity, changed program/capabilities during a request, preflight of both
+targets, confirmation of every step, and explicit partial failure. They never
+write to real hearing aids. Hardware execution of restore-default actions,
+audible SpeechBooster changes and real notification banners remain untested.

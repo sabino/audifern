@@ -490,36 +490,10 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
     }
 
     func setSpeechBooster(_ id: UUID, enabled: Bool) {
-        guard probeConfiguration == nil, let state = connections[id], state.canChangeSpeechBooster, let link = liveLink(id) else { return }
-        connections[id]?.advancedBusy = true
-        connections[id]?.consumerStatus = enabled ? "Enabling Speech Booster…" : "Disabling Speech Booster…"
-        Task {
-            defer { if self.liveLink(id) === link { self.connections[id]?.advancedBusy = false } }
-            do {
-                if let session = link.utlSession, session.isReady, session.supportsSpeechBooster {
-                    let confirmed = try await session.setSpeechBooster(enabled: enabled)
-                    self.connections[id]?.speechBoosterEnabled = confirmed.isEnabled
-                } else if let characteristic = link.remoteCharacteristics[OticonSpeechBooster.legacyCharacteristic] {
-                    let fresh = try await self.readUtility(id, characteristic: characteristic)
-                    let payload = try OticonSpeechBooster.legacyPayload(current: fresh, enabled: enabled)
-                    try await self.awaitSetting(id, characteristicUUID: OticonSpeechBooster.legacyCharacteristic,
-                                                data: payload, label: "Speech Booster", allowWithoutResponse: true)
-                } else { throw UTLSession.SessionError.unavailable("Load Speech Booster controls before changing them.") }
-                guard self.liveLink(id) === link else { return }
-                self.connections[id]?.consumerStatus = "Speech Booster \(enabled ? "on" : "off") confirmed by hearing aid."
-                self.record("setting_confirmed", "Speech Booster \(enabled ? "on" : "off") confirmed by hearing aid", details: ["uuid": id.uuidString])
-            } catch {
-                if let session = link.utlSession, !session.isReady {
-                    await session.stop()
-                    if link.utlSession === session { link.utlSession = nil }
-                    self.invalidateEqualizer(id, microphone: true); self.invalidateEqualizer(id, microphone: false)
-                    self.invalidateConsumerFeatures(id, link: link)
-                }
-                self.connections[id]?.speechBoosterEnabled = nil
-                self.connections[id]?.writableSpeechBooster = false
-                self.connections[id]?.consumerStatus = "Speech Booster not confirmed: \(UTLSession.describe(error))"
-            }
-        }
+        setSpeechBoosters([id], enabled: enabled)
+    }
+    func setSpeechBoosters(_ ids: [UUID], enabled: Bool) {
+        performConsumerChange(ids, change: .speechBooster(enabled))
     }
 
     func setMicrophoneEqualizer(_ id: UUID, bandsDB: [Double]) {
@@ -529,23 +503,112 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         setEqualizer(id, microphone: false, bandsDB: bandsDB)
     }
     private func setEqualizer(_ id: UUID, microphone: Bool, bandsDB: [Double]) {
-        guard probeConfiguration == nil, let state = connections[id],
-              microphone ? state.canChangeMicrophoneEqualizer : state.canChangeStreamingEqualizer,
-              let equalizer = microphone ? state.microphoneEqualizer : state.streamingEqualizer else { return }
+        setEqualizers([id], microphone: microphone, bandsDB: bandsDB)
+    }
+    func setEqualizers(_ ids: [UUID], microphone: Bool, bandsDB: [Double]) {
+        performConsumerChange(ids, change: .equalizer(microphone: microphone, bandsDB: bandsDB))
+    }
+    func selectPrograms(_ ids: [UUID], program: Int) {
+        performConsumerChange(ids, change: .program(program))
+    }
+    func restoreSoundDefaults(_ ids: [UUID], scope: ConsumerControlPlan.ResetScope) {
+        performConsumerChange(ids, change: .restore(scope))
+    }
+
+    private func performConsumerChange(_ ids: [UUID], change: ConsumerControlPlan.Change) {
+        guard probeConfiguration == nil, !linkedActionPending else { return }
+        let plan: ConsumerControlPlan
+        let targets = ids.compactMap { id in liveLink(id).map { (id, $0) } }
         do {
-            let steps = try equalizer.steps(forThreeBandDB: bandsDB)
-            connections[id]?.advancedBusy = true
-            Task {
-                defer { self.connections[id]?.advancedBusy = false }
-                do {
-                    try await self.applyEqualizer(id, microphone: microphone, steps: steps)
-                    self.connections[id]?.advancedStatus = "\(microphone ? "Microphone" : "Streaming") EQ confirmed by hearing aid."
-                } catch {
-                    self.invalidateEqualizer(id, microphone: microphone)
-                    self.connections[id]?.advancedStatus = "EQ not confirmed: \(UTLSession.describe(error))"
-                }
+            guard targets.count == ids.count else { throw UTLSession.SessionError.disconnected }
+            plan = try ConsumerControlPlan(aids: ids.compactMap { connections[$0] }, change: change)
+        } catch {
+            linkedActionFailed = true; linkedActionStatus = "No changes sent. \(error.localizedDescription)"
+            return
+        }
+        linkedActionPending = true; linkedActionFailed = false
+        linkedActionStatus = "Checking sound controls…"
+        for id in ids { connections[id]?.groupActionPending = true }
+        Task {
+            defer {
+                self.linkedActionPending = false
+                for (id, link) in targets where self.liveLink(id) === link { self.connections[id]?.groupActionPending = false }
             }
-        } catch { connections[id]?.advancedStatus = "EQ is outside the supported range." }
+            let outcome = await ConsumerControlExecutor.run(plan, validate: { step in
+                guard let original = targets.first(where: { $0.0 == step.aidID })?.1,
+                      self.liveLink(step.aidID) === original else { throw UTLSession.SessionError.disconnected }
+                // Detect changes made on the aid or by another client, too.
+                if let program = original.remoteCharacteristics[OticonRemoteProtocol.activeProgram] {
+                    _ = try await self.readUtility(step.aidID, characteristic: program)
+                }
+                guard let state = self.connections[step.aidID] else { throw UTLSession.SessionError.disconnected }
+                try step.validate(state)
+            }, apply: { step in
+                self.linkedActionStatus = "\(step.side): changing \(step.setting.label.lowercased())…"
+                do {
+                    switch step.setting {
+                    case .volume(let level, let muted):
+                        guard let range = self.connections[step.aidID]?.volumeRanges?.main,
+                              let payload = OticonRemoteProtocol.volumePayload(level: level, muted: muted, reportedRange: range) else {
+                            throw UTLSession.SessionError.unavailable("Volume limits changed.")
+                        }
+                        try await self.awaitSetting(step.aidID, characteristicUUID: OticonRemoteProtocol.mainVolume, data: payload, label: "Default volume and mute")
+                    case .equalizer(let microphone, let steps, _):
+                        try await self.applyEqualizer(step.aidID, microphone: microphone, steps: steps)
+                        self.connections[step.aidID]?.advancedStatus = "\(microphone ? "Microphone" : "Streaming") EQ confirmed by hearing aid."
+                    case .speechBooster(let enabled):
+                        try await self.applySpeechBooster(step.aidID, enabled: enabled)
+                    case .program(let program):
+                        guard let state = self.connections[step.aidID],
+                              let payload = OticonRemoteProtocol.programPayload(id: program, reportedPrograms: state.programIDs) else {
+                            throw UTLSession.SessionError.unavailable("Program availability changed.")
+                        }
+                        try await self.awaitSetting(step.aidID, characteristicUUID: OticonRemoteProtocol.activeProgram, data: payload, label: "Program")
+                    }
+                } catch {
+                    if case .equalizer(let microphone, _, _) = step.setting,
+                       let original = targets.first(where: { $0.0 == step.aidID })?.1, self.liveLink(step.aidID) === original {
+                        self.invalidateEqualizer(step.aidID, microphone: microphone)
+                        self.connections[step.aidID]?.advancedStatus = "EQ not confirmed: \(UTLSession.describe(error))"
+                    }
+                    throw error
+                }
+            })
+            self.linkedActionStatus = outcome.message
+            self.linkedActionFailed = !outcome.succeeded
+            self.record(outcome.succeeded ? "consumer_changes_confirmed" : "consumer_changes_stopped", outcome.message)
+        }
+    }
+
+    private func applySpeechBooster(_ id: UUID, enabled: Bool) async throws {
+        guard let link = liveLink(id) else { throw UTLSession.SessionError.disconnected }
+        do {
+            if let session = link.utlSession, session.isReady, session.supportsSpeechBooster {
+                let confirmed = try await session.setSpeechBooster(enabled: enabled)
+                guard liveLink(id) === link else { throw UTLSession.SessionError.disconnected }
+                connections[id]?.speechBoosterEnabled = confirmed.isEnabled
+            } else if let characteristic = link.remoteCharacteristics[OticonSpeechBooster.legacyCharacteristic] {
+                let fresh = try await readUtility(id, characteristic: characteristic)
+                let payload = try OticonSpeechBooster.legacyPayload(current: fresh, enabled: enabled)
+                try await awaitSetting(id, characteristicUUID: OticonSpeechBooster.legacyCharacteristic,
+                                       data: payload, label: "Speech Booster", allowWithoutResponse: true)
+            } else { throw UTLSession.SessionError.unavailable("Load SpeechBooster controls before changing them.") }
+            connections[id]?.consumerStatus = "SpeechBooster \(enabled ? "on" : "off") confirmed by hearing aid."
+            record("setting_confirmed", "SpeechBooster \(enabled ? "on" : "off") confirmed by hearing aid", details: ["uuid": id.uuidString])
+        } catch {
+            if liveLink(id) === link, let session = link.utlSession, !session.isReady {
+                await session.stop()
+                if link.utlSession === session { link.utlSession = nil }
+                invalidateEqualizer(id, microphone: true); invalidateEqualizer(id, microphone: false)
+                invalidateConsumerFeatures(id, link: link)
+            }
+            if liveLink(id) === link {
+                connections[id]?.speechBoosterEnabled = nil
+                connections[id]?.writableSpeechBooster = false
+                connections[id]?.consumerStatus = "SpeechBooster not confirmed: \(UTLSession.describe(error))"
+            }
+            throw error
+        }
     }
 
     /// Serial, verified application of an app-local preset. A different fitted
@@ -588,7 +651,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
             let confirmed: OticonEqualizer.State
             do { confirmed = try await session.setEqualizer(microphone: microphone, steps: steps, expected: expected) }
             catch {
-                if !session.isReady {
+                if liveLink(id) === link, !session.isReady {
                     await session.stop()
                     if link.utlSession === session { link.utlSession = nil }
                     invalidateEqualizer(id, microphone: true)
@@ -597,6 +660,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                 }
                 throw error
             }
+            guard liveLink(id) === link else { throw UTLSession.SessionError.disconnected }
             if microphone { connections[id]?.microphoneEqualizer = confirmed }
             else { connections[id]?.streamingEqualizer = confirmed }
             record("setting_confirmed", "\(microphone ? "Microphone" : "Streaming") EQ confirmed by hearing aid", details: ["uuid": id.uuidString])
