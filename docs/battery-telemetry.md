@@ -2,7 +2,7 @@
 
 The shipped Companion client receives remaining charge and average current draw,
 then calculates its time-left display. It does **not** receive a raw hours/minutes
-field in the recovered battery contracts. Open Companion calls the result
+field in the recovered battery contracts. Audifern calls the result
 **Estimated time left**, and uses reported telemetry rather than multiplying the
 percentage by an assumed battery life.
 
@@ -80,7 +80,7 @@ after its schema steps and returns the output dictionary; it does not require
 all payload bytes to have been consumed. `GetDataBoolean` still reads successive
 MSB-first bits in byte 12, not additional 32-bit Boolean fields. The meaning of
 bytes 13–15 has not been established, so they are ignored rather than labelled
-as zero padding or interpreted as telemetry. Open Companion narrowly accepts
+as zero padding or interpreted as telemetry. Audifern narrowly accepts
 13-byte packets for all three supported versions and this observed 16-byte
 shape for version 2.0 only. Other lengths and unknown versions remain rejected.
 The source capture stays ignored at
@@ -121,7 +121,7 @@ by the recovered contracts; do not relabel them as mAh/mA or µAh/µA without
 further evidence. The runtime interpretation of their ratio is established by
 the shipped implementation.
 
-Open Companion adds conservative display guards: no negative charge, no draw
+Audifern adds conservative display guards: no negative charge, no draw
 outside the shipped signed Int32 representation, and no estimate while explicitly
 charging or charge-complete. These last charging guards are our behavior, not a
 claim about `BatteryTimeTracker`. Zero charge with positive draw means zero time;

@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Toolchain
+        run: |
+          swift --version
+          python3 --version
+
+      - name: Swift tests
+        run: swift test --jobs 2
+
+      - name: Python tests
+        run: |
+          python3 -m unittest discover -s Tests -p 'test_*.py'
+          python3 scripts/test-audit-localization.py
+
+      - name: Localization audit
+        run: python3 scripts/audit-localization.py --strict
+
+      - name: Build local app
+        run: ./scripts/build-app.sh
+
+      - name: Verify bundle
+        run: |
+          plutil -lint "build/Audifern.app/Contents/Info.plist"
+          codesign --verify --strict "build/Audifern.app"

@@ -1,6 +1,6 @@
 # Local audiogram records
 
-Open Companion's **Audiogram** tab stores values copied from an existing exam. It does not play test tones, calculate a hearing-aid prescription, or send audiometric values to an aid. A local sound preset can reference an exam UUID as metadata; that association performs no conversion or fitting.
+Audifern's **Audiogram** tab stores values copied from an existing exam. It does not play test tones, calculate a hearing-aid prescription, or send audiometric values to an aid. A local sound preset can reference an exam UUID as metadata; that association performs no conversion or fitting.
 
 The editor, Settings and device information share the main application window.
 The app owns the draft for its lifetime, so switching tabs or closing and
@@ -12,7 +12,7 @@ The editor records both ears at 125, 250, 500, 1000, 2000, 3000, 4000, 6000 and 
 
 The plot uses a logarithmic frequency axis and a linear dB HL axis increasing downward. One octave spans the same distance as 20 dB. The supported input and display range is −20 through 130 dB HL; this is a data-entry boundary, not a device gain or output range. Only entered points are drawn. The table is the authoritative numeric representation; no-response arrows and the legend distinguish those entries from measured thresholds.
 
-Exam names, optional dates and notes are kept in `~/Library/Application Support/Open Companion/audiograms.json`. The directory has 0700 permissions and the file is atomically replaced with 0600 permissions from its first written byte. No values are logged, included in the repository, uploaded, or sent through BLE. Invalid, unsupported or oversized imports fail without replacing the saved file. New-exam/discard, clear and deletion actions ask for confirmation when data would be removed. JSON import first opens a draft for review; **Save exam** explicitly persists it.
+Exam names, optional dates and notes are kept in `~/Library/Application Support/Audifern/audiograms.json`. The directory has 0700 permissions and the file is atomically replaced with 0600 permissions from its first written byte. No values are logged, included in the repository, uploaded, or sent through BLE. Invalid, unsupported or oversized imports fail without replacing the saved file. New-exam/discard, clear and deletion actions ask for confirmation when data would be removed. JSON import first opens a draft for review; **Save exam** explicitly persists it.
 
 # HIMSA Audiogram 502 export
 

@@ -36,7 +36,7 @@ These positions do not establish eight specific center frequencies. The app
 does not label them with guessed Hz values. Coefficients are signed 8-bit
 values transported either as raw two's-complement bytes or CBOR integers.
 The historical step is `20 * log10(2) / 32`, approximately 0.18814 dB.
-UTL `get_info` may report a `stepsize` that replaces that scale; Open Companion
+UTL `get_info` may report a `stepsize` that replaces that scale; Audifern
 requires it for a version-2 EQ contract. Converted values use nearest-even
 rounding. Every proposed band must fit every constituent coefficient's bounds.
 
@@ -138,7 +138,7 @@ separate session diagnostic events, not the primary status text. Authentication
 messages are never passed to this diagnostic path. Parse errors identify the
 equalizer and contract version; a generic numeric Swift enum error is not shown.
 
-The local key file is `~/Library/Application Support/Open Companion/utl-auth.json`,
+The local key file is `~/Library/Application Support/Audifern/utl-auth.json`,
 with POSIX permissions `0600` and JSON shape `{"key":"<32 hex digits>"}`.
 It is read only after the user requests advanced controls. Credentials and
 authentication messages are not written to the session log. Synthetic tests

@@ -260,3 +260,44 @@ including the optional official HIMSA schema check. New coverage exercises
 version-source separation, HIID layouts, read-only diagnostic contracts,
 source eligibility and paired gain/mute preflight. The signed bundle passed
 strict signature verification.
+
+## Audifern redesign and consumer-program snapshot (0.6.0)
+
+The application is now named **Audifern**. Earlier sections retain the prototype's
+historical window/action names. The renamed application was signed locally and
+opened as the replacement, with private local authentication and ear-link
+preferences migrated separately from the public source.
+
+Native preview captures verify light English, dark Brazilian Portuguese and
+Spanish settings layouts. These public screenshots contain synthetic devices.
+Preview startup does not create a Bluetooth manager or read the regular private
+libraries. Packaged artwork and localization loaded successfully while the
+SwiftPM development resource bundle was temporarily unavailable.
+
+Fresh **Read program snapshot** operations succeeded on Left and Right
+individually. Each read reported **Geral**, the current consumer volume/mute,
+and both eight-coefficient microphone/streaming equalizers. UTL program metadata
+was unavailable on these attempts; the bounded legacy metadata query succeeded
+and released its selector. These checks did not change a listening program,
+volume, mute, EQ, booster, therapy, clinical fitting or firmware. They establish
+consumer-state reads, not a complete fitting export or program creation.
+
+The latest hardware run did not maintain both application connections reliably:
+one aid's connection could time out while the other remained usable. Both aids
+were readable individually. Simultaneous two-aid reliability therefore remains
+an unresolved hardware check; synthetic previews and passing tests do not
+establish it.
+
+Closing and reopening through **Open Audifern** in the menu bar retained the same
+process, its live connection and the completed program snapshot. The user's
+window focus was restored after each bounded check.
+
+Validation: **166 Swift tests** passed (53 XCTest cases and 113 Swift Testing
+cases), including the optional official HIMSA schema validation; **25 Python
+tests** passed. The strict localization audit reports matching catalogs with
+934 keys per language and no missing references or detected hardcoded UI
+strings. The native bundle built and passed strict signature verification.
+
+Private evidence: `gui-060-program-snapshot-current-ax.txt`,
+`gui-060-final-read-current-ax.txt`, `gui-060-window-lifecycle.log`,
+`gui-060-after-lifecycle-ax.txt` and `gui-060-portable-connected.png`.

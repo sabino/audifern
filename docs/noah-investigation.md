@@ -52,7 +52,7 @@ flowchart LR
     Noah --> Genie[Oticon Genie 2 fitting module]
     Genie --> Programmer[Noahlink Wireless programmer]
     Programmer --> Aids[Hearing aids]
-    Mac[Open Companion] --> BLE[Consumer BLE controls]
+    Mac[Audifern] --> BLE[Consumer BLE controls]
     BLE --> Aids
 ```
 

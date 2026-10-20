@@ -31,7 +31,7 @@ byte 1 = 0 when muted, 1 when unmuted
 ```
 
 Writes use response acknowledgement by default. Reads use the same two-field
-layout; the SDK treats a zero second byte as muted. Open Companion's existing
+layout; the SDK treats a zero second byte as muted. Audifern's existing
 strict volume decoder accepts only the established 0/1 flag values. Notification
 callbacks decode the same characteristic data and retain its volume source.
 No UTL operation ID or transaction wrapper belongs inside this direct GATT
@@ -69,7 +69,7 @@ The official `VolumeSourcesMonitor.GenerateAvailableSources` returns
   desynchronization.
 
 The first two gates follow the actual source selection; requiring fresh state,
-characteristic properties and no pending change is Open Companion's explicit
+characteristic properties and no pending change is Audifern's explicit
 implementation guard. The UI should make fitted tinnitus sound distinct from
 microphone/streaming gain and explain that its allowed level/duration comes from
 the user's hearing-care setup. It must not promise to create or clinically fit
@@ -147,7 +147,7 @@ setter recovery does not prove that a particular aid accepts a write or has a
 tinnitus program fitted. Parent-coordinated codec/backend tests and eventual
 explicit user hearing checks are separate from this research pass.
 
-## Open Companion implementation
+## Audifern implementation
 
 The app retains the per-program tinnitus flag and the four verified streaming
 categories. Missing flags fail closed. Current tinnitus eligibility takes

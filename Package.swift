@@ -2,13 +2,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "OpenCompanion",
+    name: "Audifern",
+    defaultLocalization: "en",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "OpenCompanion", targets: ["OpenCompanion"])],
+    products: [.executable(name: "Audifern", targets: ["Audifern"])],
     targets: [
         .target(name: "CompanionCore"),
-        .executableTarget(name: "OpenCompanion", dependencies: ["CompanionCore"]),
+        .executableTarget(name: "Audifern", dependencies: ["CompanionCore"], resources: [.process("Resources")]),
         .testTarget(name: "CompanionCoreTests", dependencies: ["CompanionCore"]),
-        .testTarget(name: "OpenCompanionTests", dependencies: ["OpenCompanion"])
+        .testTarget(name: "AudifernTests", dependencies: ["Audifern"])
     ]
 )

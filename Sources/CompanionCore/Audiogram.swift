@@ -235,7 +235,7 @@ public struct AudiogramRepository: Sendable {
     public static func applicationSupport() throws -> AudiogramRepository {
         let root = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
                                                appropriateFor: nil, create: true)
-        return AudiogramRepository(fileURL: root.appendingPathComponent("Open Companion", isDirectory: true)
+        return AudiogramRepository(fileURL: root.appendingPathComponent("Audifern", isDirectory: true)
             .appendingPathComponent("audiograms.json"))
     }
 

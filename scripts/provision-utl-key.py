@@ -15,7 +15,7 @@ import re
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', type=Path, help='Private UtlChallengeAuthentication.cs reconstruction')
-    parser.add_argument('--destination', type=Path, default=Path.home() / 'Library/Application Support/Open Companion/utl-auth.json')
+    parser.add_argument('--destination', type=Path, default=Path.home() / 'Library/Application Support/Audifern/utl-auth.json')
     args = parser.parse_args()
     matches = re.findall(r'sharedSecret\s*=\s*new byte\[16\]\s*\{([^}]+)\}', args.source.read_text())
     if len(matches) != 1:

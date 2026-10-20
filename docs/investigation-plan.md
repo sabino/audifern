@@ -1,4 +1,4 @@
-# Open Companion investigation
+# Audifern investigation
 
 Target: installed Oticon Companion `com.oticon.app` 1.8.0 (617548), acquired locally over authorized Android USB on 2026-10-20. Scope is a native macOS BLE remote/inspector for the owner's hearing aids. Audio transport and clinical fitting are separate questions.
 

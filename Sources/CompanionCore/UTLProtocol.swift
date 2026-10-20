@@ -399,6 +399,9 @@ public enum UTLProtocol {
         public let major: UInt8
         public let minor: UInt8
         public let status: UInt8
+        public init(id: UInt32, handle: UInt8, major: UInt8, minor: UInt8, status: UInt8) {
+            self.id = id; self.handle = handle; self.major = major; self.minor = minor; self.status = status
+        }
         public var isAvailable: Bool { status == 0xFF }
     }
 

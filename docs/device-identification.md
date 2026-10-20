@@ -17,7 +17,7 @@ byte-string envelope.
 `DetectInfoInterceptorBase` passes that output directly to
 `DetectInfoDecoder.DecodeDetectInformation`. Its opcode-3 branch treats the
 deserialized **root CBOR map** as HIID. Opcode 0 is different: it returns the full
-detection map and unwraps a `HIID` property before decoding. Open Companion uses
+detection map and unwraps a `HIID` property before decoding. Audifern uses
 opcode 3 and does not guess a wrapper or strip an arbitrary prefix.
 
 The shipped `CborSerializer` converts integer map keys to decimal strings. It
@@ -74,7 +74,7 @@ The SDK enables response notifications, writes the one-byte operation code
 wrapping fragment index. The first fragment also contains an opcode byte that
 must match the request. Only the remaining bytes are CBOR payload. Later
 fragments increment the low-six-bit index modulo 64. The normal consumer UTL
-session already available in Open Companion avoids introducing this second
+session already available in Audifern avoids introducing this second
 transport solely for serial lookup.
 
 ## Static evidence and validation boundary

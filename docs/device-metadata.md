@@ -1,6 +1,6 @@
 # Software, hardware and read-only device details
 
-Software and firmware revisions are separate reported fields. Open Companion
+Software and firmware revisions are separate reported fields. Audifern
 does not copy the firmware value into an empty software field. A missing value
 remains unavailable until the relevant read succeeds.
 
@@ -41,7 +41,7 @@ across those six layouts.
 The shipped `WirelessNameStringReader` uses `opString_VectorInt`: it reads at
 most the mapped 18 bytes and stops at NUL. `TripleVersionReader` maps its three
 individual bytes to a `Version`; this is not a packed integer or UTF-8 string.
-Open Companion additionally rejects invalid UTF-8/control characters. Absent
+Audifern additionally rejects invalid UTF-8/control characters. Absent
 entries remain nil; a truncated optional slot invalidates that field and
 reports its label while leaving other valid metadata available.
 
@@ -73,11 +73,11 @@ existing charge/current estimate is documented in
 Crash-dump counters are counts, not byte sizes. The official consumer
 `GetCoreDumpIdsCommand` reads `core_dump.info` from activated UTL aids using an
 ordinary MfD package: Shared resolves to Interactive, and the transactional
-operation is wrapped in COMMAND. Open Companion reads opcode 0 only. It does
+operation is wrapped in COMMAND. Audifern reads opcode 0 only. It does
 not retrieve dump IDs/content, clear dumps, read flash or change device modes.
 
 The UI can inspect the current advertised service ID/version/availability list.
-Advertisement alone does not mean Open Companion implements or may call every
+Advertisement alone does not mean Audifern implements or may call every
 service. This list is cleared when its channel is invalidated or disconnected.
 Metadata requests report per-field failures and keep unavailable values absent.
 They do not start periodic health, diagnostic or identification polling.
