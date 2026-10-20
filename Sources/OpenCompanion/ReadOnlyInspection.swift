@@ -10,13 +10,17 @@ enum ReadOnlyInspection {
         "535442F7-0FF7-4FEC-9780-742F3EB00EDA": "Active program",
         "DCBE7A3E-A742-4527-AEB5-CD8DEE63167F": "Available programs",
         OticonEqualizer.legacyCharacteristic: "Streaming equalizer",
+        OticonSpeechBooster.legacyCharacteristic: "Speech Booster",
         OticonProgramInfo.version: "Program information version"
     ]
 
     static func name(service: String, characteristic: String) -> String? {
         let service = HearingAidDiscovery.normalizedUUID(service)
         let characteristic = HearingAidDiscovery.normalizedUUID(characteristic)
-        if service == StandardGATT.deviceInformationService { return StandardGATT.deviceInformationNames[characteristic] }
+        if service == StandardGATT.deviceInformationService {
+            if characteristic == "2A25" { return "Serial number" }
+            return StandardGATT.deviceInformationNames[characteristic]
+        }
         if service == StandardGATT.batteryService, characteristic == StandardGATT.batteryLevel { return "Battery level" }
         if service == HearingAidDiscovery.legacyRemoteService { return vendorCharacteristicNames[characteristic] }
         if service == "1844", characteristic == "2B7D" { return "Volume state" }
@@ -29,6 +33,10 @@ enum ReadOnlyInspection {
     }
 
     static func displayValue(service: String, characteristic: String, data: Data) -> String {
+        if HearingAidDiscovery.normalizedUUID(service) == StandardGATT.deviceInformationService,
+           HearingAidDiscovery.normalizedUUID(characteristic) == "2A25" {
+            return StandardGATT.informationString(data) ?? "Invalid serial-number value"
+        }
         if StandardGATT.isPermittedRead(service: service, characteristic: characteristic) {
             return StandardGATT.displayValue(service: service, characteristic: characteristic, data: data)
         }
@@ -50,6 +58,8 @@ enum ReadOnlyInspection {
                 if let state = try? OticonEqualizer.legacyStreamingState(data) {
                     return "Streaming EQ low/mid/high: " + state.threeBandDB.map { String(format: "%.1f dB", $0) }.joined(separator: ", ")
                 }
+            case OticonSpeechBooster.legacyCharacteristic:
+                if let enabled = OticonSpeechBooster.legacyEnabled(data) { return enabled ? "Speech Booster on" : "Speech Booster off" }
             default: break
             }
         }
@@ -69,7 +79,7 @@ enum ReadOnlyInspection {
         let characteristic = HearingAidDiscovery.normalizedUUID(characteristic)
         if service == StandardGATT.batteryService, characteristic == StandardGATT.batteryLevel { return true }
         if service == OticonRemoteProtocol.service {
-            return [OticonRemoteProtocol.mainVolume, OticonRemoteProtocol.activeProgram, OticonRemoteProtocol.volumeRanges, OticonEqualizer.legacyCharacteristic, OticonProgramInfo.version].contains(characteristic)
+            return [OticonRemoteProtocol.mainVolume, OticonRemoteProtocol.activeProgram, OticonRemoteProtocol.volumeRanges, OticonEqualizer.legacyCharacteristic, OticonProgramInfo.version, OticonSpeechBooster.legacyCharacteristic].contains(characteristic)
         }
         return (service == "1844" && characteristic == "2B7D") || (service == "1854" && characteristic == "2BDC")
     }

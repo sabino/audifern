@@ -16,7 +16,7 @@ struct SoundPresetPanelView: View {
         store.orderedConnections.filter { $0.isConnected && $0.volume != nil && $0.activeProgram != nil && ["Left", "Right"].contains($0.sideLabel) }
     }
     private var canCapture: Bool {
-        !liveAids.isEmpty && liveAids.allSatisfy { !$0.actionPending && !$0.advancedBusy }
+        !liveAids.isEmpty && liveAids.allSatisfy { !$0.actionPending && !$0.advancedBusy && !$0.groupActionPending }
     }
 
     var body: some View {
@@ -35,7 +35,7 @@ struct SoundPresetPanelView: View {
                             Text("Choose a preset").tag(nil as UUID?)
                             ForEach(library.presets) { Text($0.name).tag(Optional($0.id)) }
                         }
-                        Button("Apply") { applySelected() }.disabled(selected == nil || isApplying || liveAids.isEmpty)
+                        Button("Apply") { applySelected() }.disabled(selected == nil || isApplying || !canCapture)
                         if isApplying { ProgressView().controlSize(.small) }
                     }
                     if let selected {
@@ -103,7 +103,7 @@ struct SoundPresetPanelView: View {
                 for saved in preset.aids {
                     guard let live = liveAids.first(where: { $0.sideLabel.lowercased() == saved.side.rawValue }),
                           live.model == saved.model, live.programIDs.contains(saved.programID),
-                          live.activeProgram == saved.programID, !live.actionPending, !live.advancedBusy,
+                          live.activeProgram == saved.programID, !live.actionPending, !live.advancedBusy, !live.groupActionPending,
                           live.volumeRanges?.main.contains(saved.volume) == true else {
                         throw SoundPreset.ValidationError.invalid("Connect the matching \(saved.side.rawValue) aid and read its current program and volume limits first.")
                     }

@@ -28,9 +28,17 @@ struct AidConnection: Identifiable {
     var lastValueAt: Date?
     var services: [GATTServiceInfo] = []
     var battery: Int?
+    var batteryTelemetry: OticonBattery.State?
+    var batteryTelemetryUpdatedAt: Date?
+    var estimatedTimeLeftSeconds: TimeInterval? {
+        guard isConnected, let updated = batteryTelemetryUpdatedAt,
+              (0...(2 * OticonBattery.pollingIntervalSeconds)).contains(Date().timeIntervalSince(updated)) else { return nil }
+        return batteryTelemetry?.estimatedTimeLeftSeconds
+    }
     var manufacturer: String?
     var model: String?
     var firmware: String?
+    var serialNumber: String?
     var ear: Int?
     var sinkAudioLocations: UInt32?
     var volume: OticonRemoteProtocol.Volume?
@@ -38,6 +46,11 @@ struct AidConnection: Identifiable {
     var programIDs: [Int] = []
     var activeProgram: Int?
     var programNames: [Int: String] = [:]
+    var programBoostable: [Int: Bool] = [:]
+    var speechBoosterEnabled: Bool?
+    var writableSpeechBooster = false
+    var consumerStatus: String?
+    var groupActionPending = false
     var microphoneEqualizer: OticonEqualizer.State?
     var streamingEqualizer: OticonEqualizer.State?
     var writableMicrophoneEqualizer = false
@@ -52,10 +65,14 @@ struct AidConnection: Identifiable {
     var error: String?
 
     var isConnected: Bool { phase == .connected }
-    var canChangeVolume: Bool { isConnected && !actionPending && !advancedBusy && writableVolume && volume != nil && volumeRanges != nil }
-    var canChangeProgram: Bool { isConnected && !actionPending && !advancedBusy && writableProgram && activeProgram != nil && !programIDs.isEmpty }
-    var canChangeMicrophoneEqualizer: Bool { isConnected && !actionPending && !advancedBusy && writableMicrophoneEqualizer && microphoneEqualizer != nil }
-    var canChangeStreamingEqualizer: Bool { isConnected && !actionPending && !advancedBusy && writableStreamingEqualizer && streamingEqualizer != nil }
+    var canChangeVolume: Bool { isConnected && !actionPending && !advancedBusy && !groupActionPending && writableVolume && volume != nil && volumeRanges != nil }
+    var canChangeProgram: Bool { isConnected && !actionPending && !advancedBusy && !groupActionPending && writableProgram && activeProgram != nil && !programIDs.isEmpty }
+    var canChangeMicrophoneEqualizer: Bool { isConnected && !actionPending && !advancedBusy && !groupActionPending && writableMicrophoneEqualizer && microphoneEqualizer != nil }
+    var canChangeStreamingEqualizer: Bool { isConnected && !actionPending && !advancedBusy && !groupActionPending && writableStreamingEqualizer && streamingEqualizer != nil }
+    var canChangeSpeechBooster: Bool {
+        isConnected && !actionPending && !advancedBusy && !groupActionPending && writableSpeechBooster && speechBoosterEnabled != nil
+            && activeProgram.flatMap { programBoostable[$0] } == true
+    }
     var activeProgramName: String? { activeProgram.flatMap { programNames[$0] } }
     var sideLabel: String {
         if sinkAudioLocations == 1 { return "Left" }
@@ -67,9 +84,12 @@ struct AidConnection: Identifiable {
         connectedAt = nil
         lastValueAt = nil
         battery = nil
+        batteryTelemetry = nil
+        batteryTelemetryUpdatedAt = nil
         manufacturer = nil
         model = nil
         firmware = nil
+        serialNumber = nil
         ear = nil
         sinkAudioLocations = nil
         volume = nil
@@ -77,6 +97,11 @@ struct AidConnection: Identifiable {
         programIDs = []
         activeProgram = nil
         programNames = [:]
+        programBoostable = [:]
+        speechBoosterEnabled = nil
+        writableSpeechBooster = false
+        consumerStatus = nil
+        groupActionPending = false
         microphoneEqualizer = nil
         streamingEqualizer = nil
         writableMicrophoneEqualizer = false

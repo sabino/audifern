@@ -89,3 +89,66 @@ an optional stable Apple Development signing identity. The latest running
 bundle uses that identity and again has Bluetooth permission and both aid
 connections. Fresh pairing, long-term sleep/reconnect behavior and compatibility
 with other aid models remain untested.
+
+## Linked controls, SpeechBooster, identification and battery (0.3.0)
+
+The native dashboard now offers a persistent **Link ears** switch. Linked mode
+renders one volume/mute bar; separate mode renders the individual controls.
+Changing modes performs no hearing-aid write. The live GUI exposes the controls
+with both aids connected. A bounded GUI check enabled linked mode and verified
+exactly one shared control bar, with both separate volume/mute bars hidden,
+then restored the user's previous mode. It pressed no sound-changing control.
+Private UI evidence is `gui-030-linked-mode-ax.txt` / `.png`.
+New linked operations use fresh reads, whole-pair
+range preflight and sequential confirmed writes; physical linked operation
+and audible SpeechBooster effects remain pending the user's test.
+
+Both aids returned SpeechBooster state using the recovered consumer protocol.
+Each active program reports whether it supports the toggle. All automated
+hardware checks in this feature pass were reads; the agent did not toggle
+SpeechBooster or change volume/mute. User tests are separate from these checks.
+
+The standard Device Information serial characteristic `2A25` is absent from
+both earlier 93-characteristic inventories. Oticon Companion instead reads
+the per-aid serial from HIID entry 2003. The new read-only `detect_info`
+`get_hiid` path populated **two distinct serial numbers** in the native cards.
+Manufacturer, model and firmware remain separate per-connection fields.
+Actual identifiers and full identification data are excluded from this report
+and event logs.
+
+The actual battery 2.0 operation returned 16 bytes. The declared schema consumes
+13; the captured trailing three bytes were nonzero. Inspection of the shipped
+decoder established that it returns the mapped fields without requiring end
+of input. The implementation therefore accepts the minimal 13-byte form and
+the observed 16-byte form specifically for contract 2.0, while rejecting other
+lengths. Those three bytes remain uninterpreted; they are not described as
+zero padding or extra Boolean fields.
+
+With that correction, both aids supplied valid remaining charge/current
+telemetry and the dashboard displayed **independent estimated times left**.
+Estimates follow the SDK's charge/current calculation, are suppressed while
+charging or invalid, and expire after ten minutes without a successful update.
+No duration is derived from the battery percentage. Standard percentage
+notifications and existing authenticated-session polling supply later updates.
+
+Private evidence includes `gui-030-left-telemetry-events-ax.txt`,
+`gui-030-left-final-features-ax.txt`, `gui-030-both-final-features-ax.txt`, and
+`gui-030-final-dashboard.png`. These contain private device identifiers and
+measurements and remain ignored. Source fixtures use synthetic values.
+The final signed build was rechecked in `gui-030-stable-handoff-ax.txt`: both
+connections, serials and estimates were populated. Routine command progress
+was removed from the primary controls and retained only in the debug log.
+
+The native Settings window was opened and captured. It showed independent
+50%, 30%, 20% and strictly-below-10% switches, left/right selection, optional
+sound and a test button. Its initial macOS permission state was not requested.
+No automated permission request or real test notification was sent. Settings
+snapshots are `gui-030-battery-settings-ax.txt` / `.png`. Fake-delivery tests
+cover threshold crossings, delivery failures, reconnects, recharge hysteresis
+and clearing live readings on disconnect while preserving history. Monitoring
+is owned by the app lifetime, including while its main window is closed.
+
+Validation: **111 Swift tests and six Python tests passed**, including HIMSA
+schema validation. The 0.3.0 app built with the stable local development identity
+and passed signature verification. Delivered notifications, physical paired
+changes and audible SpeechBooster confirmation remain user checks.

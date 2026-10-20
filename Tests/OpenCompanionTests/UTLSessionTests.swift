@@ -26,6 +26,13 @@ import Testing
     var serviceTrace: [(handle: UInt8, opcode: UInt8, payload: Data)] = []
     var failNextEqualizerRead = false
     var failCancellation = false
+    var advertiseSpeechBooster = false
+    var advertiseBattery = false
+    var advertiseIdentification = false
+    var batteryTrailingData = Data()
+    var speechValues = [0, 1, -2]
+    let speechMinimum = [-4, -3, -2]
+    let speechMaximum = [3, 5, 2]
 
     func write(_ characteristic: String, _ data: Data) async throws {
         guard let session else { throw UTLSession.SessionError.disconnected }
@@ -66,6 +73,9 @@ import Testing
             var status: UInt8 = 0x40
             if request.serviceHandle == 0 {
                 payload = Data([2, 0, 0, 16, 9, 2, 0, 0xFF, 2, 0, 0, 9, 8, 1, 1, 0xFF])
+                    + (advertiseSpeechBooster ? Data([2, 0, 0, 19, 10, 1, 2, 0xFF]) : Data())
+                    + (advertiseBattery ? Data([1, 0, 0, 7, 7, 2, 0, 0xFF]) : Data())
+                    + (advertiseIdentification ? Data([2, 0, 0, 4, 11, 1, 2, 0xFF]) : Data())
             } else if request.serviceHandle == 8 {
                 switch request.code {
                 case 0:
@@ -89,6 +99,32 @@ import Testing
                 payload = Data()
             } else if !consumerOpen || !pipelineOpen || transaction == nil {
                 status = 0xD9; payload = Data()
+            } else if request.serviceHandle == 7 {
+                #expect(request.code == 2 && request.payload.isEmpty)
+                // Fixed big-endian scalars and MSB-packed flags, not CBOR.
+                payload = Data([0, 0, 0, 50, 0, 0, 0x2E, 0xE0, 0, 0, 3, 0xE8, 0x40])
+                    + batteryTrailingData
+            } else if request.serviceHandle == 11 {
+                #expect(request.code == 3 && request.payload.isEmpty)
+                // Synthetic HIID4.6 map:1001=>bstr[4,6],2003=>bstrnumericserial.
+                payload = Data([0xA2, 0x19, 0x03, 0xE9, 0x42, 4, 6,
+                                0x19, 0x07, 0xD3, 0x44, 0x80, 0, 0, 0x2A])
+            } else if request.serviceHandle == 10 {
+                let opcode = request.code!
+                if opcode == 6 {
+                    speechValues = [0, 1, -2]; payload = Data()
+                } else {
+                    let index = Int(opcode / 2)
+                    guard index < 3 else { throw OticonEqualizer.EQError.malformed }
+                    if opcode & 1 == 0 {
+                        payload = Data([speechValues[index], speechMinimum[index], speechMaximum[index]].map { UInt8(bitPattern: Int8($0)) })
+                    } else {
+                        guard request.payload.count == 1 else { throw OticonEqualizer.EQError.malformed }
+                        let value = Int(Int8(bitPattern: request.payload.first!))
+                        #expect((speechMinimum[index]...speechMaximum[index]).contains(value))
+                        speechValues[index] = value; payload = Data()
+                    }
+                }
             } else if failNextEqualizerRead {
                 failNextEqualizerRead = false
                 status = 0xD4; payload = Data()
@@ -217,4 +253,51 @@ import Testing
     await session.stop()
     #expect(!peer.consumerOpen && peer.transaction == nil)
     #expect(peer.serviceTrace.map { "\($0.handle)/\($0.opcode)" }.suffix(2) == ["8/9", "8/1"])
+}
+
+@MainActor @Test func speechBoosterBatchesReportedMaximaAndConfirmsEnableAndDisable() async throws {
+    let peer = SyntheticUTLPeer(); peer.advertiseSpeechBooster = true
+    let info = try UTLProtocol.GattInformation(data: Data([1, 0, 1, 0, 0, 244, 1, 1, 0x80, 0x80, 0x80, 0x80]))
+    let session = try UTLSession(info: info, physicalATTMTU: 247) { uuid, data in try await peer.write(uuid, data) }
+    peer.session = session
+    try await session.start(key: peer.key)
+    #expect(session.supportsSpeechBooster)
+    #expect(try await session.setSpeechBooster(enabled: true).isEnabled)
+    #expect(peer.speechValues == peer.speechMaximum)
+    let trace = peer.serviceTrace.map { "\($0.handle)/\($0.opcode)" }
+    #expect(trace.suffix(15) == ["8/7", "10/0", "10/2", "10/4", "8/8", "8/7", "10/1", "10/3", "10/5", "8/8", "8/7", "10/0", "10/2", "10/4", "8/8"])
+    #expect(try await session.setSpeechBooster(enabled: false).isEnabled == false)
+    #expect(peer.serviceTrace.contains { $0.handle == 10 && $0.opcode == 6 && $0.payload.isEmpty })
+    #expect(!peer.serviceTrace.contains { $0.handle == 8 && $0.opcode >= 10 }) // no device reset/fitting state
+}
+
+@MainActor @Test func batteryTelemetryReadUsesConsumerEnvelopeAndFixedWidthDecoder() async throws {
+    let peer = SyntheticUTLPeer(); peer.advertiseBattery = true
+    peer.batteryTrailingData = Data([0x12, 0x34, 0x56])
+    let info = try UTLProtocol.GattInformation(data: Data([1, 0, 1, 0, 0, 244, 1, 1, 0x80, 0x80, 0x80, 0x80]))
+    let session = try UTLSession(info: info, physicalATTMTU: 247) { uuid, data in try await peer.write(uuid, data) }
+    peer.session = session
+    try await session.start(key: peer.key)
+    let telemetry = try await session.batteryTelemetry()
+    #expect(telemetry.percentage == 50)
+    #expect(telemetry.estimatedTimeLeftSeconds == 43_200)
+    #expect(peer.serviceTrace.map { "\($0.handle)/\($0.opcode)" }.suffix(3) == ["8/7", "7/2", "8/8"])
+}
+
+@MainActor @Test func hearingAidIdentificationUsesReadOnlyCommandAndDoesNotLogSerialOrRawMap() async throws {
+    let peer = SyntheticUTLPeer(); peer.advertiseIdentification = true
+    let info = try UTLProtocol.GattInformation(data: Data([1, 0, 1, 0, 0, 244, 1, 1, 0x80, 0x80, 0x80, 0x80]))
+    var diagnostics: [String] = []
+    let session = try UTLSession(info: info, physicalATTMTU: 247, diagnostic: { diagnostics.append($0) }) {
+        uuid, data in try await peer.write(uuid, data)
+    }
+    peer.session = session
+    try await session.start(key: peer.key)
+    #expect(session.supportsIdentification)
+    let identity = try await session.identification()
+    #expect(identity.serialNumber == "00000042")
+    #expect(peer.serviceTrace.map { "\($0.handle)/\($0.opcode)" }.suffix(3) == ["8/7", "11/3", "8/8"])
+    #expect(diagnostics == ["Hearing aid identification read (HIID 4.6)."])
+    #expect(!diagnostics.joined().contains("00000042"))
+    #expect(!diagnostics.joined().contains("A21903E9"))
 }

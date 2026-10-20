@@ -32,7 +32,11 @@ import Foundation
     var utlInformation: UTLProtocol.GattInformation?
     var utlSession: UTLSession?
     var legacyEqualizerData: Data?
+    var legacySpeechBoosterData: Data?
     var programInfoRequested = false
+    var batteryPollTask: Task<Void, Never>?
+    var batteryPollGeneration: UUID?
+    var batteryZeroRetryCount = 0
     init(_ peripheral: CBPeripheral) { self.peripheral = peripheral }
 }
 
@@ -58,6 +62,9 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
     @Published private(set) var connections: [UUID: AidConnection] = [:]
     @Published private(set) var events: [SessionEvent] = []
     @Published private(set) var lastError: String?
+    @Published private(set) var linkedActionPending = false
+    @Published private(set) var linkedActionStatus: String?
+    @Published private(set) var linkedActionFailed = false
     private var central: CBCentralManager!
     private var peripherals: [UUID: CBPeripheral] = [:]
     private var links: [UUID: AidLink] = [:]
@@ -176,12 +183,16 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
     func disconnect() { for id in Array(links.keys) { disconnect(id) } }
     func clearEvents() { events = [] }
     func refresh(_ id: UUID) {
-        guard let link = liveLink(id), connections[id]?.actionPending == false else { return }
+        guard let link = liveLink(id), connections[id]?.actionPending == false,
+              connections[id]?.advancedBusy == false, connections[id]?.groupActionPending == false else { return }
         connections[id]?.error = nil
         for service in link.peripheral.services ?? [] {
             for characteristic in service.characteristics ?? [] { readIfAllowed(characteristic, service: service, link: link) }
         }
         record("refresh_requested", "Refreshing current hearing-aid values", details: ["uuid": id.uuidString])
+        // Standard refresh reuses an already authenticated channel only.
+        // It never opens or reauthenticates an advanced channel by itself.
+        if link.utlSession?.isReady == true { refreshConsumerFeatures(id) }
     }
     func adjustVolume(_ id: UUID, by delta: Int) {
         guard delta == -1 || delta == 1, let state = connections[id], state.canChangeVolume,
@@ -200,15 +211,78 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         writeSetting(id, characteristicUUID: OticonRemoteProtocol.activeProgram, data: payload, label: "Program \(program)")
     }
 
+    func applyLinkedVolume(by delta: Int) {
+        guard delta == -1 || delta == 1 else { return }
+        performLinkedChange(delta: delta, muted: nil)
+    }
+    func setLinkedMuted(_ muted: Bool) { performLinkedChange(delta: nil, muted: muted) }
+
+    private func performLinkedChange(delta: Int?, muted: Bool?) {
+        let pair = connectedPair
+        guard probeConfiguration == nil, !linkedActionPending, pair.count == 2, pair.allSatisfy(\.canChangeVolume) else { return }
+        let targets = pair.compactMap { state -> (UUID, AidLink)? in liveLink(state.id).map { (state.id, $0) } }
+        guard targets.count == 2 else { return }
+        linkedActionPending = true; linkedActionFailed = false; linkedActionStatus = "Reading both hearing aids…"
+        for (id, _) in targets { connections[id]?.groupActionPending = true }
+        Task {
+            defer {
+                self.linkedActionPending = false
+                for (id, _) in targets { self.connections[id]?.groupActionPending = false }
+            }
+            var completed = 0
+            do {
+                for (id, link) in targets {
+                    guard self.liveLink(id) === link, let characteristic = link.remoteCharacteristics[OticonRemoteProtocol.mainVolume] else { throw UTLSession.SessionError.disconnected }
+                    _ = try await self.readUtility(id, characteristic: characteristic)
+                }
+                let states = targets.compactMap { self.connections[$0.0] }
+                let snapshots = states.compactMap { state -> LinkedHearingControls.Aid? in
+                    guard let volume = state.volume, let ranges = state.volumeRanges, state.writableVolume,
+                          !state.actionPending, !state.advancedBusy else { return nil }
+                    return .init(level: volume.level, muted: volume.muted, range: ranges.main)
+                }
+                guard states.count == 2, let controls = LinkedHearingControls(aids: snapshots) else {
+                    throw UTLSession.SessionError.unavailable("Both aids need current volume and range information.")
+                }
+                let levels = delta.flatMap { controls.levels(adjustingBy: $0) } ?? (delta == nil ? snapshots.map(\.level) : nil)
+                guard let levels, levels.count == 2 else { throw UTLSession.SessionError.unavailable("One hearing aid has reached its volume limit.") }
+                let payloads = try states.enumerated().map { index, state -> Data in
+                    guard let range = state.volumeRanges?.main, let current = state.volume,
+                          let payload = OticonRemoteProtocol.volumePayload(level: levels[index], muted: muted ?? current.muted, reportedRange: range) else {
+                        throw UTLSession.SessionError.unavailable("Linked change is outside an aid's reported range.")
+                    }
+                    return payload
+                }
+                for (index, target) in targets.enumerated() {
+                    let (id, link) = target
+                    guard self.liveLink(id) === link, self.connections[id]?.activeProgram == states[index].activeProgram,
+                          let range = self.connections[id]?.volumeRanges?.main, range.contains(levels[index]) else {
+                        throw UTLSession.SessionError.unavailable("An aid's connection, program or range changed during the linked request.")
+                    }
+                    try await self.awaitSetting(id, characteristicUUID: OticonRemoteProtocol.mainVolume, data: payloads[index],
+                                                label: muted.map { $0 ? "Linked mute" : "Linked unmute" } ?? "Linked volume")
+                    completed += 1
+                }
+                self.linkedActionStatus = "Both hearing aids confirmed the linked change."
+            } catch {
+                self.linkedActionFailed = true
+                self.linkedActionStatus = completed == 0 ? "Linked change not confirmed: \(error.localizedDescription)"
+                    : "Linked change stopped after \(completed) confirmed aid. \(error.localizedDescription)"
+            }
+        }
+    }
+
     /// Selects only the metadata cursor, never the active listening program.
     func refreshProgramInfo(_ id: UUID) {
         guard probeConfiguration == nil, let link = liveLink(id), link.pending == nil,
-              connections[id]?.advancedBusy == false, let programs = connections[id]?.programIDs, !programs.isEmpty else { return }
+              connections[id]?.advancedBusy == false, connections[id]?.groupActionPending == false,
+              let programs = connections[id]?.programIDs, !programs.isEmpty else { return }
         connections[id]?.advancedBusy = true
         connections[id]?.advancedStatus = "Reading program names…"
         Task { [weak self, weak link] in
             guard let self, let link else { return }
             var result: [Int: String] = [:]
+            var boostable: [Int: Bool] = [:]
             var queryError: (any Error)?
             do {
                 guard let selector = link.remoteCharacteristics[OticonProgramInfo.selector],
@@ -221,6 +295,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                     let metadata = try await self.readUtility(id, characteristic: information)
                     let decoded = try OticonProgramInfo.Program(data: metadata, id: program)
                     if !decoded.label.isEmpty { result[program] = decoded.label }
+                    boostable[program] = decoded.boostable
                 }
             } catch { queryError = error }
             // The installed client releases its metadata cursor with 0xff.
@@ -230,6 +305,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
             }
             guard self.liveLink(id) === link else { return }
             self.connections[id]?.programNames.merge(result) { _, new in new }
+            self.connections[id]?.programBoostable.merge(boostable) { _, new in new }
             self.connections[id]?.advancedBusy = false
             self.connections[id]?.advancedStatus = queryError.map { "Program names: \($0.localizedDescription)" } ?? "Program names read from hearing aid."
             self.record("program_metadata", queryError == nil ? "Program names read from hearing aid" : "Program metadata query incomplete", details: ["uuid": id.uuidString, "count": String(result.count)])
@@ -239,7 +315,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
     /// Explicit opt-in: opens one free UTL channel, authenticates locally, and
     /// performs service discovery and consumer-EQ reads. No fitting transaction.
     func refreshAdvanced(_ id: UUID, keyURL: URL? = nil) {
-        guard probeConfiguration == nil, let link = liveLink(id), link.pending == nil, connections[id]?.advancedBusy == false else { return }
+        guard probeConfiguration == nil, let link = liveLink(id), link.pending == nil, connections[id]?.advancedBusy == false, connections[id]?.groupActionPending == false else { return }
         connections[id]?.advancedBusy = true
         connections[id]?.advancedStatus = "Loading advanced controls…"
         Task { [weak self, weak link] in
@@ -260,11 +336,17 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                     let key = try UTLSession.loadKey(keyURL ?? UTLSession.defaultKeyURL)
                     session = try UTLSession(info: info, physicalATTMTU: link.peripheral.maximumWriteValueLength(for: .withResponse) + 3, progress: { [weak self, weak link] stage in
                         guard let self, let link, self.liveLink(id) === link else { return }
-                        self.connections[id]?.advancedStatus = stage + "…"
+                        if !stage.hasPrefix("Consumer command ") {
+                            self.connections[id]?.advancedStatus = stage == "Opening advanced channel"
+                                ? "Connecting advanced controls…" : "Reading device controls…"
+                        }
                         self.record("advanced_progress", stage, details: ["uuid": id.uuidString])
                     }, diagnostic: { [weak self, weak link] message in
                         guard let self, let link, self.liveLink(id) === link else { return }
                         self.record("advanced_eq_diagnostic", message, details: ["uuid": id.uuidString])
+                    }, batteryUpdate: { [weak self, weak link] telemetry in
+                        guard let self, let link, self.liveLink(id) === link, link.utlSession?.isReady == true else { return }
+                        self.updateBatteryTelemetry(id, telemetry: telemetry)
                     }) { [weak self, weak link] uuid, data in
                         guard let self, let link, self.liveLink(id) === link, let characteristic = link.utlCharacteristics[uuid] else { throw UTLSession.SessionError.disconnected }
                         try await self.writeUtility(id, characteristic: characteristic, data: data)
@@ -292,10 +374,12 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                 self.connections[id]?.streamingEqualizer = try await session.equalizer(microphone: false, stepDB: step)
                 self.connections[id]?.writableStreamingEqualizer = true
                 self.connections[id]?.advancedStatus = "Advanced equalizers read from hearing aid."
+                await self.readConsumerFeatures(id, link: link, session: session)
             } catch {
                 if let session = link.utlSession { await session.stop(); link.utlSession = nil }
                 self.invalidateEqualizer(id, microphone: true)
                 self.invalidateEqualizer(id, microphone: false)
+                self.invalidateConsumerFeatures(id, link: link)
                 // A prior UTL value is not valid evidence for legacy fallback.
                 // Only a new, validated 16-byte read can re-enable streaming EQ.
                 if let characteristic = link.remoteCharacteristics[OticonEqualizer.legacyCharacteristic], characteristic.properties.contains(.read) {
@@ -303,6 +387,137 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                 }
                 self.connections[id]?.advancedStatus = "Advanced controls: \(UTLSession.describe(error))"
                 self.record("advanced_unavailable", "Advanced control read stopped: \(UTLSession.describe(error))", details: ["uuid": id.uuidString])
+            }
+        }
+    }
+
+    /// Read-only consumer feature refresh. Reuses a current session without
+    /// changing EQ or writing either ear's consumer settings.
+    func refreshConsumerFeatures(_ id: UUID) {
+        guard probeConfiguration == nil, let link = liveLink(id), link.pending == nil,
+              connections[id]?.advancedBusy == false, connections[id]?.groupActionPending == false else { return }
+        guard let session = link.utlSession, session.isReady else { refreshAdvanced(id); return }
+        connections[id]?.advancedBusy = true
+        Task {
+            defer { if self.liveLink(id) === link { self.connections[id]?.advancedBusy = false } }
+            await self.readConsumerFeatures(id, link: link, session: session)
+        }
+    }
+
+    private func readConsumerFeatures(_ id: UUID, link: AidLink, session: UTLSession) async {
+        var failures: [String] = []
+        if session.supportsBatteryTelemetry {
+            do {
+                let telemetry = try await session.batteryTelemetry()
+                guard liveLink(id) === link else { return }
+                updateBatteryTelemetry(id, telemetry: telemetry)
+                link.batteryZeroRetryCount = telemetry.hasCorruptZeroTelemetry ? link.batteryZeroRetryCount + 1 : 0
+                startBatteryPolling(id, link: link)
+            } catch {
+                connections[id]?.batteryTelemetry = nil
+                connections[id]?.batteryTelemetryUpdatedAt = nil
+                failures.append("Battery telemetry: \(UTLSession.describe(error))")
+            }
+        }
+        if session.supportsIdentification, connections[id]?.serialNumber == nil {
+            do {
+                let identity = try await session.identification()
+                guard liveLink(id) === link else { return }
+                connections[id]?.serialNumber = identity.serialNumber
+                record("device_identification_read", "Hearing aid identification read", details: ["uuid": id.uuidString])
+            } catch {
+                failures.append("Device identification: \(UTLSession.describe(error))")
+            }
+        }
+        if session.supportsSpeechBooster {
+            do {
+                let state = try await session.speechBooster()
+                guard liveLink(id) === link else { return }
+                connections[id]?.speechBoosterEnabled = state.isEnabled
+                connections[id]?.writableSpeechBooster = true
+                record("speech_booster_read", "Speech Booster state read from hearing aid", details: ["uuid": id.uuidString])
+            } catch {
+                connections[id]?.speechBoosterEnabled = nil
+                connections[id]?.writableSpeechBooster = false
+                failures.append("Speech Booster: \(UTLSession.describe(error))")
+            }
+        } else {
+            connections[id]?.speechBoosterEnabled = nil
+            connections[id]?.writableSpeechBooster = false
+            failures.append("Speech Booster is not available through this aid's supported consumer contract.")
+        }
+        if !session.isReady {
+            await session.stop()
+            if link.utlSession === session { link.utlSession = nil }
+            invalidateEqualizer(id, microphone: true); invalidateEqualizer(id, microphone: false)
+            invalidateConsumerFeatures(id, link: link)
+            failures.append("Device features need a refresh because the advanced channel closed.")
+        }
+        guard liveLink(id) === link else { return }
+        connections[id]?.consumerStatus = failures.isEmpty ? "Device features read from hearing aid." : failures.joined(separator: " ")
+    }
+
+    private func updateBatteryTelemetry(_ id: UUID, telemetry: OticonBattery.State) {
+        connections[id]?.batteryTelemetry = telemetry
+        connections[id]?.batteryTelemetryUpdatedAt = Date()
+        if let percentage = telemetry.percentage { connections[id]?.battery = percentage }
+        record("battery_telemetry", "Battery telemetry read from hearing aid", details: ["uuid": id.uuidString])
+    }
+    private func startBatteryPolling(_ id: UUID, link: AidLink) {
+        guard link.batteryPollTask == nil else { return }
+        let generation = UUID(); link.batteryPollGeneration = generation
+        link.batteryPollTask = Task { [weak self, weak link] in
+            guard let self, let link else { return }
+            defer {
+                if link.batteryPollGeneration == generation {
+                    link.batteryPollTask = nil; link.batteryPollGeneration = nil
+                }
+            }
+            while !Task.isCancelled {
+                guard self.liveLink(id) === link, link.utlSession?.isReady == true else { return }
+                let retryingZero = self.connections[id]?.batteryTelemetry?.hasCorruptZeroTelemetry == true && link.batteryZeroRetryCount < 12
+                do { try await Task.sleep(for: .seconds(retryingZero ? 5 : OticonBattery.pollingIntervalSeconds)) }
+                catch { return }
+                guard self.liveLink(id) === link, link.utlSession?.isReady == true else { return }
+                if self.connections[id]?.advancedBusy == false && self.connections[id]?.actionPending == false && self.connections[id]?.groupActionPending == false {
+                    guard let session = link.utlSession else { return }
+                    self.connections[id]?.advancedBusy = true
+                    await self.readConsumerFeatures(id, link: link, session: session)
+                    if self.liveLink(id) === link { self.connections[id]?.advancedBusy = false }
+                }
+            }
+        }
+    }
+
+    func setSpeechBooster(_ id: UUID, enabled: Bool) {
+        guard probeConfiguration == nil, let state = connections[id], state.canChangeSpeechBooster, let link = liveLink(id) else { return }
+        connections[id]?.advancedBusy = true
+        connections[id]?.consumerStatus = enabled ? "Enabling Speech Booster…" : "Disabling Speech Booster…"
+        Task {
+            defer { if self.liveLink(id) === link { self.connections[id]?.advancedBusy = false } }
+            do {
+                if let session = link.utlSession, session.isReady, session.supportsSpeechBooster {
+                    let confirmed = try await session.setSpeechBooster(enabled: enabled)
+                    self.connections[id]?.speechBoosterEnabled = confirmed.isEnabled
+                } else if let characteristic = link.remoteCharacteristics[OticonSpeechBooster.legacyCharacteristic] {
+                    let fresh = try await self.readUtility(id, characteristic: characteristic)
+                    let payload = try OticonSpeechBooster.legacyPayload(current: fresh, enabled: enabled)
+                    try await self.awaitSetting(id, characteristicUUID: OticonSpeechBooster.legacyCharacteristic,
+                                                data: payload, label: "Speech Booster", allowWithoutResponse: true)
+                } else { throw UTLSession.SessionError.unavailable("Load Speech Booster controls before changing them.") }
+                guard self.liveLink(id) === link else { return }
+                self.connections[id]?.consumerStatus = "Speech Booster \(enabled ? "on" : "off") confirmed by hearing aid."
+                self.record("setting_confirmed", "Speech Booster \(enabled ? "on" : "off") confirmed by hearing aid", details: ["uuid": id.uuidString])
+            } catch {
+                if let session = link.utlSession, !session.isReady {
+                    await session.stop()
+                    if link.utlSession === session { link.utlSession = nil }
+                    self.invalidateEqualizer(id, microphone: true); self.invalidateEqualizer(id, microphone: false)
+                    self.invalidateConsumerFeatures(id, link: link)
+                }
+                self.connections[id]?.speechBoosterEnabled = nil
+                self.connections[id]?.writableSpeechBooster = false
+                self.connections[id]?.consumerStatus = "Speech Booster not confirmed: \(UTLSession.describe(error))"
             }
         }
     }
@@ -337,7 +552,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
     /// program must be selected explicitly and re-read before applying a preset.
     func applySoundSettings(_ id: UUID, program: Int, volume: Int, muted: Bool,
                             microphoneSteps: [Int]? = nil, streamingSteps: [Int]? = nil) async throws {
-        guard probeConfiguration == nil, let state = connections[id], state.isConnected, !state.actionPending, !state.advancedBusy,
+        guard probeConfiguration == nil, let state = connections[id], state.isConnected, !state.actionPending, !state.advancedBusy, !state.groupActionPending,
               state.activeProgram == program, let ranges = state.volumeRanges, state.volume != nil,
               let payload = OticonRemoteProtocol.volumePayload(level: volume, muted: muted, reportedRange: ranges.main) else {
             throw UTLSession.SessionError.unavailable("Select the preset's existing program and refresh its controls before applying.")
@@ -378,6 +593,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                     if link.utlSession === session { link.utlSession = nil }
                     invalidateEqualizer(id, microphone: true)
                     invalidateEqualizer(id, microphone: false)
+                    invalidateConsumerFeatures(id, link: link)
                 }
                 throw error
             }
@@ -400,12 +616,22 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
             links[id]?.legacyEqualizerData = nil
         }
     }
-    private func awaitSetting(_ id: UUID, characteristicUUID: String, data: Data, label: String) async throws {
+    private func invalidateConsumerFeatures(_ id: UUID, link: AidLink) {
+        connections[id]?.speechBoosterEnabled = nil
+        connections[id]?.writableSpeechBooster = false
+        connections[id]?.batteryTelemetry = nil
+        connections[id]?.batteryTelemetryUpdatedAt = nil
+        link.legacySpeechBoosterData = nil
+        link.batteryPollTask?.cancel(); link.batteryPollTask = nil; link.batteryPollGeneration = nil
+        connections[id]?.consumerStatus = "Load device features to refresh their current state."
+    }
+    private func awaitSetting(_ id: UUID, characteristicUUID: String, data: Data, label: String, allowWithoutResponse: Bool = false) async throws {
         guard let link = liveLink(id), link.pending == nil,
-              let characteristic = link.remoteCharacteristics[characteristicUUID], characteristic.properties.contains(.read), characteristic.properties.contains(.write) else {
+              let characteristic = link.remoteCharacteristics[characteristicUUID], characteristic.properties.contains(.read),
+              characteristic.properties.contains(.write) || (allowWithoutResponse && characteristic.properties.contains(.writeWithoutResponse)) else {
             throw UTLSession.SessionError.unavailable("Control is unavailable or another request is pending.")
         }
-        writeSetting(id, characteristicUUID: characteristicUUID, data: data, label: label)
+        writeSetting(id, characteristicUUID: characteristicUUID, data: data, label: label, allowWithoutResponse: allowWithoutResponse)
         try await waitUtility(id, link: link) { link.pending == nil }
         guard connections[id]?.actionFailed == false else { throw UTLSession.SessionError.unavailable(connections[id]?.actionStatus ?? "Setting was not confirmed.") }
     }
@@ -443,24 +669,39 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         guard liveLink(id) === link else { throw UTLSession.SessionError.disconnected }
     }
     private func maybeReadProgramNames(_ id: UUID, link: AidLink) {
-        guard probeConfiguration == nil, !link.programInfoRequested, connections[id]?.advancedBusy == false,
+        guard probeConfiguration == nil, !link.programInfoRequested, connections[id]?.advancedBusy == false, connections[id]?.groupActionPending == false,
               connections[id]?.programIDs.isEmpty == false,
               link.remoteCharacteristics[OticonProgramInfo.selector] != nil,
               link.remoteCharacteristics[OticonProgramInfo.information] != nil else { return }
         link.programInfoRequested = true
         refreshProgramInfo(id)
     }
-    private func writeSetting(_ id: UUID, characteristicUUID: String, data: Data, label: String) {
+    private func writeSetting(_ id: UUID, characteristicUUID: String, data: Data, label: String, allowWithoutResponse: Bool = false) {
         guard probeConfiguration == nil, let link = liveLink(id), link.pending == nil,
               let characteristic = link.remoteCharacteristics[characteristicUUID],
-              characteristic.properties.contains(.write), characteristic.properties.contains(.read) else { return }
+              characteristic.properties.contains(.write) || (allowWithoutResponse && characteristic.properties.contains(.writeWithoutResponse)),
+              characteristic.properties.contains(.read) else { return }
         let pending = PendingSetting(characteristic: characteristic, expected: data, label: label)
         link.pending = pending
         connections[id]?.actionPending = true
         connections[id]?.actionFailed = false
         connections[id]?.actionStatus = "Sending \(label.lowercased())…"
         record("setting_requested", "\(label) requested by user", details: ["uuid": id.uuidString, "characteristic": characteristicUUID, "payload_hex": data.hexString])
-        link.peripheral.writeValue(data, for: characteristic, type: .withResponse)
+        if allowWithoutResponse && characteristic.properties.contains(.writeWithoutResponse) {
+            pending.stage = .readback; pending.readbackAttempts = 1
+            Task {
+                do {
+                    try await self.waitUtility(id, link: link) { link.peripheral.canSendWriteWithoutResponse }
+                    guard link.pending === pending else { return }
+                    link.peripheral.writeValue(data, for: characteristic, type: .withoutResponse)
+                    try await Task.sleep(for: .milliseconds(350))
+                    guard self.liveLink(id) === link, link.pending === pending else { return }
+                    link.peripheral.readValue(for: characteristic)
+                } catch {
+                    if self.liveLink(id) === link, link.pending === pending { self.completeSetting(id, link: link, message: "\(label) was not confirmed: \(error.localizedDescription)", failed: true) }
+                }
+            }
+        } else { link.peripheral.writeValue(data, for: characteristic, type: .withResponse) }
         pending.timeout = Task { [weak self, weak link, weak pending] in
             try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled, let self, let link, let pending, self.links[id] === link, link.pending === pending else { return }
@@ -477,6 +718,9 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
             if characteristic == OticonRemoteProtocol.mainVolume { connections[id]?.volume = nil }
             if characteristic == OticonRemoteProtocol.activeProgram { connections[id]?.activeProgram = nil }
             if characteristic == OticonEqualizer.legacyCharacteristic { connections[id]?.streamingEqualizer = nil; link.legacyEqualizerData = nil }
+            if characteristic == OticonSpeechBooster.legacyCharacteristic {
+                connections[id]?.speechBoosterEnabled = nil; connections[id]?.writableSpeechBooster = false; link.legacySpeechBoosterData = nil
+            }
         }
         link.pending?.timeout?.cancel(); link.pending = nil
         connections[id]?.actionPending = false
@@ -537,6 +781,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
             for id in Array(links.keys) {
                 links[id]?.connectTimeout?.cancel(); links[id]?.pending?.timeout?.cancel()
                 links[id]?.utlSession?.disconnected()
+                links[id]?.batteryPollTask?.cancel(); links[id]?.batteryPollTask = nil; links[id]?.batteryPollGeneration = nil
                 connections[id]?.clearLiveValues(); connections[id]?.phase = .disconnected
             }
             links = [:]
@@ -584,6 +829,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         guard let link = links[id], link.peripheral === peripheral else { return }
         link.connectTimeout?.cancel(); link.pending?.timeout?.cancel()
         link.utlSession?.disconnected()
+        link.batteryPollTask?.cancel(); link.batteryPollTask = nil; link.batteryPollGeneration = nil
         connections[id]?.clearLiveValues(); connections[id]?.phase = .disconnected; connections[id]?.actionStatus = nil
         if let error { connections[id]?.error = error.localizedDescription }
         links[id] = nil
@@ -608,6 +854,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         guard !invalidatedServices.isEmpty, let link = liveLink(id), link.peripheral === peripheral else { return }
         link.pending?.timeout?.cancel(); link.pending = nil
         link.utlSession?.disconnected(); link.utlSession = nil
+        link.batteryPollTask?.cancel(); link.batteryPollTask = nil; link.batteryPollGeneration = nil
         link.serviceIDs = [:]; link.characteristicIDs = [:]; link.remoteCharacteristics = [:]; link.utlCharacteristics = [:]
         link.programInfoRequested = false; link.legacyEqualizerData = nil
         connections[id]?.clearLiveValues()
@@ -635,6 +882,10 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                 if characteristic.uuid.uuidString.uppercased() == OticonRemoteProtocol.mainVolume { connections[id]?.writableVolume = characteristic.properties.contains(.write) && characteristic.properties.contains(.read) }
                 if characteristic.uuid.uuidString.uppercased() == OticonRemoteProtocol.activeProgram { connections[id]?.writableProgram = characteristic.properties.contains(.write) && characteristic.properties.contains(.read) }
                 if characteristic.uuid.uuidString.uppercased() == OticonEqualizer.legacyCharacteristic { connections[id]?.writableStreamingEqualizer = characteristic.properties.contains(.write) && characteristic.properties.contains(.read) }
+                if characteristic.uuid.uuidString.uppercased() == OticonSpeechBooster.legacyCharacteristic {
+                    connections[id]?.writableSpeechBooster = characteristic.properties.contains(.read)
+                        && (characteristic.properties.contains(.write) || characteristic.properties.contains(.writeWithoutResponse))
+                }
             }
             if HearingAidDiscovery.normalizedUUID(service.uuid.uuidString) == UTLProtocol.service {
                 link.utlCharacteristics[characteristic.uuid.uuidString.uppercased()] = characteristic
@@ -666,6 +917,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
             if wasReady && !session.isReady {
                 invalidateEqualizer(id, microphone: true)
                 invalidateEqualizer(id, microphone: false)
+                invalidateConsumerFeatures(id, link: link)
                 if let legacy = link.remoteCharacteristics[OticonEqualizer.legacyCharacteristic], legacy.properties.contains(.read) {
                     peripheral.readValue(for: legacy)
                 }
@@ -678,9 +930,16 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         updateCharacteristic(id, link: link, characteristic: characteristic) { $0.value = text }
         updateLiveState(id, service: service.uuid.uuidString, characteristic: characteristic.uuid.uuidString, value: value)
         maybeReadProgramNames(id, link: link)
-        record("gatt_value", "Read-only GATT value received", details: ["uuid": id.uuidString, "service": service.uuid.uuidString, "characteristic": characteristic.uuid.uuidString, "value": text, "value_hex": value.hexString])
+        // The serial is displayed per aid, but not duplicated into event logs.
+        if !(HearingAidDiscovery.normalizedUUID(service.uuid.uuidString) == StandardGATT.deviceInformationService && HearingAidDiscovery.normalizedUUID(characteristic.uuid.uuidString) == "2A25") {
+            record("gatt_value", "Read-only GATT value received", details: ["uuid": id.uuidString, "service": service.uuid.uuidString, "characteristic": characteristic.uuid.uuidString, "value": text, "value_hex": value.hexString])
+        }
         if let pending = link.pending, pending.characteristic === characteristic, pending.stage == .readback {
-            if value == pending.expected { completeSetting(id, link: link, message: "\(pending.label) confirmed by hearing aid", failed: false) }
+            let matched: Bool
+            if characteristic.uuid.uuidString.uppercased() == OticonSpeechBooster.legacyCharacteristic,
+               let expected = OticonSpeechBooster.legacyEnabled(pending.expected), let actual = OticonSpeechBooster.legacyEnabled(value) { matched = expected == actual }
+            else { matched = value == pending.expected }
+            if matched { completeSetting(id, link: link, message: "\(pending.label) confirmed by hearing aid", failed: false) }
             else if pending.readbackAttempts < 3 {
                 pending.readbackAttempts += 1
                 Task { [weak self, weak link, weak pending] in
@@ -715,6 +974,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
             case "2A29": connections[id]?.manufacturer = StandardGATT.informationString(value)
             case "2A24": connections[id]?.model = StandardGATT.informationString(value)
             case "2A26": connections[id]?.firmware = StandardGATT.informationString(value)
+            case "2A25": connections[id]?.serialNumber = StandardGATT.informationString(value)
             default: break
             }
         } else if service == OticonRemoteProtocol.service {
@@ -734,6 +994,8 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                     connections[id]?.streamingEqualizer = nil
                     connections[id]?.writableMicrophoneEqualizer = false
                     connections[id]?.volumeRanges = nil
+                    connections[id]?.speechBoosterEnabled = nil
+                    connections[id]?.writableSpeechBooster = false
                     if let link = liveLink(id), let ranges = link.remoteCharacteristics[OticonRemoteProtocol.volumeRanges], ranges.properties.contains(.read) { link.peripheral.readValue(for: ranges) }
                     if let link = liveLink(id), let eq = link.remoteCharacteristics[OticonEqualizer.legacyCharacteristic], eq.properties.contains(.read) { link.peripheral.readValue(for: eq) }
                 }
@@ -748,6 +1010,15 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                         connections[id]?.writableStreamingEqualizer = properties?.contains(.write) == true && properties?.contains(.read) == true
                     }
                 } else { invalidateEqualizer(id, microphone: false) }
+            case OticonSpeechBooster.legacyCharacteristic:
+                if let link = liveLink(id), link.utlSession?.isReady != true,
+                   let enabled = OticonSpeechBooster.legacyEnabled(value) {
+                    link.legacySpeechBoosterData = value
+                    connections[id]?.speechBoosterEnabled = enabled
+                    let properties = link.remoteCharacteristics[OticonSpeechBooster.legacyCharacteristic]?.properties
+                    connections[id]?.writableSpeechBooster = properties?.contains(.read) == true
+                        && (properties?.contains(.write) == true || properties?.contains(.writeWithoutResponse) == true)
+                }
             default: break
             }
         } else if service == UTLProtocol.service, characteristic == UTLProtocol.information {

@@ -40,6 +40,7 @@ final class UTLSession {
     private let write: @MainActor (String, Data) async throws -> Void
     private let progress: @MainActor (String) -> Void
     private let diagnostic: @MainActor (String) -> Void
+    private let batteryUpdate: @MainActor (OticonBattery.State) -> Void
     private let payloadMTU: Int
     private var credits: UTLProtocol.Credits
     private var transportDecoder = UTLProtocol.TransportDecoder()
@@ -70,6 +71,7 @@ final class UTLSession {
 
     init(info: UTLProtocol.GattInformation, physicalATTMTU: Int, progress: @escaping @MainActor (String) -> Void = { _ in },
          diagnostic: @escaping @MainActor (String) -> Void = { _ in },
+         batteryUpdate: @escaping @MainActor (OticonBattery.State) -> Void = { _ in },
          write: @escaping @MainActor (String, Data) async throws -> Void) throws {
         guard info.freeConnections > 0,
               let channelIndex = info.channels.prefix(Int(info.maximumChannels)).firstIndex(where: { $0.state == .closed }) else {
@@ -82,6 +84,7 @@ final class UTLSession {
         self.write = write
         self.progress = progress
         self.diagnostic = diagnostic
+        self.batteryUpdate = batteryUpdate
     }
 
     static func loadKey(_ url: URL) throws -> Data {
@@ -180,6 +183,10 @@ final class UTLSession {
                 if frame.kind == .control { frames.append(frame) }
                 else if let message = try messageDecoder.receive(frame) {
                     if message.messageType == .response { messages.append(message) }
+                    else if let service = services.first(where: OticonBattery.supports) {
+                        do { if let state = try OticonBattery.eventState(message, service: service) { batteryUpdate(state) } }
+                        catch { diagnostic("Battery event ignored: invalid versioned telemetry payload (\(message.payload.count) bytes).") }
+                    }
                     // Events never trigger a setting write or binaural synchronization.
                 }
             }
@@ -212,6 +219,61 @@ final class UTLSession {
         return state
     }
 
+    var supportsSpeechBooster: Bool {
+        services.contains(where: OticonSpeechBooster.supports)
+            && !services.contains { $0.isAvailable && $0.id == 0x0200001B && $0.major >= 3 }
+    }
+    var supportsBatteryTelemetry: Bool { services.contains(where: OticonBattery.supports) }
+    var supportsIdentification: Bool { services.contains(where: OticonIdentification.supports) }
+    func identification() async throws -> OticonIdentification.Identity {
+        guard let service = services.first(where: OticonIdentification.supports) else {
+            throw SessionError.unavailable("No supported hearing aid identification service was advertised.")
+        }
+        let response = try await consumerRequest(handle: service.handle, opcode: OticonIdentification.hiidInfoOpcode)
+        do {
+            let identity = try OticonIdentification.decodeHiid(response.payload)
+            // The HIID map can contain identifying and fitting information.
+            // Never include its bytes or the serial number in session events.
+            diagnostic("Hearing aid identification read (HIID \(identity.hiidMajor).\(identity.hiidMinor)).")
+            return identity
+        } catch {
+            throw UTLAdvanced.ParseError("Hearing aid identification could not be decoded (\(response.payload.count) bytes).")
+        }
+    }
+    func batteryTelemetry() async throws -> OticonBattery.State {
+        guard let service = services.first(where: OticonBattery.supports) else {
+            throw SessionError.unavailable("No supported battery telemetry service was advertised.")
+        }
+        let response = try await consumerRequest(handle: service.handle, opcode: OticonBattery.fastInfoOpcode)
+        diagnostic("Battery telemetry response: bytes=\(response.payload.count), hexPrefix=\(response.payload.prefix(64).hexString)")
+        do { return try OticonBattery.fastState(response.payload, service: service) }
+        catch { throw UTLAdvanced.ParseError("Battery \(service.major).\(service.minor) telemetry could not be decoded (\(response.payload.count) bytes).") }
+    }
+    func speechBooster() async throws -> OticonSpeechBooster.State {
+        guard supportsSpeechBooster, let service = services.first(where: OticonSpeechBooster.supports) else {
+            throw SessionError.unavailable("This aid does not advertise the supported consumer Speech Booster path.")
+        }
+        let responses = try await consumerRequests([UInt8(0), 2, 4].map { (service.handle, $0, Data()) })
+        return try OticonSpeechBooster.State(noiseReduction: responses[0].payload,
+                                            directionality: responses[1].payload, targetLoss: responses[2].payload)
+    }
+    func setSpeechBooster(enabled: Bool) async throws -> OticonSpeechBooster.State {
+        guard supportsSpeechBooster, let service = services.first(where: OticonSpeechBooster.supports) else {
+            throw SessionError.unavailable("Speech Booster must be loaded for this aid first.")
+        }
+        let current = try await speechBooster()
+        if enabled {
+            _ = try await consumerRequests(current.enableCommands.map { (service.handle, $0.opcode, $0.payload) })
+        } else {
+            // This opcode resets only MCESystemControl's consumer adjustments;
+            // it is unrelated to session.soft_reset / firmware reset commands.
+            _ = try await consumerRequests([(service.handle, 6, Data())])
+        }
+        let confirmed = try await speechBooster()
+        guard confirmed.isEnabled == enabled else { throw SessionError.unavailable("Speech Booster request accepted, but current adjustments do not match.") }
+        return confirmed
+    }
+
     private func equalizerService(microphone: Bool) throws -> UTLProtocol.Service {
         guard let service = services.first(where: { UTLAdvanced.supportsEqualizer($0, microphone: microphone) }) else {
             throw SessionError.unavailable("This aid did not advertise a supported \(microphone ? "microphone" : "streaming") EQ contract.")
@@ -237,6 +299,9 @@ final class UTLSession {
         progress("Consumer transaction pipeline opened")
     }
     private func consumerRequest(handle: UInt8, opcode: UInt8, payload: Data = Data()) async throws -> UTLProtocol.ServiceMessage {
+        try await consumerRequests([(handle, opcode, payload)])[0]
+    }
+    private func consumerRequests(_ operations: [(handle: UInt8, opcode: UInt8, payload: Data)]) async throws -> [UTLProtocol.ServiceMessage] {
         guard let sessionService, consumerOpenAttempted, !commandBusy, !commandPoisoned else {
             throw SessionError.unavailable("Consumer command session is unavailable or busy.")
         }
@@ -250,12 +315,15 @@ final class UTLSession {
         do {
             _ = try await request(handle: sessionService.handle, opcode: 7,
                                   payload: UTLConsumerSession.transactionPayload(id: id, starting: true))
-            progress(String(format: "Consumer command %02X on service handle %u", opcode, handle))
-            let response = try await request(handle: handle, opcode: opcode, payload: payload)
+            var responses: [UTLProtocol.ServiceMessage] = []
+            for operation in operations {
+                progress(String(format: "Consumer command %02X on service handle %u", operation.opcode, operation.handle))
+                responses.append(try await request(handle: operation.handle, opcode: operation.opcode, payload: operation.payload))
+            }
             _ = try await request(handle: sessionService.handle, opcode: 8,
                                   payload: UTLConsumerSession.transactionPayload(id: id, starting: false))
             activeTransaction = nil
-            return response
+            return responses
         } catch {
             do {
                 _ = try await request(handle: sessionService.handle, opcode: 9,

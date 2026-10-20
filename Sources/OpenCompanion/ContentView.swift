@@ -4,6 +4,8 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var store: BluetoothStore
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
+    @AppStorage("linkedHearingAidControls") private var linkedControls = true
     @State private var showAllDevices = false
     @State private var showInspector = false
     @State private var showEvents = false
@@ -25,6 +27,10 @@ struct ContentView: View {
         .toolbar {
             ToolbarItem(placement: .principal) { Label("Open Companion", systemImage: "ear.badge.waveform").font(.headline) }
             ToolbarItem { Button("Audiogram", systemImage: "chart.xyaxis.line") { openWindow(id: "audiogram") } }
+            ToolbarItem {
+                Button("Battery alerts", systemImage: "bell.badge") { openSettings() }
+                    .help("Battery notification settings")
+            }
             ToolbarItem {
                 Label(store.bluetoothStatus, systemImage: store.isPoweredOn ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
                     .font(.caption).foregroundStyle(store.isPoweredOn ? Color.secondary : Color.orange)
@@ -126,6 +132,9 @@ struct ContentView: View {
                             .font(.callout).foregroundStyle(.secondary)
                     }
                     Spacer()
+                    Toggle("Link ears", isOn: $linkedControls).toggleStyle(.switch)
+                        .fixedSize().accessibilityIdentifier("link-ear-controls")
+                        .help("Use one volume and mute control for both ears")
                     Label("LOCAL", systemImage: "dot.radiowaves.left.and.right")
                         .font(.caption2.weight(.semibold)).foregroundStyle(.teal)
                         .padding(.horizontal, 10).padding(.vertical, 7)
@@ -140,11 +149,17 @@ struct ContentView: View {
                         Text("Choose your hearing aids in the sidebar, or connect both when the pair is available.")
                     }.frame(minHeight: 310)
                 } else {
+                    if linkedControls {
+                        LinkedControlsView(store: store)
+                        if store.connectedPair.count == 2 {
+                            SpeechBoosterView(store: store, ids: store.connectedPair.map(\.id))
+                                .padding(16).background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14))
+                        }
+                    }
                     LazyVGrid(columns: aidColumns, spacing: 16) {
                         ForEach(store.orderedConnections) { state in aidCard(state) }
                     }
                 }
-                if store.connectedPair.count == 2 { pairControls }
                 SoundPresetPanelView(store: store)
 
                 Text("Controls adjust the microphone level on the selected aid. Changes are confirmed from the device; streaming audio volume is separate.")
@@ -172,14 +187,16 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(state.sideLabel).font(.title3.weight(.semibold))
                     Text(state.model ?? state.name).font(.caption).foregroundStyle(.secondary)
+                    if linkedControls {
+                        Text(state.volume.map { $0.muted ? "Muted" : "Sound on" } ?? state.phase.label)
+                            .font(.caption2).foregroundStyle(state.volume?.muted == true ? Color.orange : Color.secondary)
+                    }
                 }
                 Spacer()
-                if let battery = state.battery {
-                    Label("\(battery)%", systemImage: battery < 20 ? "battery.25percent" : "battery.75percent")
-                        .font(.caption.monospacedDigit()).foregroundStyle(battery < 20 ? Color.orange : Color.secondary)
-                } else { Text("—").font(.caption).foregroundStyle(.secondary) }
+                AidBatteryView(store: store, aid: state)
             }
-            HStack {
+            if !linkedControls {
+              HStack {
                 Image(systemName: "ear").font(.system(size: 58, weight: .ultraLight))
                     .foregroundStyle(.teal).frame(width: 80, height: 86)
                     .background(Color.teal.opacity(0.07), in: RoundedRectangle(cornerRadius: 20))
@@ -204,7 +221,8 @@ struct ContentView: View {
                 Button { store.adjustVolume(state.id, by: 1) } label: { Image(systemName: "plus").frame(maxWidth: .infinity, minHeight: 26) }
                     .disabled(!state.canChangeVolume || state.volume?.level == state.volumeRanges?.main.upperBound)
                     .accessibilityLabel("Increase \(state.sideLabel.lowercased()) microphone level")
-            }.buttonStyle(.bordered).controlSize(.large)
+              }.buttonStyle(.bordered).controlSize(.large)
+            }
             Divider()
             HStack {
                 Label("Program", systemImage: "waveform").font(.callout).foregroundStyle(.secondary)
@@ -221,10 +239,15 @@ struct ContentView: View {
             if state.programNames.isEmpty && state.isConnected {
                 Button("Read program names") { store.refreshProgramInfo(state.id) }
                     .font(.caption).buttonStyle(.borderless)
-                    .disabled(state.actionPending || state.advancedBusy)
+                    .disabled(state.actionPending || state.advancedBusy || state.groupActionPending)
+            }
+            if !linkedControls {
+                SpeechBoosterView(store: store, ids: [state.id])
             }
             Divider()
             EqualizerControlsView(store: store, aidID: state.id)
+            Divider()
+            DeviceDetailsView(store: store, aid: state)
             Divider()
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
@@ -239,7 +262,7 @@ struct ContentView: View {
                     Button("Details") { store.select(state.id); showInspector = true }.buttonStyle(.borderless)
                     Spacer()
                     Button { store.refresh(state.id) } label: { Image(systemName: "arrow.clockwise") }
-                        .buttonStyle(.borderless).disabled(!state.isConnected || state.actionPending).help("Refresh current values")
+                        .buttonStyle(.borderless).disabled(!state.isConnected || state.actionPending || state.advancedBusy || state.groupActionPending).help("Refresh current values")
                         .accessibilityLabel("Refresh \(state.sideLabel.lowercased()) values")
                 }.font(.caption)
             }
@@ -247,26 +270,6 @@ struct ContentView: View {
         .padding(20)
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 20))
         .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.06)))
-    }
-
-    private var pairControls: some View {
-        let pair = store.connectedPair
-        let canControl = pair.allSatisfy(\.canChangeVolume)
-        let allMuted = pair.allSatisfy { $0.volume?.muted == true }
-        let canDecrease = canControl && pair.allSatisfy { ($0.volume?.level ?? 0) > ($0.volumeRanges?.main.lowerBound ?? 0) }
-        let canIncrease = canControl && pair.allSatisfy { ($0.volume?.level ?? 0) < ($0.volumeRanges?.main.upperBound ?? 0) }
-        return HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Both hearing aids").font(.callout.weight(.semibold))
-                Text("Each aid confirms its own setting.").font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 4)
-            Button { for state in pair { store.adjustVolume(state.id, by: -1) } } label: { Label("Both", systemImage: "minus") }.disabled(!canDecrease)
-            Button(allMuted ? "Unmute both" : "Mute both") { for state in pair { store.setMuted(state.id, muted: !allMuted) } }.disabled(!canControl)
-            Button { for state in pair { store.adjustVolume(state.id, by: 1) } } label: { Label("Both", systemImage: "plus") }.disabled(!canIncrease)
-        }
-        .buttonStyle(.bordered).controlSize(.large)
-        .padding(16).background(Color.teal.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
     }
 
     private var inspector: some View {
