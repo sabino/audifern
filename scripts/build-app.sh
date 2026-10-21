@@ -34,7 +34,12 @@ done
 cp "$project_dir/LICENSE" "$app_dir/Contents/Resources/LICENSE.txt"
 cp "$project_dir/THIRD_PARTY_NOTICES.md" "$app_dir/Contents/Resources/THIRD_PARTY_NOTICES.md"
 python3 scripts/release_metadata.py source-notice > "$app_dir/Contents/Resources/SOURCE.txt"
-codesign --force --sign "${AUDIFERN_SIGN_IDENTITY:-${OPEN_COMPANION_SIGN_IDENTITY:--}}" --identifier org.audifern.app "$app_dir"
+signing_identity="${AUDIFERN_SIGN_IDENTITY:-${OPEN_COMPANION_SIGN_IDENTITY:--}}"
+signing_options=()
+if [[ "$configuration" == release && "$signing_identity" != - ]]; then
+    signing_options=(--options runtime --timestamp)
+fi
+codesign --force --sign "$signing_identity" ${signing_options[@]+"${signing_options[@]}"} --identifier org.audifern.app "$app_dir"
 codesign --verify --strict "$app_dir"
 python3 scripts/release_metadata.py verify-app "$app_dir" --architecture "$architecture"
 rm -rf "$project_dir/build/Audifern.app"

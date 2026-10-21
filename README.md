@@ -49,9 +49,10 @@ for **macOS 14 or later**, on Apple Silicon or Intel. Open the universal DMG and
 drag Audifern to Applications; a ZIP is also available. Downloads include
 checksums, build information, the license and exact source links.
 
-The initial downloads are **ad hoc signed, not Apple-notarized**. Read the
-[installation and release guide](docs/distribution.md) for macOS's per-app
-Open Anyway flow, continuous-build artifacts and tag-triggered releases.
+Releases from **0.6.1** are **Developer ID signed and Apple-notarized**.
+Continuous-build artifacts and the original 0.6.0 release remain ad hoc signed.
+Read the [installation and release guide](docs/distribution.md) for verification,
+continuous-build artifacts and the release process.
 Advanced credentials are provisioned locally and are excluded from downloads.
 
 ## Build and try it

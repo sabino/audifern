@@ -75,6 +75,8 @@ def vet_payload(app: Path) -> None:
         names.add("pt-br.lproj/Localizable.strings")
     required = fixed | {bundle + "Info.plist"} | {resources + name for name in names}
     allowed = set(required)
+    # Apple's stapler places the app's notarization ticket here.
+    allowed.add("Contents/CodeResources")
     for prefix in ["Contents/_CodeSignature/", bundle + "_CodeSignature/"]:
         allowed.update(prefix + name for name in SIGNATURE_FILES)
     if app.is_symlink() or not app.is_dir(): raise ValueError("Expected a regular app bundle.")
@@ -97,8 +99,37 @@ def verify_app(app: Path, architecture: str) -> dict:
     executable = app / "Contents/MacOS/Audifern"
     architectures = set(subprocess.check_output(["lipo", "-archs", str(executable)], text=True).split())
     if architectures != expected_architectures(architecture): raise ValueError("The executable does not contain the requested architecture slices.")
-    subprocess.run(["codesign", "--verify", "--strict", str(app)], check=True)
+    subprocess.run(["codesign", "--verify", "--strict", "--all-architectures", str(app)], check=True)
     return {"version": version(), "architectures": sorted(architectures), "minimumMacOS": "14.0"}
+
+
+def parse_signing_details(details: str) -> dict:
+    fields = dict(line.split("=", 1) for line in details.splitlines() if "=" in line and not line.startswith("Authority="))
+    authority = next((line.removeprefix("Authority=") for line in details.splitlines() if line.startswith("Authority=")), "")
+    flags = re.search(r"\bflags=0x([0-9a-fA-F]+)", details)
+    signing = "ad-hoc" if fields.get("Signature") == "adhoc" else "certificate"
+    if authority.startswith("Developer ID Application:"): signing = "developer-id"
+    team = fields.get("TeamIdentifier", "")
+    return {"signing": signing, "hardenedRuntime": bool(flags and int(flags[1], 16) & 0x10000),
+            "secureTimestamp": bool(fields.get("Timestamp")),
+            "teamID": team if re.fullmatch(r"[A-Z0-9]{10}", team) else None}
+
+
+def signing_details(app: Path) -> dict:
+    details = subprocess.run(["codesign", "-d", "--verbose=4", str(app)], capture_output=True, text=True, check=True)
+    return parse_signing_details(details.stderr)
+
+
+def verify_notarization(app: Path, team: str = "") -> None:
+    details = signing_details(app)
+    if details["signing"] != "developer-id" or not all(details[key] for key in ["hardenedRuntime", "secureTimestamp", "teamID"]):
+        raise ValueError("Notarized downloads require Developer ID Application, hardened runtime and a secure timestamp.")
+    if team and details["teamID"] != team:
+        raise ValueError("The app was signed by a different Apple developer team.")
+    subprocess.run(["xcrun", "stapler", "validate", "-q", str(app)], check=True)
+    assessed = subprocess.run(["spctl", "--assess", "--type", "execute", "--verbose=4", str(app)], capture_output=True, text=True, check=True)
+    if "source=Notarized Developer ID" not in assessed.stderr:
+        raise ValueError("Gatekeeper did not identify the app as notarized Developer ID software.")
 
 
 def main() -> None:
@@ -109,6 +140,7 @@ def main() -> None:
     verify = commands.add_parser("verify-app"); verify.add_argument("app", type=Path); verify.add_argument("--architecture", default="native")
     manifest = commands.add_parser("manifest"); manifest.add_argument("app", type=Path)
     manifest.add_argument("--architecture", default="universal"); manifest.add_argument("--tag", default="")
+    manifest.add_argument("--notarized", action="store_true", help="Require a valid stapled ticket and Gatekeeper acceptance before recording notarization.")
     args = parser.parse_args()
     if args.command == "version": print(release_version(version(), args.tag))
     elif args.command == "source-notice":
@@ -120,11 +152,11 @@ def main() -> None:
     else:
         data = verify_app(args.app, args.architecture)
         if args.command == "manifest":
-            details = subprocess.run(["codesign", "-d", "--verbose=4", str(args.app)], capture_output=True, text=True, check=True)
+            if args.notarized: verify_notarization(args.app)
+            data.update(signing_details(args.app))
             data.update({"application": "Audifern", "releaseVersion": release_version(version(), args.tag),
                          "sourceCommit": source_commit(), "sourceRepository": REPOSITORY,
-                         "signing": "ad-hoc" if "Signature=adhoc" in details.stderr else "certificate",
-                         "notarized": False, "generatedAt": datetime.now(timezone.utc).isoformat()})
+                         "notarized": args.notarized, "generatedAt": datetime.now(timezone.utc).isoformat()})
         print(json.dumps(data, indent=2, sort_keys=True))
 
 

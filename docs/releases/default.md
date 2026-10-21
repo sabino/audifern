@@ -8,8 +8,9 @@ compatible hearing aids on macOS 14 or later.
 - English, Português (Brasil), Español; System, Light and Dark appearance.
 - Universal Apple Silicon/Intel DMG and ZIP, checksums and exact source metadata.
 
-Open the DMG and drag Audifern to Applications. The initial builds are **ad hoc
-signed and not Apple-notarized**; see the [installation instructions](https://github.com/sabino/audifern/blob/main/docs/distribution.md).
+Open the DMG and drag Audifern to Applications. Official releases are
+**Developer ID signed and Apple-notarized**, with tickets attached to the app and DMG;
+see the [installation instructions](https://github.com/sabino/audifern/blob/main/docs/distribution.md).
 Allow Bluetooth access when prompted. Advanced UTL features require compatible
 authentication material provisioned locally; it is not included.
 

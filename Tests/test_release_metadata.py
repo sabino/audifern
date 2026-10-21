@@ -3,6 +3,8 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+import subprocess
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/release_metadata.py'
 spec = importlib.util.spec_from_file_location('release_metadata', SCRIPT)
@@ -69,6 +71,46 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.assertEqual(release.expected_architectures('universal'), {'arm64', 'x86_64'})
         self.assertEqual(release.expected_architectures('arm64'), {'arm64'})
         with self.assertRaises(ValueError): release.expected_architectures('unsupported')
+
+    def test_developer_id_requires_hardened_runtime_and_secure_timestamp(self):
+        details = release.parse_signing_details(
+            'CodeDirectory v=20500 size=500 flags=0x10000(runtime) hashes=10+7\n'
+            'Authority=Developer ID Application: Example (A1B2C3D4E5)\n'
+            'Authority=Developer ID Certification Authority\nTeamIdentifier=A1B2C3D4E5\n'
+            'Timestamp=Oct 20, 2026 at 1:00:00 PM\n')
+        self.assertEqual(details, {'signing': 'developer-id', 'hardenedRuntime': True,
+                                  'secureTimestamp': True, 'teamID': 'A1B2C3D4E5'})
+        with patch.object(release, 'signing_details', return_value=details), patch.object(release.subprocess, 'run') as run:
+            run.return_value = subprocess.CompletedProcess([], 0, '', 'source=Notarized Developer ID\n')
+            release.verify_notarization(Path('/synthetic.app'), 'A1B2C3D4E5')
+            with self.assertRaises(ValueError):
+                release.verify_notarization(Path('/synthetic.app'), 'DIFFERENT1')
+            run.return_value.stderr = 'source=Unnotarized Developer ID\n'
+            with self.assertRaises(ValueError): release.verify_notarization(Path('/synthetic.app'))
+            for key in ['hardenedRuntime', 'secureTimestamp', 'teamID']:
+                with self.subTest(key=key):
+                    original = details[key]; details[key] = None
+                    run.reset_mock()
+                    with self.assertRaises(ValueError): release.verify_notarization(Path('/synthetic.app'))
+                    run.assert_not_called()
+                    details[key] = original
+
+    def test_ad_hoc_and_development_certificates_are_not_developer_id(self):
+        for text in ['Signature=adhoc\nTeamIdentifier=not set\n',
+                     'Authority=Apple Development: Example\nTeamIdentifier=A1B2C3D4E5\n']:
+            details = release.parse_signing_details(text)
+            self.assertNotEqual(details['signing'], 'developer-id')
+            with patch.object(release, 'signing_details', return_value=details), patch.object(release.subprocess, 'run') as run:
+                with self.assertRaises(ValueError): release.verify_notarization(Path('/synthetic.app'))
+                run.assert_not_called()
+
+    def test_stapled_ticket_is_allowed_but_extra_credentials_are_not(self):
+        with tempfile.TemporaryDirectory() as folder:
+            app = Path(folder) / 'Audifern.app'; self.fixture(app)
+            (app / 'Contents/CodeResources').write_bytes(b'synthetic ticket')
+            release.vet_payload(app)
+            (app / 'Contents/auth.p12').write_bytes(b'synthetic credential')
+            with self.assertRaises(ValueError): release.vet_payload(app)
 
 
 if __name__ == '__main__': unittest.main()

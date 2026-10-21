@@ -44,9 +44,76 @@ jobs:
     with:
       release_tag: ${{ needs.resolve.outputs.tag }}
 
+  prepared:
+    name: Find locally notarized draft
+    needs: resolve
+    runs-on: ubuntu-24.04
+    outputs:
+      ready: ${{ steps.draft.outputs.ready }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+    steps:
+      - id: draft
+        run: |
+          set -euo pipefail
+          if ! gh release view "$RELEASE_TAG" --json isDraft,assets > draft.json; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo 'Build checks continue. A notarized draft is required before publishing.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Prepare it locally as documented in docs/distribution.md, then dispatch Release with this tag.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open('draft.json'))
+          assert data['isDraft'], 'A published release is never overwritten; use a new version tag.'
+          prefix = 'Audifern-' + os.environ['RELEASE_TAG'][1:] + '-macos-universal'
+          expected = {prefix + '.dmg', prefix + '.zip', 'SHA256SUMS', 'build-info.json'}
+          ready = {asset['name'] for asset in data['assets']} == expected
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('ready=' + str(ready).lower() + '\n')
+          if not ready:
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as report:
+                  report.write('The draft is incomplete. Upload all four locally notarized assets and dispatch Release again.\n')
+          PY
+
+  verify:
+    name: Verify Apple tickets and Gatekeeper
+    needs: [resolve, build, prepared]
+    if: needs.prepared.outputs.ready == 'true'
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+      EXPECTED_TEAM: ${{ vars.AUDIFERN_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.tag }}
+          persist-credentials: false
+      - name: Download and independently verify prepared release
+        run: |
+          set -euo pipefail
+          test -n "$EXPECTED_TEAM"
+          gh release download "$RELEASE_TAG" --dir downloads
+          python3 scripts/verify_release.py downloads --tag "$RELEASE_TAG" --team "$EXPECTED_TEAM"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-universal-notarized
+          path: |
+            downloads/*.dmg
+            downloads/*.zip
+            downloads/SHA256SUMS
+            downloads/build-info.json
+          if-no-files-found: error
+          retention-days: 14
+
   publish:
-    name: Publish verified downloads
-    needs: [resolve, build]
+    name: Publish notarized downloads
+    needs: [resolve, verify]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -62,7 +129,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: macos-universal
+          name: macos-universal-notarized
           path: downloads
       - name: Verify artifact checksums and provenance
         run: |
@@ -76,18 +143,14 @@ jobs:
           assert data['sourceCommit'] == commit, 'Artifact source differs from the tag'
           assert data['releaseVersion'] == os.environ['RELEASE_TAG'][1:]
           assert data['architectures'] == ['arm64', 'x86_64']
-          assert data['signing'] == 'ad-hoc' and data['notarized'] is False
+          assert data['signing'] == 'developer-id' and data['notarized'] is True
+          assert data['hardenedRuntime'] is True and data['secureTimestamp'] is True
           PY
       - name: Prepare and publish release
         run: |
           set -euo pipefail
-          if gh release view "$RELEASE_TAG" --json isDraft > release-state.json 2>/dev/null; then
-            python3 -c 'import json; assert json.load(open("release-state.json"))["isDraft"], "A published release is never overwritten; use a new version tag."'
-          else
-            notes="docs/releases/${RELEASE_TAG#v}.md"
-            if [[ ! -f "$notes" ]]; then notes=docs/releases/default.md; fi
-            gh release create "$RELEASE_TAG" --verify-tag --draft --title "Audifern ${RELEASE_TAG#v}" --notes-file "$notes"
-          fi
+          gh release view "$RELEASE_TAG" --json isDraft > release-state.json
+          python3 -c 'import json; assert json.load(open("release-state.json"))["isDraft"], "A published release is never overwritten; use a new version tag."'
           gh release upload "$RELEASE_TAG" downloads/*.dmg downloads/*.zip downloads/SHA256SUMS downloads/build-info.json --clobber
           # Address the release by ID while its assets are still in a draft.
           release_api_url="$(gh release view "$RELEASE_TAG" --json apiUrl --jq .apiUrl)"
