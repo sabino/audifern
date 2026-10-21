@@ -95,11 +95,12 @@ the contents are a live secret.
 python3 scripts/audit-public-source.py
 ```
 
-The public contributor identity must be explicit when inspecting history:
+Review the contributor identity before explicitly allowing it when inspecting
+history. For a single-contributor checkout:
 
 ```sh
 python3 scripts/audit-public-source.py \
-  --allow-identity 'Audifern contributors <contributors@example.invalid>'
+  --allow-identity "$(git show -s --format='%an <%ae>' HEAD)"
 ```
 
 For the owner's final local review, place exact private values in an ignored
@@ -109,7 +110,7 @@ material. The file itself must never be staged or included in an export:
 
 ```sh
 python3 scripts/audit-public-source.py \
-  --allow-identity 'Audifern contributors <contributors@example.invalid>' \
+  --allow-identity "$(git show -s --format='%an <%ae>' HEAD)" \
   --private-pattern-file private/public-audit-patterns.json
 ```
 
@@ -140,9 +141,10 @@ vendor endorsement or that an untested fitting/firmware operation is supported.
 The local repository was rebuilt from a sanitized clone after preserving private
 recovery archives. The first post-rewrite audit covered **six reachable and
 stored commits, 227 stored blobs and 129 working source files**, with **zero
-findings**. Later documentation commits use the same neutral identity.
+findings**. The documentation commits initially used the same neutral identity;
+the owner's subsequent signing request is recorded below.
 
-- Every historical author and committer is now
+- In that first local preparation, every historical author and committer became
   `Audifern contributors <contributors@example.invalid>`. Embedded personal
   signatures were removed. Fresh Git objects replaced the old object database;
   old reflogs, backup refs, remotes and dangling private commits were not retained
@@ -180,7 +182,28 @@ The owner subsequently authorized publication under
 [`sabino/audifern`](https://github.com/sabino/audifern). That GitHub namespace is
 intentional public metadata; the other known private patterns remain excluded.
 The release work is reviewed through a pull request before a version tag is
-pushed. Contributor identities in the prepared Git history remain neutral.
+pushed. Before the first release, the owner explicitly requested restoration of
+GitHub attribution and signing for every commit.
+
+All commits in the public branches were recreated with the owner's GitHub
+noreply identity and registered GPG key. The existing source trees, commit
+messages and timestamps were preserved. Subsequent commits and version tags
+also use that signing configuration; no private key is stored in the repository.
+The recovery copy of the earlier neutral history remains private.
+
+The audit deliberately reports embedded signatures for review. Approved public
+author metadata is distinct from device credentials and personal contact data.
+Verify the signatures and their GitHub account association separately:
+
+```sh
+git log --format='%h %G? %an <%ae>'
+git verify-commit HEAD
+```
+
+The GPG public key must be available locally for cryptographic verification;
+GitHub also displays each commit's verification status. The exact-pattern audit
+continues to exclude device identifiers, authentication material, private
+contact addresses and local paths.
 
 The distribution workflow builds on clean GitHub runners, rather than uploading
 locally compiled apps or investigation artifacts. Packaging permits only the

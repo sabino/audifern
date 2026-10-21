@@ -145,8 +145,12 @@ swift test --jobs 2
 python3 -m unittest discover -s Tests -p 'test_*.py'
 python3 scripts/audit-localization.py --strict
 python3 scripts/audit-public-source.py \
-  --allow-identity 'Audifern contributors <contributors@example.invalid>'
+  --allow-identity "$(git show -s --format='%an <%ae>' HEAD)"
 ```
+
+Review the contributor identity before allowing it. The privacy checker flags
+embedded signatures for review; see [public-history verification](docs/public-release-audit.md#public-distribution)
+for the owner's intentionally signed commits.
 
 The optional HIMSA schema check needs a locally acquired `Audiogram-1-502.xsd`:
 set `HIMSA_AUDIOGRAM_SCHEMA` to its path when running Swift tests. The schema is
