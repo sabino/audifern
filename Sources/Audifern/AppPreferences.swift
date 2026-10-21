@@ -31,6 +31,10 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     @Published var menuBarLabel: String { didSet { defaults.set(menuBarLabel, forKey: "menuBarLabel") } }
     @Published var widgetsEnabled: Bool { didSet { defaults.set(widgetsEnabled, forKey: "widgetsEnabled") } }
 
+    func groupAllSoundControls(_ together: Bool) {
+        SoundGroupingPreferences.setAll(together, defaults: defaults)
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         appearance = AppAppearance(rawValue: defaults.string(forKey: "appearance") ?? "") ?? .system

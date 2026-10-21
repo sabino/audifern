@@ -7,13 +7,34 @@ reopen the window from the Dock. Quit ends app-owned connections.
 
 ## Together and Separate
 
-Each sound section uses the same **Together / Separate** selector. The centered
-selector above the faders groups volume and mute; the purple SpeechBooster
-selector affects only SpeechBooster. Programs, microphone EQ, streaming and
-tinnitus controls keep their own selection. These preferences are shared with
-the matching menu-bar controls. Existing grouping preferences are migrated once,
-and later section choices stay independent. Switching modes sends no device
-command and copies no settings.
+The selector above the main faders is the **master control**: choose Together or
+Separate to set volume/mute, SpeechBooster, fitted-program controls, microphone
+EQ, streaming controls and tinnitus controls at once. Pressing Together again
+reapplies it even if volume was already grouped. Each section can override its
+own choice afterward; the master then shows **Custom grouping**. The purple
+selector affects only SpeechBooster. Menu-bar section controls keep the matching
+section preference. Switching grouping sends no device command and copies no
+values or unapplied EQ drafts.
+
+Sound is a bounded workspace without an outer scroll view. In its default
+layout, a compact device strip keeps the original artwork, batteries, volume,
+mute and device/program buttons usable above the equalizers. Expand volume
+controls folds EQ into a short summary; Edit equalizers restores the compact
+strip. EQ drafts survive either change. SpeechBooster opens an anchored popover
+with its matching purple Together/Separate selector and per-ear or shared switch.
+Device details uses Overview, Software components and Diagnostics tabs in the
+existing attached sheet; it does not stack those sections into a scrolling page.
+
+Equalizers live directly in Sound, replacing the large program card.
+Microphone, Streaming and Tinnitus relief have their own source tabs. Tone
+controls use vertical Lows/Mids/Highs faders; the detailed view uses eight
+vertical faders. Separate shows both ears simultaneously, while Together shows
+one shared set. No left/right editor tab is needed. Both aids load independently,
+and the Apply action uses each ear's own current/draft vector. A differing value
+is marked **≠**, with both readings available in the tooltip. Program names stay
+beside the device details and link to Library. More sound controls opens the
+existing attached sheet for source-volume and restore actions.
+
 Grouped volume preserves the difference between the current left/right levels;
 it stops at either ear's reported limit. Program changes require matching fitted
 program IDs and names. Unsupported controls stay unavailable.

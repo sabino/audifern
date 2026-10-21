@@ -6,6 +6,8 @@ struct EarControlModePicker: View {
     @Binding var together: Bool
     var available = true
     var accent = Brand.accent
+    var isMixed = false
+    var affectsAllSections = false
     let scope: String
     let identifier: String
 
@@ -20,7 +22,10 @@ struct EarControlModePicker: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(scope)
         .accessibilityIdentifier(identifier)
-        .help(L("Applies only to this section. Changing mode does not change current settings."))
+        .accessibilityValue(isMixed ? L("Custom grouping") : together ? L("Together") : L("Separate"))
+        .help(affectsAllSections
+              ? L("Sets Together or Separate for every sound section. Section selectors can override it. Changing mode sends no device command.")
+              : L("Applies only to this section. Changing mode does not change current settings."))
     }
 
     private func choice(_ value: Bool, title: String, symbol: String) -> some View {
@@ -30,13 +35,13 @@ struct EarControlModePicker: View {
                 Text(title).font(AppType.caption.weight(.semibold)).lineLimit(1)
             }
             .frame(maxWidth: .infinity, minHeight: 30)
-            .foregroundStyle(together == value ? accent : Color.secondary)
-            .background(together == value ? Brand.surface : .clear, in: Capsule())
+            .foregroundStyle(!isMixed && together == value ? accent : Color.secondary)
+            .background(!isMixed && together == value ? Brand.surface : .clear, in: Capsule())
             .contentShape(Capsule())
         }
         .buttonStyle(.plain).disabled(value && !available)
         .accessibilityLabel(L("%@ · %@", scope, title))
-        .accessibilityAddTraits(together == value ? [.isSelected] : [])
+        .accessibilityAddTraits(!isMixed && together == value ? [.isSelected] : [])
         .accessibilityIdentifier("\(identifier)-\(value ? "together" : "separate")")
     }
 }
@@ -76,7 +81,13 @@ private struct SoundEarColumnLayout: Layout {
 }
 
 enum SoundGroupingPreferences {
+    static let volumeKey = "groupedHearingAidControls"
     static let sectionKeys = ["groupedSpeechBoosterControls", "groupedProgramControls", "groupedEqualizerControls", "groupedStreamingControls", "groupedTinnitusControls"]
+    static func setAll(_ together: Bool, defaults: UserDefaults) {
+        // Intentionally run even if volume already has this value: a second
+        // press on Together must clear any later per-section overrides.
+        for key in [volumeKey] + sectionKeys { defaults.set(together, forKey: key) }
+    }
     static func migrate(defaults: UserDefaults) {
         let previous = defaults.object(forKey: "groupedHearingAidControls") as? Bool ?? true
         for key in sectionKeys where defaults.object(forKey: key) == nil { defaults.set(previous, forKey: key) }

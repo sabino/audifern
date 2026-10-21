@@ -96,3 +96,29 @@ import Testing
     #expect(!drafts.editChannels([left, right], microphone: true, channels: [4], value: 3))
     #expect(drafts[left.id, microphone: true] == expectedLeft && drafts[right.id, microphone: true] == expectedRight)
 }
+
+@MainActor @Test func separateEarDraftSurvivesTheOtherEarLoadingAndIsVisibleToGroupedApply() throws {
+    var left = AidConnection(id: UUID(), name: "Synthetic left", phase: .connected)
+    var right = AidConnection(id: UUID(), name: "Synthetic right", phase: .connected)
+    left.activeProgram = 0
+    left.microphoneEqualizer = try .init(rawSteps: .init(repeating: 0, count: 8),
+        minimumSteps: .init(repeating: -6, count: 8), maximumSteps: .init(repeating: 6, count: 8), stepDB: 1)
+    let drafts = EqualizerDraftStore()
+    drafts.reconcile([left.id: left, right.id: right])
+    #expect(drafts.editChannels([left], microphone: true, channels: [0], value: 2))
+    right.activeProgram = 0
+    right.microphoneEqualizer = left.microphoneEqualizer
+    drafts.reconcile([left.id: left, right.id: right])
+    #expect(drafts[left.id, microphone: true]?[0] == 2)
+    #expect(drafts[right.id, microphone: true] == nil)
+    #expect(drafts.hasChanges(for: [right, left], microphone: true))
+    #expect(!drafts.hasChanges(for: [right], microphone: true))
+    #expect(!drafts.hasChanges(for: [left, right], microphone: false))
+    #expect(drafts.editChannels([right], microphone: true, channels: [1], value: -1))
+    #expect(drafts[left.id, microphone: true]?[1] == 0)
+    #expect(drafts[right.id, microphone: true]?[0] == 0)
+    // Grouping does not replace either vector; only a touched band is mirrored.
+    #expect(drafts.editChannels([left, right], microphone: true, channels: [7], value: 1))
+    #expect(drafts[left.id, microphone: true]?[0] == 2)
+    #expect(drafts[right.id, microphone: true]?[1] == -1)
+}

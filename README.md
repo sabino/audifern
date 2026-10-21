@@ -33,8 +33,9 @@ preview controls cannot change hearing aids. See [capture details](docs/images/R
 
 The current development version also adds a configurable graphical menu-bar
 panel, desktop widgets, macOS 26 Control Center controls and searchable native
-Help. Each sound section uses the same Together/Separate selector, with independent
-choices for volume/mute, SpeechBooster and programs. Timestamped battery runtime
+Help. The top Together/Separate selector sets every sound section; individual sections
+can override it and show Custom grouping. EQ lives directly in Sound, with vertical
+faders for both ears side by side or one shared set. Timestamped battery runtime
 counts down locally between hourly device reads.
 [Together](docs/images/audifern-sound-together.png) · [Separate](docs/images/audifern-sound-separate.png) ·
 [Menu-bar panel](docs/images/audifern-menu-bar.png) · [Help](docs/images/audifern-help.png).
@@ -66,9 +67,8 @@ testing. See [connections and the handoff research](docs/connections.md).
 | **Hearing profile** | Review saved fitting data, manage audiograms, prepare a fitting plan one step at a time, and open backups or comparisons. |
 | **Settings** | Choose appearance and language, configure battery alerts, manage identifier visibility and open diagnostics. |
 
-Equalizers offer microphone, streaming and fitted tinnitus controls. Choose the
-left ear, right ear or both; switch from tone controls to eight individually
-reported bands without duplicating two cramped editors. Changes remain drafts
+Equalizers offer microphone, streaming and fitted tinnitus controls. Choose Together for one shared editor or Separate for both ears side by side;
+switch between three vertical tone faders and eight individually reported bands. Changes remain drafts
 until Apply. Unknown frequencies retain numbered device-order labels.
 
 Fitting planning uses five steps: About you, Hearing aids, Audiogram, Preferences

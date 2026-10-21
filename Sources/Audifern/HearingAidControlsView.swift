@@ -6,6 +6,10 @@ struct HearingAidControlsView: View {
     enum Mode { case sound, programs }
     @ObservedObject var store: BluetoothStore
     var mode: Mode = .sound
+    var embedded = false
+    var faderHeight: CGFloat = 144
+    @AppStorage("microphoneEqualizerDetailed") private var microphoneDetailed = false
+    @AppStorage("streamingEqualizerDetailed") private var streamingDetailed = false
     @EnvironmentObject private var preferences: AppPreferences
     @AppStorage("groupedEqualizerControls") private var grouped = true
     @AppStorage("groupedProgramControls") private var programsGrouped = true
@@ -36,14 +40,14 @@ struct HearingAidControlsView: View {
     private var canLink: Bool { aids.count == 2 && Set(aids.map(\.id)) == Set(store.connectedPair.map(\.id)) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: embedded ? 8 : 20) {
             if mode == .sound {
                 Picker(L("Sound source"), selection: $soundSection) {
                     ForEach(SoundSection.allCases) { Text($0.title).tag($0) }
-                }.pickerStyle(.segmented).font(AppType.body).accessibilityIdentifier("equalizer-source")
+                }.pickerStyle(.segmented).labelsHidden().font(AppType.body).accessibilityIdentifier("equalizer-source")
             }
-            Surface {
-                VStack(spacing: 22) {
+            controlsContainer {
+                VStack(spacing: embedded ? 8 : 22) {
                     if mode == .programs && aids.count == 2 {
                         EarSettingsRow { sideHeading(aids[0]) } center: { EmptyView() } right: { sideHeading(aids[1]) }
                     } else if mode == .programs, let aid = aids.first { sideHeading(aid) }
@@ -65,23 +69,21 @@ struct HearingAidControlsView: View {
                     } else {
                         switch soundSection {
                         case .microphone:
-                            PairedEqualizerView(store: store, aids: aids, microphone: true, linked: $grouped, canLink: canLink)
+                            PairedEqualizerView(store: store, aids: aids, microphone: true, linked: $grouped, canLink: canLink, compact: embedded, faderHeight: faderHeight, detailPreference: embedded ? $microphoneDetailed : nil)
                         case .streaming:
-                            PairedEqualizerView(store: store, aids: aids, microphone: false, linked: $streamingGrouped, canLink: canLink)
-                            Divider()
-                            AuxiliaryVolumeSectionView(store: store, aids: aids, source: .streaming, linked: $streamingGrouped)
+                            PairedEqualizerView(store: store, aids: aids, microphone: false, linked: $streamingGrouped, canLink: canLink, compact: embedded, faderHeight: faderHeight, detailPreference: embedded ? $streamingDetailed : nil)
+                            if !embedded {
+                                Divider()
+                                AuxiliaryVolumeSectionView(store: store, aids: aids, source: .streaming, linked: $streamingGrouped)
+                            }
                         case .tinnitus:
-                            VStack(alignment: .leading, spacing: 16) {
-                                Label(L("Tinnitus relief"), systemImage: "waveform.path").font(AppType.headline).foregroundStyle(.orange)
-                                Text(L("Tinnitus controls require a program already fitted for you. Reported ranges alone do not enable therapy."))
-                                    .font(AppType.callout).foregroundStyle(.secondary)
-                                AuxiliaryVolumeSectionView(store: store, aids: aids, source: .tinnitus, linked: $tinnitusGrouped)
-                            }.padding(18).background(Color.orange.opacity(0.055), in: RoundedRectangle(cornerRadius: 14))
+                            AuxiliaryVolumeSectionView(store: store, aids: aids, source: .tinnitus,
+                                                       linked: $tinnitusGrouped, compact: embedded)
                         }
                     }
                 }
             }
-            if mode == .sound {
+            if mode == .sound && !embedded {
                 Surface {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
@@ -102,10 +104,9 @@ struct HearingAidControlsView: View {
                     }
                 }
             }
-            if let status = store.linkedActionStatus {
-                Label(M(status), systemImage: store.linkedActionFailed ? "exclamationmark.circle" : "checkmark.circle")
-                    .font(AppType.caption).foregroundStyle(store.linkedActionFailed ? Color.orange : .secondary)
-            }
+            Text(store.linkedActionStatus.map(M) ?? L("EQ changes remain a draft until you choose Apply."))
+                .font(AppType.caption).foregroundStyle(store.linkedActionFailed ? Color.orange : .secondary)
+                .lineLimit(embedded ? 1 : 2).help(store.linkedActionStatus.map(M) ?? L("EQ changes remain a draft until you choose Apply.")).frame(maxWidth: .infinity, minHeight: embedded ? 18 : 34, maxHeight: embedded ? 18 : 34, alignment: .leading)
         }
         .alert(L("Restore sound defaults?"), isPresented: Binding(get: { restoreRequest != nil }, set: { if !$0 { restoreRequest = nil } }), presenting: restoreRequest) { request in
             Button(L("Restore defaults")) { store.restoreSoundDefaults(request.ids, scope: request.scope); restoreRequest = nil }
@@ -113,6 +114,10 @@ struct HearingAidControlsView: View {
         } message: { request in
             Text(L("%@. %@ Your fitted programs and audiogram are preserved.", request.target, L(request.scope.explanation)))
         }
+    }
+    @ViewBuilder private func controlsContainer<Content: View>(@ViewBuilder content: @escaping () -> Content) -> some View {
+        if embedded { content() }
+        else { Surface { content() } }
     }
     private func sideHeading(_ aid: AidConnection) -> some View {
         VStack(alignment: .leading, spacing: 7) {

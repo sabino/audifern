@@ -21,6 +21,9 @@ import Foundation
         get { source ? microphone[id] : streaming[id] }
         set { if source { microphone[id] = newValue } else { streaming[id] = newValue } }
     }
+    func hasChanges(for aids: [AidConnection], microphone source: Bool) -> Bool {
+        aids.contains { self[$0.id, microphone: source] != nil }
+    }
     func clear(microphone source: Bool) { if source { microphone.removeAll() } else { streaming.removeAll() } }
     func channelValues(for aid: AidConnection, microphone source: Bool) -> [Double]? {
         guard let equalizer = source ? aid.microphoneEqualizer : aid.streamingEqualizer else { return nil }

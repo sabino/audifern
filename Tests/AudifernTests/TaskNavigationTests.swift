@@ -27,7 +27,7 @@ import Testing
     navigation.show(.programs)
     #expect(navigation.page == .programs && !navigation.libraryPresets && navigation.sheet == nil)
     navigation.show(.sound)
-    #expect(navigation.page == .programs && navigation.sheet == .equalizers)
+    #expect(navigation.page == .hearingAids && navigation.sheet == nil && navigation.soundFocus != nil)
 }
 
 @Test func guidedPlanStepsHaveBoundedForwardAndBackNavigation() {

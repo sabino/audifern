@@ -1,13 +1,13 @@
 # Quick-access validation — 2026-10-21
 
-Local development build: **0.8.0 (12)**. This records the extent of verification;
+Local development build: **0.8.0 (13)**. This records the extent of verification;
 it is not a claim that a new public release has been published.
 
-- Swift: 165 app tests and 131 core tests passed; the XCTest suite ran 68 cases
+- Swift: 170 app tests and 131 core tests passed; the XCTest suite ran 68 cases
   with one optional case skipped and no failures.
 - Python: 64 tests passed, including strict extension payload checks and nested
   signing without unnecessary provisioning-profile entitlements.
-- Localization: 1,968 matching keys in English, Brazilian Portuguese and Spanish;
+- Localization: 1,985 matching keys in English, Brazilian Portuguese and Spanish;
   reference and format checks passed. All Help articles have translations.
 - Universal release build: the host and extension both contain arm64 and x86_64
   slices with a macOS 14 minimum. Both signatures and matching app groups passed
@@ -54,3 +54,31 @@ GPG signatures are retained as requested.
 - The final native preview showed the new filled faders and aligned sections.
   These are visual/interaction checks; no hearing-aid adjustment was issued by
   the preview.
+
+## Master grouping and bounded Sound workspace
+
+- The master Together/Separate selector updates all six grouping preferences,
+  including each EQ source. Re-selecting Together clears later section overrides;
+  Custom grouping is visible if a section overrides the master. No grouping or
+  layout action sends a hearing-aid command.
+- Sound uses a compact device strip and an inline EQ editor with vertical three-
+  or eight-band controls. Separate displays two editors simultaneously. Together
+  preserves per-ear differences until the user edits and chooses Apply. A draft
+  in either ear enables the shared Apply action; loading the other ear does not
+  clear it.
+- Layout rendering covered all three languages, Together/Separate, both EQ
+  sources and detail levels, compact/expanded device controls and tinnitus.
+  Short 740 × 700 point workspaces and 960 × 597 point device panels were reviewed.
+- A headless AppKit test checked the real native fader frames, both ear counts
+  and absence of NSScrollView at 740 × 700 in Portuguese. The capsule slider now
+  respects its proposed compact size instead of forcing a full-height control.
+- Native preview interaction checked three/six and eight/sixteen vertical EQ
+  faders, folding and restoring the editor, and all device-details tabs. No
+  scrollbars were exposed in those views. The existing window-manager layout
+  was preserved; short-window evidence comes from the headless checks above.
+- SpeechBooster and program/device access are explicit compact buttons. Advanced
+  discovery and diagnostic inventories remain available through their existing
+  tasks; the no-scroll change applies to everyday Sound and device information.
+- The two mailbox-expiry fixtures now use a fixed shared timestamp. Separate
+  clock reads could accidentally make their sample snapshot come from the
+  future; production freshness validation remains strict and unchanged.

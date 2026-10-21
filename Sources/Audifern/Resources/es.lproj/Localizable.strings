@@ -2004,3 +2004,24 @@
 "Each section has its own Together and Separate selector. The volume selector also applies to mute. Purple marks the SpeechBooster selector. Switching mode changes only future actions in that section; it never copies settings or sends a hearing-aid command." = "Cada sección tiene su propio selector Juntos y Separados. El selector de volumen también se aplica al silencio. El morado identifica el selector de SpeechBooster. Cambiar el modo solo afecta a las próximas acciones de esa sección; nunca copia ajustes ni envía comandos a los audífonos.";
 "In Sound, choose Find hearing aids, scan and select your devices. Device details are below each hearing aid. A Bluetooth control connection reads supported values and adjusts consumer controls. Audio streaming is managed separately by macOS." = "En Sonido, elija Buscar audífonos, busque y seleccione sus dispositivos. Los detalles están debajo de cada audífono. La conexión Bluetooth lee los valores disponibles y ajusta los controles de uso diario. La transmisión de audio se gestiona por separado en macOS.";
 "Automatic connection starts off. Connect your aids in Sound, then remember them in Connections. Nearby retry and wake/unlock attempts are optional. Pause persists until you resume or connect manually. This controls Audifern’s BLE link, not the operating system’s audio profile." = "La conexión automática empieza desactivada. Conecte los audífonos en Sonido y recuérdelos en Conexiones. Los intentos por proximidad y al despertar o desbloquear son opcionales. La pausa continúa hasta reanudar o conectar manualmente. Esto controla el enlace BLE de Audifern, no el perfil de audio del sistema.";
+
+/* Master grouping and inline equalizers. */
+"Custom grouping" = "Agrupación personalizada";
+"Sets Together or Separate for every sound section. Section selectors can override it. Changing mode sends no device command." = "Establece Juntos o Separados para todas las secciones de sonido. Los selectores de cada sección pueden cambiar esa elección. Cambiar el modo no envía comandos a los audífonos.";
+"EQ changes remain a draft until you choose Apply." = "Los cambios de EQ quedan como borrador hasta que elija Aplicar.";
+"More sound controls…" = "Más controles de sonido…";
+"Mixed" = "Distintos";
+"%@ · %@ dB" = "%@ · %@ dB";
+"≠ means the ears differ. Together keeps existing settings until you edit and Apply." = "≠ indica valores distintos entre los oídos. Juntos conserva los ajustes actuales hasta editar y Aplicar.";
+"The top selector sets Together or Separate for every sound section, including EQ. A section selector can override that choice; the master then shows Custom grouping. Switching modes never copies settings or sends a hearing-aid command." = "El selector superior establece Juntos o Separados para todas las secciones de sonido, incluido el EQ. Un selector de sección puede cambiar esa elección; el principal muestra Agrupación personalizada. Cambiar el modo nunca copia ajustes ni envía comandos a los audífonos.";
+"In Sound, choose the Microphone EQ tab. Tone controls show three vertical faders; 8 bands uses the device-reported layout. Separate shows both ears side by side, while Together shows one set. Changes remain drafts until Apply. A ≠ marker means the ears currently differ." = "En Sonido, elija la pestaña Micrófono del EQ. Controles de tono muestra tres deslizadores verticales; 8 bandas usa la disposición informada por los audífonos. Separados muestra ambos oídos lado a lado; Juntos muestra un conjunto. Los cambios quedan como borrador hasta Aplicar. El símbolo ≠ indica valores distintos entre los oídos.";
+"In Sound, choose the Streaming EQ tab to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Streaming-source volume is a different control under More sound controls." = "En Sonido, elija la pestaña Streaming del EQ para ajustar graves, medios y agudos u ocho canales del audífono. Separados muestra ambos oídos sin cambiar de pestaña. Aplicar confirma los cambios solicitados. El volumen de la fuente de streaming es otro control en Más controles de sonido.";
+
+/* Compact Sound workspace */
+"Diagnostics…" = "Diagnóstico…";
+"Microphone, streaming and tinnitus controls" = "Controles de micrófono, transmisión y acúfenos";
+"Edit equalizers" = "Editar ecualizadores";
+"Refresh %@ EQ" = "Actualizar EQ %@";
+"Expand volume controls" = "Ampliar controles de volumen";
+"Compact volume controls" = "Reducir controles de volumen";
+"Details…" = "Detalles…";

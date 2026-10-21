@@ -45,19 +45,21 @@ final class AppNavigation: ObservableObject {
     @Published var sheet: AppSheet?
     @Published var sheetPath: [AppSheet] = []
     @Published var libraryPresets = false
+    @Published var soundFocus: UUID?
     @Published var fittingStep: FittingPlanStep = .aboutYou
     @Published var presetNameDraft = ""
 
     func show(_ page: AppPage) {
         switch page {
-        case .sound: present(.equalizers)
+        case .sound: closeSheet(); self.page = .hearingAids; soundFocus = UUID()
+        case .hearingAids: closeSheet(); self.page = .hearingAids; soundFocus = nil
         case .presets: closeSheet(); libraryPresets = true; self.page = .programs
         case .programs: closeSheet(); libraryPresets = false; self.page = .programs
         case .backups: present(.backups)
         case .audiogram: present(.audiograms)
         case .settings: present(.settings)
         case .developer: present(.diagnostics)
-        case .devices: self.page = .hearingAids; present(.nearbyDevices)
+        case .devices: self.page = .hearingAids; soundFocus = nil; present(.nearbyDevices)
         default: closeSheet(); self.page = page
         }
     }

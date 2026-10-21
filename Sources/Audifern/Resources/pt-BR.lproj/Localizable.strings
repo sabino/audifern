@@ -2004,3 +2004,24 @@
 "Each section has its own Together and Separate selector. The volume selector also applies to mute. Purple marks the SpeechBooster selector. Switching mode changes only future actions in that section; it never copies settings or sends a hearing-aid command." = "Cada seção tem seu próprio seletor Juntos e Separados. O seletor de volume também se aplica ao silêncio. O roxo identifica o seletor do SpeechBooster. Mudar o modo altera apenas as próximas ações dessa seção; nunca copia ajustes nem envia comandos aos aparelhos.";
 "In Sound, choose Find hearing aids, scan and select your devices. Device details are below each hearing aid. A Bluetooth control connection reads supported values and adjusts consumer controls. Audio streaming is managed separately by macOS." = "Em Som, escolha Encontrar aparelhos auditivos, busque e selecione seus dispositivos. Os detalhes ficam abaixo de cada aparelho. A conexão Bluetooth lê os valores disponíveis e ajusta os controles de uso diário. A transmissão de áudio é gerenciada separadamente pelo macOS.";
 "Automatic connection starts off. Connect your aids in Sound, then remember them in Connections. Nearby retry and wake/unlock attempts are optional. Pause persists until you resume or connect manually. This controls Audifern’s BLE link, not the operating system’s audio profile." = "A conexão automática começa desativada. Conecte os aparelhos em Som e memorize-os em Conexões. As tentativas por proximidade e ao despertar ou desbloquear são opcionais. A pausa dura até você retomar ou conectar manualmente. Isso controla o vínculo BLE do Audifern, não o perfil de áudio do sistema.";
+
+/* Master grouping and inline equalizers. */
+"Custom grouping" = "Agrupamento personalizado";
+"Sets Together or Separate for every sound section. Section selectors can override it. Changing mode sends no device command." = "Define Juntos ou Separados para todas as seções de som. Os seletores de cada seção podem substituir essa escolha. Mudar o modo não envia comandos aos aparelhos.";
+"EQ changes remain a draft until you choose Apply." = "As alterações de EQ ficam como rascunho até você escolher Aplicar.";
+"More sound controls…" = "Mais controles de som…";
+"Mixed" = "Diferentes";
+"%@ · %@ dB" = "%@ · %@ dB";
+"≠ means the ears differ. Together keeps existing settings until you edit and Apply." = "≠ indica valores diferentes entre os ouvidos. Juntos preserva os ajustes atuais até você editar e Aplicar.";
+"The top selector sets Together or Separate for every sound section, including EQ. A section selector can override that choice; the master then shows Custom grouping. Switching modes never copies settings or sends a hearing-aid command." = "O seletor superior define Juntos ou Separados para todas as seções de som, incluindo o EQ. Um seletor de seção pode substituir essa escolha; o seletor principal passa a mostrar Agrupamento personalizado. Mudar o modo nunca copia ajustes nem envia comandos aos aparelhos.";
+"In Sound, choose the Microphone EQ tab. Tone controls show three vertical faders; 8 bands uses the device-reported layout. Separate shows both ears side by side, while Together shows one set. Changes remain drafts until Apply. A ≠ marker means the ears currently differ." = "Em Som, escolha a aba Microfone do EQ. Controles de tom mostra três controles verticais; 8 bandas usa a disposição informada pelos aparelhos. Separados mostra os dois ouvidos lado a lado; Juntos mostra um conjunto. As alterações ficam como rascunho até Aplicar. O símbolo ≠ indica valores diferentes entre os ouvidos.";
+"In Sound, choose the Streaming EQ tab to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Streaming-source volume is a different control under More sound controls." = "Em Som, escolha a aba Streaming do EQ para ajustar graves, médios e agudos ou oito canais do aparelho. Separados mostra os dois ouvidos sem alternar abas. Aplicar confirma as alterações solicitadas. O volume da fonte de streaming é um controle diferente em Mais controles de som.";
+
+/* Compact Sound workspace */
+"Diagnostics…" = "Diagnósticos…";
+"Microphone, streaming and tinnitus controls" = "Controles de microfone, streaming e zumbido";
+"Edit equalizers" = "Editar equalizadores";
+"Refresh %@ EQ" = "Atualizar EQ %@";
+"Expand volume controls" = "Expandir controles de volume";
+"Compact volume controls" = "Recolher controles de volume";
+"Details…" = "Detalhes…";

@@ -104,7 +104,7 @@ struct AppTaskSheet: View {
         case .fittingReference:
             FittingWorkspaceView(store: store, audiograms: audiograms, draft: $workspace.draft,
                 saveDraft: {}, loadDraft: {}, referenceOnly: true)
-        case .device(let id): DeviceExplorerView(store: store, targetID: id)
+        case .device(let id): DeviceInformationPanel(store: store, id: id)
         case .nearbyDevices: DevicesPageView(store: store)
         case nil: EmptyView()
         }

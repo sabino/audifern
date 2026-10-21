@@ -44,3 +44,32 @@ import Testing
     help.openFeature("getting-started")
     #expect(navigation.page == .hearingAids && navigation.sheet == .nearbyDevices)
 }
+
+@MainActor @Test func masterGroupingReappliesToEverySectionEvenWhenVolumeWasAlreadyTogether() {
+    let suite = "org.audifern.tests.master-grouping-" + UUID().uuidString
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let preferences = AppPreferences(defaults: defaults)
+    SoundGroupingPreferences.setAll(true, defaults: defaults)
+    defaults.set(false, forKey: "groupedEqualizerControls")
+    defaults.set(false, forKey: "groupedSpeechBoosterControls")
+    preferences.groupAllSoundControls(true)
+    #expect(([SoundGroupingPreferences.volumeKey] + SoundGroupingPreferences.sectionKeys).allSatisfy { defaults.bool(forKey: $0) })
+    preferences.groupAllSoundControls(false)
+    #expect(([SoundGroupingPreferences.volumeKey] + SoundGroupingPreferences.sectionKeys).allSatisfy { !defaults.bool(forKey: $0) })
+    defaults.set(true, forKey: "groupedStreamingControls")
+    #expect(!defaults.bool(forKey: "groupedHearingAidControls"))
+    #expect(!defaults.bool(forKey: "groupedEqualizerControls"))
+    #expect(defaults.bool(forKey: "groupedStreamingControls"))
+}
+
+@MainActor @Test func equalizerNavigationFocusesTheInlineCardAndCanBeRequestedAgain() {
+    let navigation = AppNavigation()
+    navigation.show(.sound)
+    let first = navigation.soundFocus
+    #expect(navigation.page == .hearingAids && navigation.sheet == nil && first != nil)
+    navigation.show(.sound)
+    #expect(navigation.soundFocus != first)
+    navigation.show(.hearingAids)
+    #expect(navigation.soundFocus == nil)
+}

@@ -28,7 +28,7 @@ private func quickState(date: Date, left: Int = 0, right: Int = 2) -> QuickAcces
 @Test func quickMailboxClaimsOnceAndNeverReplaysAcrossRestart() throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }
-    let storage = QuickAccessStorage(container: directory), now = Date(), state = quickState(date: Date())
+    let storage = QuickAccessStorage(container: directory), now = Date(timeIntervalSince1970: 100_000), state = quickState(date: Date(timeIntervalSince1970: 100_000))
     try storage.save(state)
     let command = QuickCommand(session: state.session, createdAt: now, kind: .mute, flag: true)
     try storage.enqueue(command, now: now)
@@ -44,7 +44,7 @@ private func quickState(date: Date, left: Int = 0, right: Int = 2) -> QuickAcces
 @Test func staleMailboxActionsAreRemovedAndSymlinksCannotSupplyCommands() throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }
-    let storage = QuickAccessStorage(container: directory), now = Date(), state = quickState(date: Date())
+    let storage = QuickAccessStorage(container: directory), now = Date(timeIntervalSince1970: 100_000), state = quickState(date: Date(timeIntervalSince1970: 100_000))
     try storage.save(state)
     let command = QuickCommand(session: state.session, createdAt: now, kind: .mute, flag: false)
     try storage.enqueue(command, now: now)

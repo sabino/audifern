@@ -15,6 +15,7 @@ struct AuxiliaryVolumeSectionView: View {
     let aids: [AidConnection]
     let source: Source
     @Binding var linked: Bool
+    var compact = false
 
     private var linkAvailable: Bool {
         aids.count == 2 && Set(aids.map(\.id)) == Set(store.connectedPair.map(\.id))
@@ -49,8 +50,8 @@ struct AuxiliaryVolumeSectionView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Label(L(source.title), systemImage: source.symbol).font(AppType.headline).foregroundStyle(source.tint)
+        VStack(alignment: .leading, spacing: compact ? 8 : 16) {
+            if !compact { Label(L(source.title), systemImage: source.symbol).font(AppType.headline).foregroundStyle(source.tint) }
             if aids.count == 2 {
                 EarControlModePicker(together: $linked, available: linkAvailable, accent: source.tint, scope: L(source.title),
                                      identifier: source == .tinnitus ? "link-tinnitus-volume" : "link-streaming-volume")
@@ -68,14 +69,14 @@ struct AuxiliaryVolumeSectionView: View {
             }
             if source == .tinnitus {
                 Label(L("This adjusts the tinnitus relief sound, separately from microphone and streaming volume. Use only a program fitted for you and follow your hearing care professional’s level and daily-use limits. A reported range does not enable tinnitus therapy."), systemImage: "info.circle")
-                    .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Link("Oticon’s Tinnitus SoundSupport guidance", destination: URL(string: "https://www.oticon.com/support/oticon-app/help-with-the-oticon-app/how-to-use-tinnitus-soundsupport-program")!)
+                    .font(compact ? AppType.small : AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Link(L("Oticon’s Tinnitus SoundSupport guidance"), destination: URL(string: "https://www.oticon.com/support/oticon-app/help-with-the-oticon-app/how-to-use-tinnitus-soundsupport-program")!)
                     .font(AppType.caption)
             } else {
                 Text(L("The dedicated streaming-source gain is available in TV or generic-streamer programs. It is separate from streamed-audio EQ and your Mac’s media volume."))
                     .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-        }.padding(16).tint(source.tint)
+        }.padding(compact ? 12 : 16).tint(source.tint)
             .background(source.tint.opacity(source == .tinnitus ? 0.08 : 0.04), in: RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(source.tint.opacity(source == .tinnitus ? 0.22 : 0.1)))
             .accessibilityElement(children: .contain)
@@ -83,15 +84,15 @@ struct AuxiliaryVolumeSectionView: View {
     }
 
     private func cell(_ aid: AidConnection, showButtons: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: compact ? 6 : 10) {
             HStack {
                 Text(L(aid.sideLabel)).font(AppType.callout.weight(.medium))
                 Spacer()
-                Text(volume(aid).map { "\($0.level > 0 ? "+" : "")\($0.level) · \($0.muted ? "Muted" : "Unmuted")" } ?? "Not read")
+                Text(volume(aid).map { "\($0.level > 0 ? "+" : "")\($0.level) · \($0.muted ? L("Muted") : L("Unmuted"))" } ?? "Not read")
                     .font(AppType.callout.monospacedDigit())
                     .accessibilityIdentifier("\(source == .tinnitus ? "tinnitus" : "streaming")-\(aid.sideLabel.lowercased())-volume")
             }
-            if let bounds = range(aid) {
+            if !compact, let bounds = range(aid) {
                 Text(L("Reported range: %@…%@ device steps", String(describing: bounds.lowerBound), String(describing: bounds.upperBound)))
                     .font(AppType.caption).foregroundStyle(.secondary)
             }
@@ -112,7 +113,7 @@ struct AuxiliaryVolumeSectionView: View {
             }
             let status = source == .tinnitus ? aid.tinnitusStatus : aid.streamingVolumeStatus
             let failed = source == .tinnitus ? aid.tinnitusStatusFailed : aid.streamingVolumeStatusFailed
-            if let status { Text(M(status)).font(AppType.caption).foregroundStyle(failed ? Color.orange : Color.secondary).textSelection(.enabled) }
+            if let status { Text(M(status)).font(AppType.caption).foregroundStyle(failed ? Color.orange : Color.secondary).lineLimit(compact ? 2 : nil).help(M(status)).textSelection(.enabled) }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private func canRead(_ aid: AidConnection) -> Bool {

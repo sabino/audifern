@@ -6,6 +6,7 @@ struct AidBatteryView: View {
     @ObservedObject var store: BluetoothStore
     let aid: AidConnection
     var compact = false
+    var compactWidth: CGFloat = 142
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
@@ -29,7 +30,7 @@ struct AidBatteryView: View {
                 }
                 Text(runtimeLabel(reading, at: context.date))
                     .font(AppType.caption.monospacedDigit()).foregroundStyle(.secondary)
-                    .lineLimit(1).frame(width: compact ? 142 : 185, height: 18, alignment: .trailing)
+                    .lineLimit(1).frame(width: compact ? compactWidth : 185, height: 18, alignment: .trailing)
                     .accessibilityIdentifier("battery-\(aid.sideLabel.lowercased())-time")
                     .help(runtimeHelp(reading))
             }.frame(minHeight: 49).transaction { $0.animation = nil }

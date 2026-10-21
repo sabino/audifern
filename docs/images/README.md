@@ -59,3 +59,9 @@ size. No settings scroll view is used. Native sheet transitions were checked at
 Device and runtime Help topics now route to Sound, where their controls and
 device-detail buttons live. The earlier Help-search capture described above
 predates that navigation consolidation.
+
+The Sound captures were refreshed again for **0.8.0 (13)**: the compact device
+strip gives most of the workspace to the inline EQ. `audifern-eq-eight-bands.png`
+shows both eight-band editors at once. `audifern-device-details.png` shows the
+fixed device-information panel's Diagnostics tab. These are native captures of
+the isolated demo app. No actual device information or sound commands were used.

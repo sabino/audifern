@@ -40,7 +40,8 @@ struct NativeVolumeSlider: NSViewRepresentable {
     }
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: ReleaseVolumeSlider, context: Context) -> CGSize? {
-        style == .capsule ? CGSize(width: 52, height: 174) : nil
+        guard style == .capsule else { return nil }
+        return CGSize(width: max(28, proposal.width ?? 52), height: max(72, proposal.height ?? 174))
     }
 
     @MainActor final class Coordinator: NSObject {

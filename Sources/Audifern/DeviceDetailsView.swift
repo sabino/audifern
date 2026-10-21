@@ -6,7 +6,7 @@ struct DeviceDetailsView: View {
     let aid: AidConnection
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 14) {
             Label(L("Device information"), systemImage: "info.circle").font(AppType.callout.weight(.medium))
             field(L("Manufacturer"), value: aid.manufacturer, identifier: "manufacturer")
             field(L("Model"), value: aid.model, identifier: "model")
@@ -25,11 +25,13 @@ struct DeviceDetailsView: View {
                     .disabled(!aid.isConnected || aid.actionPending || aid.advancedBusy || aid.groupActionPending || store.isDemo)
                     .accessibilityLabel(L("Read %@ device details", L(aid.sideLabel)))
             }
-        }.font(AppType.caption).textSelection(.enabled)
+        }.font(AppType.callout).textSelection(.enabled)
     }
 
     private func field(_ label: String, value: String?, identifier: String) -> some View {
-        LabeledContent(L(label)) {
+        HStack(spacing: 20) {
+            Text(L(label)).foregroundStyle(.secondary)
+            Spacer(minLength: 0)
             Text(value ?? "—").monospaced().foregroundStyle(value == nil ? Color.secondary : Color.primary)
                 .accessibilityIdentifier("device-\(aid.sideLabel.lowercased())-\(identifier)")
         }
