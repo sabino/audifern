@@ -7,16 +7,25 @@ reopen the window from the Dock. Quit ends app-owned connections.
 
 ## Together and Separate
 
-Together groups supported **future changes** to volume, mute, SpeechBooster,
-programs, microphone EQ, streaming EQ and additional consumer levels. Separate
-exposes independent ear controls. The mode is shared between the main window and
-menu-bar panel. Switching modes sends no device command and copies no settings.
+Each sound section uses the same **Together / Separate** selector. The centered
+selector above the faders groups volume and mute; the purple SpeechBooster
+selector affects only SpeechBooster. Programs, microphone EQ, streaming and
+tinnitus controls keep their own selection. These preferences are shared with
+the matching menu-bar controls. Existing grouping preferences are migrated once,
+and later section choices stay independent. Switching modes sends no device
+command and copies no settings.
 Grouped volume preserves the difference between the current left/right levels;
 it stops at either ear's reported limit. Program changes require matching fitted
 program IDs and names. Unsupported controls stay unavailable.
 
-The main sound card keeps each device in place while faders merge into a central
-control. Reduced Motion disables that animation. Level values, mute switches,
+Sound includes connection actions and per-ear device details; Find hearing aids
+opens nearby discovery in the existing attached sheet. The separate Devices
+sidebar destination is no longer needed. Legacy feature links still open discovery.
+
+The main sound card keeps each device and its centered mode selector in place
+while faders merge into a central control. The filled vertical faders use native
+AppKit tracking and accessibility over Liquid Glass on macOS 26+, with a solid
+fallback on older systems or when Reduce Transparency is enabled. Reduced Motion disables that animation. Level values, mute switches,
 runtime text, refresh indicators and action feedback have reserved space so
 ordinary readback does not move neighboring controls.
 

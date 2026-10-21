@@ -11,8 +11,8 @@ struct QuickAccessSettingsView: View {
                 Text(L("Widgets and Control Center")).tag(1)
             }.pickerStyle(.segmented).labelsHidden()
             if section == 0 {
-                Surface {
-                    VStack(alignment: .leading, spacing: 17) {
+                Surface(insets: 18) {
+                    VStack(alignment: .leading, spacing: 16) {
                         Toggle(L("Show Audifern in the menu bar"), isOn: $preferences.showMenuBar).toggleStyle(.switch)
                             .accessibilityIdentifier("show-menu-bar")
                         Picker(L("Menu-bar label"), selection: $preferences.menuBarLabel) {
@@ -20,17 +20,27 @@ struct QuickAccessSettingsView: View {
                             Text(L("Lowest battery")).tag("minimum")
                             Text(L("Both batteries")).tag("both")
                         }
-                        Toggle(L("Expanded sound controls"), isOn: $preferences.menuBarExpanded)
-                        Divider()
-                        Toggle(L("Device images"), isOn: $preferences.menuBarArtwork)
-                        Toggle(L("Estimated time remaining"), isOn: $preferences.menuBarTime)
-                        Toggle(L("Volume, mute and SpeechBooster"), isOn: $preferences.menuBarSound)
-                        Toggle(L("Listening program"), isOn: $preferences.menuBarPrograms)
-                        Toggle(L("Mac audio output"), isOn: $preferences.menuBarAudio)
+                        Toggle(L("Expanded sound controls"), isOn: $preferences.menuBarExpanded).toggleStyle(.switch)
+                    }
+                }
+                Surface(insets: 18) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(L("Show in the menu panel")).font(AppType.headline)
+                        HStack(alignment: .top, spacing: 24) {
+                            VStack(alignment: .leading, spacing: 16) {
+                                Toggle(L("Device images"), isOn: $preferences.menuBarArtwork)
+                                Toggle(L("Estimated time remaining"), isOn: $preferences.menuBarTime)
+                                Toggle(L("Volume, mute and SpeechBooster"), isOn: $preferences.menuBarSound)
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 16) {
+                                Toggle(L("Listening program"), isOn: $preferences.menuBarPrograms)
+                                Toggle(L("Mac audio output"), isOn: $preferences.menuBarAudio)
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                        }.toggleStyle(.checkbox).font(AppType.callout)
                     }
                 }
                 Text(L("Hiding the menu-bar item keeps Audifern running. Reopen its window from the Dock, or quit the app to stop its connections."))
-                    .font(AppType.caption).foregroundStyle(.secondary)
+                    .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             } else {
                 Surface {
                     VStack(alignment: .leading, spacing: 18) {

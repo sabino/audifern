@@ -7,6 +7,8 @@ struct MenuBarPanel: View {
     var didChangeLayout: (() -> Void)? = nil
     @EnvironmentObject private var preferences: AppPreferences
     @AppStorage("groupedHearingAidControls") private var together = true
+    @AppStorage("groupedSpeechBoosterControls") private var speechTogether = true
+    @AppStorage("groupedProgramControls") private var programsTogether = true
     private var aids: [AidConnection] { store.orderedConnections.filter { ["Left", "Right"].contains($0.sideLabel) }.sorted { $0.sideLabel < $1.sideLabel } }
     var body: some View {
         VStack(spacing: 12) {
@@ -34,7 +36,7 @@ struct MenuBarPanel: View {
             if preferences.menuBarPrograms, let first = aids.first {
                 panel {
                     HStack(spacing: 14) {
-                        if together {
+                        if programsTogether {
                             ProgramSelectionView(store: store, aid: first, targetIDs: aids.map(\.id), compact: true)
                         } else {
                             ForEach(aids) { aid in ProgramSelectionView(store: store, aid: aid, targetIDs: [aid.id], compact: true) }
@@ -74,6 +76,8 @@ struct MenuBarPanel: View {
             .accessibilityIdentifier("menu-bar-panel")
             .onAppear { automation.refreshAudio() }
             .onChange(of: together) { _, _ in didChangeLayout?() }
+            .onChange(of: speechTogether) { _, _ in didChangeLayout?() }
+            .onChange(of: programsTogether) { _, _ in didChangeLayout?() }
     }
     private func panel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content().padding(13).frame(maxWidth: .infinity).background(Brand.surface.opacity(0.85), in: RoundedRectangle(cornerRadius: 15))
@@ -95,8 +99,8 @@ struct MenuBarPanel: View {
                 HStack {
                     Text(L("Volume")).font(AppType.callout.weight(.semibold))
                     Spacer()
-                    Button { together.toggle() } label: { Label(together ? L("Together") : L("Separate"), systemImage: together ? "link" : "ear") }
-                        .buttonStyle(.plain).font(AppType.caption).foregroundStyle(Brand.accent).frame(width: 108)
+                    EarControlModePicker(together: $together, available: aids.count == 2,
+                                         scope: L("Volume and mute"), identifier: "menu-volume-mode")
                 }
                 if let first = aids.first {
                     if together || aids.count == 1 {
@@ -117,7 +121,9 @@ struct MenuBarPanel: View {
                         }
                     }
                     Divider()
-                    if together {
+                    EarControlModePicker(together: $speechTogether, available: aids.count == 2, accent: .purple,
+                                         scope: L("SpeechBooster"), identifier: "menu-speech-mode")
+                    if speechTogether {
                         Toggle(L("SpeechBooster"), isOn: Binding(get: { !aids.isEmpty && aids.allSatisfy { $0.speechBoosterEnabled == true } },
                             set: { store.setSpeechBoosters(aids.map(\.id), enabled: $0) }))
                             .toggleStyle(.switch).font(AppType.callout)

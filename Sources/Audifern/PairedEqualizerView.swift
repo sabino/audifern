@@ -13,7 +13,6 @@ struct PairedEqualizerView: View {
     @State private var resetIDs: [UUID] = []
     @State private var detailed: Bool
     @State private var selectedID: UUID?
-    private enum Target: Hashable { case left, both, right }
     private var appliesToBoth: Bool { linked && aids.count == 2 }
     private var selectedAid: AidConnection? { aids.first { $0.id == selectedID } ?? aids.first }
 
@@ -86,17 +85,14 @@ struct PairedEqualizerView: View {
                     .accessibilityIdentifier("\(source)-eq-detail")
             }
             if aids.count == 2 {
-                Picker(L("Adjust"), selection: Binding(get: {
-                    appliesToBoth ? Target.both : selectedAid?.id == aids.last?.id ? .right : .left
-                }, set: { target in
-                    linked = target == .both
-                    if target == .left { selectedID = aids[0].id }
-                    if target == .right { selectedID = aids[1].id }
-                })) {
-                    Text(L(aids[0].sideLabel)).tag(Target.left)
-                    Text(L("Both ears")).tag(Target.both).disabled(!canLink || frequencyLayoutsConflict)
-                    Text(L(aids[1].sideLabel)).tag(Target.right)
-                }.pickerStyle(.segmented).font(AppType.body).accessibilityIdentifier("\(source)-eq-target")
+                EarControlModePicker(together: $linked, available: canLink && !frequencyLayoutsConflict,
+                                     scope: L(title), identifier: "\(source)-eq-mode")
+                    .frame(maxWidth: .infinity)
+                if !appliesToBoth {
+                    Picker(L("Adjust"), selection: Binding(get: { selectedAid?.id ?? aids[0].id }, set: { selectedID = $0 })) {
+                        ForEach(aids) { Text(L($0.sideLabel)).tag($0.id) }
+                    }.pickerStyle(.segmented).accessibilityIdentifier("\(source)-eq-target")
+                }
             }
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(requestedAids) { aid in loadingStatus(aid) }

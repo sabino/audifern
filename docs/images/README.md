@@ -34,8 +34,10 @@ the interface, not physical interoperability or complete clinical fitting.
 
 The 0.8.0 quick-access captures also use the isolated `--demo` application:
 
-- `audifern-sound-together.png` and `audifern-sound-separate.png`: the shared
-  control mode, original device illustrations and stable level/runtime fields.
+- `audifern-sound-together.png` and `audifern-sound-separate.png`: fixed central
+  volume selector, filled glass-style faders, original device illustrations and
+  aligned per-section controls. SpeechBooster and programs can remain Separate
+  while volume is Together.
 - `audifern-menu-bar.png`: the native AppKit popover with SwiftUI sound controls.
 - `audifern-help.png`: searching Battery in the attached Help sheet.
 
@@ -44,3 +46,16 @@ returned Settings → Battery alerts and Devices → Battery time remaining. Ope
 Battery alerts from Help reached that exact settings pane. The desktop gallery
 listed three battery sizes and two sound-control sizes. These gallery checks do
 not establish physical hearing-aid behavior for every widget/control action.
+
+The Sound captures were refreshed for **0.8.0 (12)**, together with
+`audifern-settings-battery.png` and `audifern-settings-privacy.png`. The two
+settings captures followed real pointer clicks on the blank right-hand area of
+each sidebar row, rather than accessibility presses on its text. All settings
+categories and connection/quick-access tabs were additionally rendered in
+English, Brazilian Portuguese and Spanish at the minimum 1020 × 637 content
+size. No settings scroll view is used. Native sheet transitions were checked at
+1060 × 740 and 1240 × 960 main-window sizes without frame changes.
+
+Device and runtime Help topics now route to Sound, where their controls and
+device-detail buttons live. The earlier Help-search capture described above
+predates that navigation consolidation.

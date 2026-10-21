@@ -6,74 +6,74 @@ struct PairedSoundCard: View {
     let left: AidConnection
     let right: AidConnection
     @Binding var together: Bool
+    @EnvironmentObject private var navigation: AppNavigation
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var faders
     private var pair: [AidConnection] { [left, right] }
 
     var body: some View {
-        Surface {
-            VStack(spacing: 14) {
-                HStack {
-                    Label(together ? L("Together") : L("Separate"), systemImage: together ? "link" : "ear")
-                        .font(AppType.callout.weight(.semibold)).foregroundStyle(together ? Brand.accent : .secondary)
-                        .frame(width: 120, alignment: .leading)
-                    Spacer()
-                    Picker(L("Control mode"), selection: $together) {
-                        Text(L("Together")).tag(true)
-                        Text(L("Separate")).tag(false)
-                    }.pickerStyle(.segmented).labelsHidden().frame(width: 258)
-                        .accessibilityIdentifier("ear-control-mode")
+        Surface(insets: 20) {
+            VStack(spacing: 8) {
+                ZStack {
+                    SoundEarColumns { earHeading(left) } center: { Color.clear.frame(height: 54) } right: { earHeading(right) }
+                    EarControlModePicker(together: $together, available: store.connectedPair.count == 2,
+                                         scope: L("Volume and mute"), identifier: "ear-control-mode")
                 }
-                Text(together ? L("Changes apply to both ears. Your current balance is preserved.") : L("Adjust each hearing aid independently."))
-                    .font(AppType.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
-                HStack(alignment: .top, spacing: 8) {
-                    ear(left, trailingFader: true)
-                    VStack(spacing: 8) {
-                        Spacer().frame(height: 48)
-                        if together {
-                            VolumeFader(store: store, aid: left, targets: pair)
-                                .matchedGeometryEffect(id: "left-fader", in: faders)
-                        } else { Color.clear.frame(width: 36, height: 180) }
-                        VolumeLevelButtons(store: store, aid: left, targets: pair)
-                            .opacity(together ? 1 : 0).allowsHitTesting(together).accessibilityHidden(!together)
-                        StableMuteToggle(store: store, targets: pair)
-                            .opacity(together ? 1 : 0).allowsHitTesting(together).accessibilityHidden(!together)
-                    }.frame(width: 160)
-                    ear(right, trailingFader: false)
-                }
-                Text(store.linkedActionStatus.map(M) ?? (together ? L("Together also applies to programs, SpeechBooster and equalizers.") : L("Choose Together to group all supported sound controls.")))
+                ZStack {
+                    SoundEarColumns { HearingAidArtwork() } center: { Color.clear } right: { HearingAidArtwork(right: true) }
+                    HStack(spacing: 44) {
+                        VolumeFader(store: store, aid: left, targets: together ? pair : [left])
+                            .matchedGeometryEffect(id: "left-fader", in: faders)
+                        if !together {
+                            VolumeFader(store: store, aid: right, targets: [right])
+                                .matchedGeometryEffect(id: "right-fader", in: faders)
+                                .transition(.opacity)
+                        }
+                    }
+                }.frame(height: 180)
+                ZStack {
+                    SoundEarColumns { level(left) } center: { Color.clear } right: { level(right) }
+                    if together { VolumeLevelButtons(store: store, aid: left, targets: pair) }
+                }.frame(height: 55)
+                ZStack {
+                    SoundEarColumns { mute(left) } center: { Color.clear } right: { mute(right) }
+                    if together { StableMuteToggle(store: store, targets: pair) }
+                }.frame(height: 32)
+                SoundEarColumns { deviceFooter(left) } center: { EmptyView() } right: { deviceFooter(right) }
+                Text(store.linkedActionStatus.map(M) ?? (together ? L("Volume and mute change together. Your balance is preserved.") : L("Adjust each hearing aid independently.")))
                     .font(AppType.caption).foregroundStyle(store.linkedActionFailed ? Color.orange : .secondary)
-                    .lineLimit(2).frame(maxWidth: .infinity, minHeight: 34, maxHeight: 34)
+                    .multilineTextAlignment(.center).lineLimit(2)
+                    .frame(maxWidth: .infinity, minHeight: 34, maxHeight: 34)
                     .accessibilityIdentifier("sound-change-status")
-            }
+                }
         }.animation(reduceMotion ? nil : .smooth(duration: 0.28), value: together)
     }
-    private func ear(_ aid: AidConnection, trailingFader: Bool) -> some View {
-        VStack(spacing: 8) {
-            VStack(spacing: 5) {
-                HStack(spacing: 7) {
-                    Circle().fill(aid.isConnected ? Brand.accent : Color.secondary).frame(width: 6, height: 6)
-                    Text(L(aid.sideLabel)).font(AppType.subheading.weight(.semibold))
-                }
+    private func earHeading(_ aid: AidConnection) -> some View {
+        VStack(spacing: 5) {
+            Text(L(aid.sideLabel)).font(AppType.subheading.weight(.semibold))
+            HStack(spacing: 6) {
+                Circle().fill(aid.isConnected ? Brand.accent : Color.secondary).frame(width: 6, height: 6)
                 Text(aid.model ?? L("Hearing aid")).font(AppType.caption).foregroundStyle(.secondary).lineLimit(1)
-            }.frame(height: 48)
-            ZStack {
-                HearingAidArtwork(right: aid.sideLabel == "Right")
-                if !together {
-                    VolumeFader(store: store, aid: aid, targets: [aid])
-                        .matchedGeometryEffect(id: trailingFader ? "left-fader" : "right-fader", in: faders)
-                        .offset(x: trailingFader ? 80 : -80)
-                        .transition(.opacity)
-                }
-            }.frame(height: 180)
-            VolumeLevelButtons(store: store, aid: aid, targets: [aid])
-                .opacity(together ? 0 : 1).allowsHitTesting(!together).accessibilityHidden(together)
-                .overlay { if together { Text(aid.volume.map { L("Level %d", $0.level) } ?? L("Level —")).font(AppType.callout.monospacedDigit()).foregroundStyle(.secondary) } }
-            StableMuteToggle(store: store, targets: [aid])
-                .opacity(together ? 0 : 1).allowsHitTesting(!together).accessibilityHidden(together)
-                .overlay { if together { Image(systemName: aid.volume?.muted == true ? "speaker.slash.fill" : "speaker.wave.2").foregroundStyle(.secondary) } }
+            }
+        }.frame(height: 54)
+    }
+    @ViewBuilder private func level(_ aid: AidConnection) -> some View {
+        if together {
+            Text(aid.volume.map { L("Level %d", $0.level) } ?? L("Level —"))
+                .font(AppType.callout.monospacedDigit()).foregroundStyle(.secondary)
+        } else { VolumeLevelButtons(store: store, aid: aid, targets: [aid]) }
+    }
+    @ViewBuilder private func mute(_ aid: AidConnection) -> some View {
+        if together { Image(systemName: aid.volume?.muted == true ? "speaker.slash.fill" : "speaker.wave.2").foregroundStyle(.secondary) }
+        else { StableMuteToggle(store: store, targets: [aid]) }
+    }
+    private func deviceFooter(_ aid: AidConnection) -> some View {
+        VStack(spacing: 8) {
             AidBatteryView(store: store, aid: aid, compact: true)
-        }.frame(maxWidth: .infinity)
+            Button(L("Device details…")) { navigation.present(.device(aid.id)) }
+                .buttonStyle(.borderless).font(AppType.caption)
+                .accessibilityIdentifier("device-details-\(aid.sideLabel.lowercased())")
+        }
     }
 }
 
@@ -84,22 +84,33 @@ struct VolumeFader: View {
     @State private var preview: Int?
     private var selection: MainVolumeSelection? { .init(aids: targets, anchorID: aid.id) }
     var body: some View {
-        VStack(spacing: 5) {
-            Image(systemName: "speaker.wave.3").font(.system(size: 13)).foregroundStyle(.secondary)
+        ZStack {
+            VolumeGlassBackground()
             NativeVolumeSlider(value: preview ?? aid.volume?.level ?? 0,
                 range: selection?.range ?? aid.volumeRanges?.main ?? 0...0,
                 enabled: !store.isDemo && selection != nil,
                 label: targets.count == 2 ? L("Both ears volume") : L("%@ volume", L(aid.sideLabel)),
+                style: .capsule,
                 preview: { if let value = $0 { preview = value } }, commit: { target in
                     guard let selection, target != selection.level else { preview = nil; return }
                     preview = target; store.setMainVolume(selection, level: target)
-                }).frame(width: 36, height: 144)
+                }).frame(width: 52, height: 174)
                 .accessibilityIdentifier(targets.count == 2 ? "volume-fader-together" : "volume-fader-\(aid.sideLabel.lowercased())")
-            Image(systemName: "speaker.wave.1").font(.system(size: 13)).foregroundStyle(.secondary)
-        }.frame(width: 36, height: 180)
+        }.frame(width: 52, height: 174)
             .onChange(of: aid.volume?.level) { _, _ in preview = nil }
             .onChange(of: aid.actionFailed) { _, failed in if failed { preview = nil } }
             .transaction { $0.animation = nil }
+    }
+}
+
+private struct VolumeGlassBackground: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    var body: some View {
+        if #available(macOS 26, *), !reduceTransparency {
+            Capsule().fill(.clear).glassEffect(.regular.tint(Brand.accent.opacity(0.06)), in: .capsule)
+        } else {
+            Capsule().fill(Brand.background).overlay(Capsule().strokeBorder(.quaternary))
+        }
     }
 }
 

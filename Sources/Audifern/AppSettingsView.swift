@@ -32,68 +32,63 @@ struct AppSettingsView: View {
                 category("about", title: L("About"), symbol: "info.circle")
                 Spacer()
                 Text(Brand.name + " " + version).font(AppType.caption).foregroundStyle(.secondary)
-            }.padding(18).frame(width: 230)
+            }.padding(14).frame(width: 214)
                 .frame(maxHeight: .infinity, alignment: .topLeading)
                 .background(Brand.surface.opacity(0.65))
             Divider()
             if section == "about" { AboutView() }
-            else if section == "connections", let connectionAutomation {
+            else {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text(title).font(.system(size: 32, weight: .bold))
-                    ConnectionSettingsView(automation: connectionAutomation)
-                }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            }
-            else { ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
-                    Text(title).font(.system(size: 32, weight: .bold))
+                    Text(title).font(.system(size: 30, weight: .bold))
                     switch section {
-                    case "battery":
-                        Text(L("Choose when each hearing aid should send a local battery alert.")).font(AppType.body).foregroundStyle(.secondary)
-                        BatteryNotificationSettingsView(manager: notifications).disabled(isDemo)
+                    case "connections":
+                        if let connectionAutomation { ConnectionSettingsView(automation: connectionAutomation) }
+                    case "battery": BatteryNotificationSettingsView(manager: notifications).disabled(isDemo)
                     case "privacy": privacy
                     case "diagnostics": diagnostics
                     case "quickAccess": QuickAccessSettingsView()
                     default: general
                     }
-                }.frame(maxWidth: .infinity, alignment: .topLeading).padding(28)
-            }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading) }
+                    Spacer(minLength: 0)
+                }.padding(22).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     private func category(_ id: String, title: String, symbol: String) -> some View {
-        Button { section = id } label: {
-            Label(title, systemImage: symbol).font(AppType.body.weight(section == id ? .semibold : .regular))
-                .labelStyle(AlignedLabelStyle())
-                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading).padding(.horizontal, 12)
-                .foregroundStyle(section == id ? Brand.accent : Color.primary)
-                .background(section == id ? Brand.accent.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 12))
-        }.buttonStyle(.plain).accessibilityAddTraits(section == id ? [.isSelected] : [])
-            .accessibilityIdentifier("settings-\(id)")
+        SidebarNavigationButton(title: title, symbol: symbol, selected: section == id,
+                                identifier: "settings-\(id)") { section = id }
     }
     private var general: some View {
-        VStack(alignment: .leading, spacing: 26) {
-            Surface {
-                VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 18) {
+            Surface(insets: 20) {
+                VStack(alignment: .leading, spacing: 16) {
                     Label(L("Appearance"), systemImage: "circle.lefthalf.filled").font(AppType.headline)
                     Picker(L("Appearance"), selection: $preferences.appearance) {
                         ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
-                    }.pickerStyle(.segmented).font(AppType.body).accessibilityIdentifier("appearance-choice")
-                    Text(L("System follows macOS automatically. Your sound settings do not change.")).font(AppType.caption).foregroundStyle(.secondary)
+                    }.pickerStyle(.segmented).accessibilityIdentifier("appearance-choice")
+                    Text(L("System follows macOS automatically. Your sound settings do not change."))
+                        .font(AppType.caption).foregroundStyle(.secondary)
                     Divider()
-                    Label(L("Language"), systemImage: "globe").font(AppType.headline)
-                    Picker(L("Language"), selection: $preferences.language) {
-                        ForEach(AppLanguage.allCases) { Text($0.displayName).tag($0) }
-                    }.labelsHidden().accessibilityIdentifier("language-choice")
-                    Text(L("Device program names stay exactly as reported by the hearing aids.")).font(AppType.caption).foregroundStyle(.secondary)
+                    HStack(alignment: .top, spacing: 18) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label(L("Language"), systemImage: "globe").font(AppType.headline)
+                            Text(L("Device program names stay exactly as reported by the hearing aids."))
+                                .font(AppType.caption).foregroundStyle(.secondary)
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                        Picker(L("Language"), selection: $preferences.language) {
+                            ForEach(AppLanguage.allCases) { Text($0.displayName).tag($0) }
+                        }.labelsHidden().frame(width: 230).accessibilityIdentifier("language-choice")
+                    }
                 }
             }
             Text(L("Closing the window keeps your Bluetooth connections and battery monitoring running in the menu bar. Quit Audifern to stop them."))
-                .font(AppType.callout).foregroundStyle(.secondary)
-            Surface {
-                VStack(alignment: .leading, spacing: 12) {
+                .font(AppType.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Surface(insets: 20) {
+                VStack(alignment: .leading, spacing: 10) {
                     Label(L("Open source"), systemImage: "chevron.left.forwardslash.chevron.right").font(AppType.headline)
                     Text(L("An independent project, licensed under GNU GPLv3. Not affiliated with or endorsed by the hearing-aid manufacturer."))
-                        .font(AppType.callout).foregroundStyle(.secondary)
+                        .font(AppType.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

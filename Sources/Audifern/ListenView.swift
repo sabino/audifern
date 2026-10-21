@@ -7,6 +7,8 @@ struct ListenView: View {
     @EnvironmentObject private var navigation: AppNavigation
     @EnvironmentObject private var preferences: AppPreferences
     @AppStorage("groupedHearingAidControls") private var together = true
+    @AppStorage("groupedSpeechBoosterControls") private var speechTogether = true
+    @AppStorage("groupedProgramControls") private var programsTogether = true
 
     private var aids: [AidConnection] {
         store.orderedConnections.sorted { $0.sideLabel == "Left" && $1.sideLabel != "Left" }
@@ -70,44 +72,103 @@ struct ListenView: View {
     }
 
     private func speechCard(_ targets: [AidConnection]) -> some View {
-        Surface {
-            HStack(alignment: .center, spacing: 20) {
+        Surface(insets: 20) {
+            VStack(spacing: 14) {
                 featureHeading(L("SpeechBooster"), subtitle: L("Bring conversations into focus."), symbol: "mic", color: .purple)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                HStack(alignment: .top, spacing: 20) {
-                    if together && targets.count == 2 {
-                        Toggle(L("Both ears"), isOn: Binding(get: { targets.allSatisfy { $0.speechBoosterEnabled == true } }, set: { store.setSpeechBoosters(targets.map(\.id), enabled: $0) }))
-                            .toggleStyle(.switch).font(AppType.callout).frame(width: 180, height: 52)
-                            .disabled(!targets.allSatisfy(\.canChangeSpeechBooster) || store.linkedActionPending)
-                            .accessibilityLabel(L("SpeechBooster"))
-                    } else {
-                        ForEach(targets) { aid in
-                            SpeechBoosterCell(store: store, aid: aid, targetIDs: [aid.id]).frame(width: 160)
-                        }
-                    }
-                }.disabled(store.isDemo)
                 if targets.count == 2 {
-                    EarLinkButton(title: "SpeechBooster", linked: $together, available: canLink,
-                                  identifier: "link-speech-booster", accent: Brand.accent)
-                }
-            }
+                    ZStack {
+                        SoundEarColumns { sideTitle(targets[0]) } center: { Color.clear.frame(height: 38) } right: { sideTitle(targets[1]) }
+                        EarControlModePicker(together: $speechTogether, available: canLink, accent: .purple,
+                                             scope: L("SpeechBooster"), identifier: "link-speech-booster")
+                    }
+                    ZStack {
+                        SoundEarColumns {
+                            speechControl(targets[0], grouped: speechTogether)
+                        } center: { Color.clear } right: {
+                            speechControl(targets[1], grouped: speechTogether)
+                        }
+                        if speechTogether {
+                            Toggle(L("SpeechBooster"), isOn: Binding(
+                                get: { targets.allSatisfy { $0.speechBoosterEnabled == true } },
+                                set: { store.setSpeechBoosters(targets.map(\.id), enabled: $0) }))
+                                .toggleStyle(.switch).labelsHidden().tint(.purple)
+                                .disabled(!targets.allSatisfy(\.canChangeSpeechBooster) || store.linkedActionPending)
+                                .accessibilityLabel(L("SpeechBooster for both ears"))
+                        }
+                    }.frame(height: 48)
+                } else if let aid = targets.first { speechControl(aid, grouped: false) }
+            }.disabled(store.isDemo)
         }
     }
 
+    private func sideTitle(_ aid: AidConnection) -> some View {
+        Text(L(aid.sideLabel)).font(AppType.callout.weight(.medium)).foregroundStyle(.secondary)
+    }
+
+    private func speechControl(_ aid: AidConnection, grouped: Bool) -> some View {
+        VStack(spacing: 6) {
+            if !grouped {
+                Toggle(L("SpeechBooster"), isOn: Binding(get: { aid.speechBoosterEnabled == true },
+                    set: { store.setSpeechBoosters([aid.id], enabled: $0) }))
+                    .toggleStyle(.switch).labelsHidden().tint(.purple)
+                    .disabled(!aid.canChangeSpeechBooster || store.linkedActionPending)
+                    .accessibilityLabel(L("%@ SpeechBooster", L(aid.sideLabel)))
+            }
+            if aid.speechBoosterEnabled == nil {
+                Button(L("Load SpeechBooster")) { store.refreshConsumerFeatures(aid.id) }
+                    .buttonStyle(.borderless).disabled(!aid.isConnected || aid.actionPending || aid.advancedBusy)
+            } else {
+                Text(aid.activeProgram.flatMap { aid.programBoostable[$0] } == false ? L("Unavailable in this program")
+                     : aid.speechBoosterEnabled == true ? L("On") : L("Off"))
+                    .foregroundStyle(.secondary).multilineTextAlignment(.center).lineLimit(2)
+            }
+        }.font(AppType.caption).frame(height: 48)
+    }
+
     private func programCard(_ targets: [AidConnection]) -> some View {
-        Surface {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 20) {
+        Surface(insets: 20) {
+            VStack(spacing: 14) {
+                HStack(spacing: 16) {
                     featureHeading(L("Listening program"), subtitle: L("Choose from your fitted programs."), symbol: "waveform", color: Brand.accent)
                     Spacer(minLength: 0)
-                    Button(L("Manage programs")) { navigation.show(.programs) }.accessibilityIdentifier("open-listening-programs")
+                    Button(L("Manage programs")) { navigation.show(.programs) }
+                        .font(AppType.callout).accessibilityIdentifier("open-listening-programs")
                 }
-                HStack(alignment: .top, spacing: 24) {
-                    ForEach(targets) { aid in
-                        ProgramSelectionView(store: store, aid: aid, targetIDs: together && canLink ? targets.map(\.id) : [aid.id], compact: true)
+                if targets.count == 2 {
+                    ZStack {
+                        SoundEarColumns { sideTitle(targets[0]) } center: { Color.clear.frame(height: 38) } right: { sideTitle(targets[1]) }
+                        EarControlModePicker(together: $programsTogether, available: canLink,
+                                             scope: L("Listening program"), identifier: "link-program")
                     }
-                }.disabled(store.isDemo)
+                    SoundEarColumns {
+                        programControl(targets[0], targets: targets)
+                    } center: { EmptyView() } right: {
+                        programControl(targets[1], targets: targets)
+                    }
+                } else if let aid = targets.first { programControl(aid, targets: [aid]) }
+            }.disabled(store.isDemo)
+        }
+    }
+
+    private func programControl(_ aid: AidConnection, targets: [AidConnection]) -> some View {
+        ProgramSelectionView(store: store, aid: aid, targetIDs: programsTogether && canLink ? targets.map(\.id) : [aid.id],
+                             compact: true, showsSide: false, centered: true)
+            .frame(maxWidth: 250, minHeight: 32)
+    }
+
+    private var connectionActions: some View {
+        HStack(spacing: 12) {
+            if store.connectedCount > 0 {
+                Button(L("Disconnect")) { store.disconnect() }.font(AppType.callout).disabled(store.isDemo)
+                    .accessibilityIdentifier("disconnect-sound-devices")
+            } else if store.pairCandidateIDs.count == 2 {
+                Button(L("Reconnect")) { store.connectPair() }.font(AppType.callout).disabled(!store.isPoweredOn || store.isDemo)
+                    .accessibilityIdentifier("reconnect-sound-devices")
             }
+            Button { navigation.show(.devices) } label: { Image(systemName: "magnifyingglass").frame(width: 22, height: 24) }
+                .help(L("Find hearing aids")).accessibilityLabel(L("Find hearing aids"))
+                .accessibilityIdentifier("find-hearing-aids")
         }
     }
 
@@ -120,6 +181,7 @@ struct ListenView: View {
                 .labelStyle(AlignedLabelStyle(iconSize: 16, iconWidth: 20, spacing: 8))
                 .buttonStyle(.bordered).font(AppType.body).controlSize(.large)
             Spacer()
+            connectionActions
         }
     }
 

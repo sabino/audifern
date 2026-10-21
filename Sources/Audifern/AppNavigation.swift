@@ -33,7 +33,7 @@ enum AppPage: String, CaseIterable, Identifiable {
         }
     }
     var accessibilityID: String { self == .hearingAids ? "navigation-hearing-aids" : "navigation-\(rawValue)" }
-    static let everydayPages: [AppPage] = [.hearingAids, .programs, .devices]
+    static let everydayPages: [AppPage] = [.hearingAids, .programs]
     static let workspacePages: [AppPage] = [.fitting]
     static let mainPages = everydayPages + workspacePages
 }
@@ -57,6 +57,7 @@ final class AppNavigation: ObservableObject {
         case .audiogram: present(.audiograms)
         case .settings: present(.settings)
         case .developer: present(.diagnostics)
+        case .devices: self.page = .hearingAids; present(.nearbyDevices)
         default: closeSheet(); self.page = page
         }
     }
@@ -72,6 +73,7 @@ final class AppNavigation: ObservableObject {
 enum AppSheet: Hashable, Identifiable {
     case equalizers, savePreset, settings, about, help, diagnostics, backups, audiograms, savedFitting, fittingPlan, fittingReference, programDetails
     case device(UUID)
+    case nearbyDevices
     case savedSnapshot(UUID), fittingReport(UUID)
     case backupComparison, backupInformation
     var id: Self { self }
@@ -90,6 +92,7 @@ enum AppSheet: Hashable, Identifiable {
         case .fittingReference: L("Fitting reference")
         case .programDetails: L("Program data")
         case .device: L("Device details")
+        case .nearbyDevices: L("Find hearing aids")
         case .savedSnapshot: L("Saved fitting")
         case .fittingReport: L("Saved fitting summary")
         case .backupComparison: L("Compare backups")

@@ -33,14 +33,15 @@ preview controls cannot change hearing aids. See [capture details](docs/images/R
 
 The current development version also adds a configurable graphical menu-bar
 panel, desktop widgets, macOS 26 Control Center controls and searchable native
-Help. Sound controls share a Together/Separate mode, and timestamped battery
-runtime counts down locally between hourly device reads.
+Help. Each sound section uses the same Together/Separate selector, with independent
+choices for volume/mute, SpeechBooster and programs. Timestamped battery runtime
+counts down locally between hourly device reads.
 [Together](docs/images/audifern-sound-together.png) · [Separate](docs/images/audifern-sound-separate.png) ·
 [Menu-bar panel](docs/images/audifern-menu-bar.png) · [Help](docs/images/audifern-help.png).
 See [quick access, setup and platform limits](docs/quick-access.md) and
 [the selected visual concepts](docs/design/quick-access-prompts.md).
 
-Four destinations keep related tasks together. Focused editors and advanced
+Three main destinations keep related tasks together. Focused editors and advanced
 settings open as native sheets attached to the app window, with Back and Done.
 
 **About Audifern** is available from the app menu, menu-bar icon and Settings.
@@ -49,7 +50,9 @@ It credits [sabino](https://github.com/sabino), shows the localized
 cryptocurrency contributions with local QR codes and copyable receiving
 addresses. See [contributions and future supporter features](docs/contributions.md).
 
-About fits both its standalone sheet and Settings without a nested scroll area.
+About and every Settings category fit without scrolling at the supported minimum
+window size. Settings has full-row navigation and the same green selection as
+the main sidebar. Longer categories use focused tabs and side-by-side cards.
 **Settings → Connections** adds optional reconnection to chosen aids, wake/unlock
 attempts, a tunable RSSI threshold, persistent pause/resume and explicit Mac
 audio-output preferences. Automatic connection starts off. Control connections
@@ -58,9 +61,8 @@ testing. See [connections and the handoff research](docs/connections.md).
 
 | Destination | What you can do |
 | --- | --- |
-| **Sound** | See both device images, batteries and active programs; adjust volume, mute and SpeechBooster. Open the equalizers or save a sound from here. |
+| **Sound** | Connect or disconnect, see both device images, batteries and active programs, and open each aid’s details. Adjust volume, mute and SpeechBooster, open equalizers or save a sound. Identifiers are hidden by default. |
 | **Library** | Switch between fitted programs and local presets. Apply a saved sound or inspect a program’s consumer metadata. |
-| **Devices** | Connect your hearing aids, then open each aid’s versions, battery and device details in a focused sheet. Identifiers are hidden by default. |
 | **Hearing profile** | Review saved fitting data, manage audiograms, prepare a fitting plan one step at a time, and open backups or comparisons. |
 | **Settings** | Choose appearance and language, configure battery alerts, manage identifier visibility and open diagnostics. |
 

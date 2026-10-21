@@ -5,6 +5,8 @@ struct ProgramSelectionView: View {
     let aid: AidConnection
     let targetIDs: [UUID]
     var compact = false
+    var showsSide = true
+    var centered = false
     @EnvironmentObject private var preferences: AppPreferences
 
     private var targets: [AidConnection] { targetIDs.compactMap { store.connections[$0] } }
@@ -16,8 +18,8 @@ struct ProgramSelectionView: View {
         }
     }
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(compact ? L(aid.sideLabel) : L("Fitted program")).font(AppType.caption.weight(.medium)).foregroundStyle(.secondary)
+        VStack(alignment: centered ? .center : .leading, spacing: 8) {
+            if showsSide { Text(compact ? L(aid.sideLabel) : L("Fitted program")).font(AppType.caption.weight(.medium)).foregroundStyle(.secondary) }
             if let active = aid.activeProgram {
                 if programs.count < 2 {
                     Text(aid.activeProgramName ?? L("Current program")).font(AppType.body.weight(.medium))
@@ -34,6 +36,6 @@ struct ProgramSelectionView: View {
                     .font(AppType.caption).buttonStyle(.borderless)
                     .disabled(!aid.isConnected || aid.actionPending || aid.advancedBusy || aid.groupActionPending || store.isDemo)
             }
-        }.frame(maxWidth: .infinity, alignment: .leading)
+        }.frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
     }
 }

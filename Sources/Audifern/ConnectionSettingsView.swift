@@ -5,10 +5,11 @@ struct ConnectionSettingsView: View {
     @EnvironmentObject private var navigation: AppNavigation
     @AppStorage("connectionSettingsSection") private var section = 0
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 12) {
             Toggle(L("Automatically reconnect app controls"), isOn: $automation.enabled)
                 .toggleStyle(.switch).accessibilityIdentifier("auto-connection-enabled")
-            Text(L(automation.status)).font(AppType.callout).foregroundStyle(Brand.accent)
+            Text(L(automation.status)).font(AppType.caption).foregroundStyle(Brand.accent)
+                .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32, alignment: .leading)
                 .accessibilityIdentifier("auto-connection-status")
             Picker(L("Connection settings"), selection: $section) {
                 Text(L("Reconnect")).tag(0)
@@ -24,7 +25,7 @@ struct ConnectionSettingsView: View {
         }.onAppear { automation.refreshAudio() }
     }
     private var reconnect: some View {
-            Surface {
+            Surface(insets: 18) {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(L("Connect only to your chosen hearing aids while this Mac is unlocked. Failed attempts wait longer before retrying."))
                         .font(AppType.callout).foregroundStyle(.secondary)
@@ -52,7 +53,7 @@ struct ConnectionSettingsView: View {
             }
     }
     private var signal: some View {
-            Surface {
+            Surface(insets: 18) {
                 VStack(alignment: .leading, spacing: 16) {
                     Label(L("Nearby signal"), systemImage: "antenna.radiowaves.left.and.right").font(AppType.headline)
                     Toggle(L("Require a stronger signal before reconnecting"), isOn: $automation.limitSignal)
@@ -73,9 +74,9 @@ struct ConnectionSettingsView: View {
             }
     }
     private var audio: some View {
-            Surface {
-                VStack(alignment: .leading, spacing: 16) {
-                    Label(L("Mac audio output"), systemImage: "speaker.wave.2").font(AppType.headline)
+        VStack(alignment: .leading, spacing: 14) {
+            Surface(insets: 18) {
+                VStack(alignment: .leading, spacing: 14) {
                     Text(L("Current output: %@", automation.availableOutputs.first(where: { $0.id == automation.currentOutputUID })?.name ?? L("Unavailable")))
                         .font(AppType.callout)
                     Picker(L("Preferred output"), selection: $automation.preferredOutputUID) {
@@ -93,23 +94,29 @@ struct ConnectionSettingsView: View {
                         }
                         ForEach(automation.availableOutputs) { Text($0.name).tag($0.id) }
                     }
-                    Toggle(L("Select this output after app controls reconnect"), isOn: $automation.preferMacAudio)
-                        .disabled(!automation.enabled)
-                    Toggle(L("Restore my previous audio output when this Mac locks"), isOn: $automation.restoreAudioOnLock)
-                        .disabled(!automation.enabled)
                     HStack {
                         Button(L("Use selected output now")) { automation.usePreferredAudio() }
                             .disabled(!automation.availableOutputs.contains(where: { $0.id == automation.preferredOutputUID }))
                         Button(L("Refresh outputs")) { automation.refreshAudio() }
-                    }.font(AppType.callout)
-                    Link(L("macOS Sound settings"), destination: URL(string: "x-apple.systempreferences:com.apple.Sound-Settings.extension")!)
-                        .font(AppType.callout)
-                    if automation.audioError { Text(L("macOS could not select that audio output.")).foregroundStyle(.red) }
-                    Text(L("App controls and audio are separate connections. This selects an output already available to macOS. Android may still hold the audio connection; pausing Audifern does not disconnect macOS audio."))
-                        .font(AppType.caption).foregroundStyle(.secondary)
+                        Spacer(minLength: 4)
+                        Link(L("macOS Sound settings"), destination: URL(string: "x-apple.systempreferences:com.apple.Sound-Settings.extension")!)
+                    }.font(AppType.caption)
                 }
             }
+            Surface(insets: 18) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle(L("Select this output after app controls reconnect"), isOn: $automation.preferMacAudio)
+                        .disabled(!automation.enabled)
+                    Toggle(L("Restore my previous audio output when this Mac locks"), isOn: $automation.restoreAudioOnLock)
+                        .disabled(!automation.enabled)
+                }.font(AppType.callout).toggleStyle(.switch)
+            }
+            if automation.audioError { Text(L("macOS could not select that audio output.")).font(AppType.caption).foregroundStyle(.red) }
+            Text(L("App controls and audio are separate connections. This selects an output already available to macOS. Android may still hold the audio connection; pausing Audifern does not disconnect macOS audio."))
+                .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
     }
+
 }
 
 struct ConnectionQuickActions: View {

@@ -40,7 +40,7 @@
 "%@ confirmed for %@." = "%@ confirmado para %@.";
 "%@ connected · Direct Bluetooth control" = "%@ conectado · Controle direto por Bluetooth";
 "%@ dBm" = "%@ dBm";
-"%@ device" = "%@ dispositivo";
+"%@ device" = "Aparelho %@";
 "%@ device%@ an alert awaiting delivery." = "%@ dispositivo%@ um alerta aguardando envio.";
 "%@ does not report tinnitus support." = "%@ não informa suporte ao alívio do zumbido.";
 "%@ ear" = "Lado %@";
@@ -1991,3 +1991,16 @@
 "Lower the selected hearing aids by one step." = "Reduza os aparelhos selecionados em um passo.";
 "Raise the selected hearing aids by one step." = "Aumente os aparelhos selecionados em um passo.";
 "Cached: %@" = "Em cache: %@";
+
+/* Aligned sound controls and compact settings. */
+"Alert settings" = "Ajustes dos alertas";
+"How alerts work" = "Como funcionam";
+"No hearing aids found" = "Nenhum aparelho auditivo encontrado";
+"Applies only to this section. Changing mode does not change current settings." = "Aplica-se apenas a esta seção. Mudar o modo não altera os ajustes atuais.";
+"%@ SpeechBooster" = "SpeechBooster %@";
+"SpeechBooster for both ears" = "SpeechBooster para os dois ouvidos";
+"Volume and mute change together. Your balance is preserved." = "Volume e silêncio mudam juntos. O equilíbrio entre os ouvidos é preservado.";
+"Show in the menu panel" = "Mostrar no painel da barra de menus";
+"Each section has its own Together and Separate selector. The volume selector also applies to mute. Purple marks the SpeechBooster selector. Switching mode changes only future actions in that section; it never copies settings or sends a hearing-aid command." = "Cada seção tem seu próprio seletor Juntos e Separados. O seletor de volume também se aplica ao silêncio. O roxo identifica o seletor do SpeechBooster. Mudar o modo altera apenas as próximas ações dessa seção; nunca copia ajustes nem envia comandos aos aparelhos.";
+"In Sound, choose Find hearing aids, scan and select your devices. Device details are below each hearing aid. A Bluetooth control connection reads supported values and adjusts consumer controls. Audio streaming is managed separately by macOS." = "Em Som, escolha Encontrar aparelhos auditivos, busque e selecione seus dispositivos. Os detalhes ficam abaixo de cada aparelho. A conexão Bluetooth lê os valores disponíveis e ajusta os controles de uso diário. A transmissão de áudio é gerenciada separadamente pelo macOS.";
+"Automatic connection starts off. Connect your aids in Sound, then remember them in Connections. Nearby retry and wake/unlock attempts are optional. Pause persists until you resume or connect manually. This controls Audifern’s BLE link, not the operating system’s audio profile." = "A conexão automática começa desativada. Conecte os aparelhos em Som e memorize-os em Conexões. As tentativas por proximidade e ao despertar ou desbloquear são opcionais. A pausa dura até você retomar ou conectar manualmente. Isso controla o vínculo BLE do Audifern, não o perfil de áudio do sistema.";

@@ -48,7 +48,7 @@ struct AppTaskSheet: View {
 
     private var sheetSize: CGSize {
         presentationSize ?? CGSize(
-            width: min(1000, max(840, availableSize?.width ?? (NSScreen.main?.visibleFrame.width ?? 1200) - 100)),
+            width: min(1140, max(840, availableSize?.width ?? (NSScreen.main?.visibleFrame.width ?? 1200) - 100)),
             height: min(920, max(660, availableSize?.height ?? (NSScreen.main?.visibleFrame.height ?? 1000) - 130)))
     }
 
@@ -105,6 +105,7 @@ struct AppTaskSheet: View {
             FittingWorkspaceView(store: store, audiograms: audiograms, draft: $workspace.draft,
                 saveDraft: {}, loadDraft: {}, referenceOnly: true)
         case .device(let id): DeviceExplorerView(store: store, targetID: id)
+        case .nearbyDevices: DevicesPageView(store: store)
         case nil: EmptyView()
         }
     }

@@ -75,7 +75,7 @@ func nativeSheetsKeepTheirFrameWhenChangingSettingsAndOpeningAnAudiogram() async
     try await settle()
     let settings = try #require(window.attachedSheet)
     let settingsFrame = settings.frame
-    for section in ["connections", "battery", "privacy", "diagnostics", "about", "general"] {
+    for section in ["connections", "quickAccess", "battery", "privacy", "diagnostics", "about", "general"] {
         services.defaults.set(section, forKey: "settingsSection")
         try await settle()
         stage("settings \(section)")

@@ -121,6 +121,7 @@ final class AudifernServices: ObservableObject {
         if defaults.object(forKey: "groupedHearingAidControls") == nil {
             defaults.set(defaults.object(forKey: "linkedHearingAidControls") as? Bool ?? true, forKey: "groupedHearingAidControls")
         }
+        SoundGroupingPreferences.migrate(defaults: defaults)
         let preferences = AppPreferences(defaults: defaults)
         self.preferences = preferences
         if demo {

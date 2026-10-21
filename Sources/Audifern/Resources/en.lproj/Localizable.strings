@@ -1991,3 +1991,16 @@
 "Lower the selected hearing aids by one step." = "Lower the selected hearing aids by one step.";
 "Raise the selected hearing aids by one step." = "Raise the selected hearing aids by one step.";
 "Cached: %@" = "Cached: %@";
+
+/* Aligned sound controls and compact settings. */
+"Alert settings" = "Alert settings";
+"How alerts work" = "How alerts work";
+"No hearing aids found" = "No hearing aids found";
+"Applies only to this section. Changing mode does not change current settings." = "Applies only to this section. Changing mode does not change current settings.";
+"%@ SpeechBooster" = "%@ SpeechBooster";
+"SpeechBooster for both ears" = "SpeechBooster for both ears";
+"Volume and mute change together. Your balance is preserved." = "Volume and mute change together. Your balance is preserved.";
+"Show in the menu panel" = "Show in the menu panel";
+"Each section has its own Together and Separate selector. The volume selector also applies to mute. Purple marks the SpeechBooster selector. Switching mode changes only future actions in that section; it never copies settings or sends a hearing-aid command." = "Each section has its own Together and Separate selector. The volume selector also applies to mute. Purple marks the SpeechBooster selector. Switching mode changes only future actions in that section; it never copies settings or sends a hearing-aid command.";
+"In Sound, choose Find hearing aids, scan and select your devices. Device details are below each hearing aid. A Bluetooth control connection reads supported values and adjusts consumer controls. Audio streaming is managed separately by macOS." = "In Sound, choose Find hearing aids, scan and select your devices. Device details are below each hearing aid. A Bluetooth control connection reads supported values and adjusts consumer controls. Audio streaming is managed separately by macOS.";
+"Automatic connection starts off. Connect your aids in Sound, then remember them in Connections. Nearby retry and wake/unlock attempts are optional. Pause persists until you resume or connect manually. This controls Audifern’s BLE link, not the operating system’s audio profile." = "Automatic connection starts off. Connect your aids in Sound, then remember them in Connections. Nearby retry and wake/unlock attempts are optional. Pause persists until you resume or connect manually. This controls Audifern’s BLE link, not the operating system’s audio profile.";

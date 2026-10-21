@@ -1,13 +1,13 @@
 # Quick-access validation — 2026-10-21
 
-Local development build: **0.8.0 (11)**. This records the extent of verification;
+Local development build: **0.8.0 (12)**. This records the extent of verification;
 it is not a claim that a new public release has been published.
 
-- Swift: 161 app tests and 131 core tests passed; the XCTest suite ran 68 cases
+- Swift: 165 app tests and 131 core tests passed; the XCTest suite ran 68 cases
   with one optional case skipped and no failures.
 - Python: 64 tests passed, including strict extension payload checks and nested
   signing without unnecessary provisioning-profile entitlements.
-- Localization: 1,957 matching keys in English, Brazilian Portuguese and Spanish;
+- Localization: 1,968 matching keys in English, Brazilian Portuguese and Spanish;
   reference and format checks passed. All Help articles have translations.
 - Universal release build: the host and extension both contain arm64 and x86_64
   slices with a macOS 14 minimum. Both signatures and matching app groups passed
@@ -37,3 +37,20 @@ The source/privacy review found no new working-tree credential or personal-data
 findings after removing non-pixel metadata from exported mockups. Historical
 signed-commit metadata remains reviewable by the repository's audit tool; public
 GPG signatures are retained as requested.
+
+## Sound and Settings follow-up
+
+- Sound now contains discovery, connection/disconnection and per-ear device
+  details. Legacy setup links use discovery in the existing task sheet; device
+  information and battery-time Help links go to Sound.
+- Volume/mute, SpeechBooster, programs and each equalizer source keep independent
+  grouping choices. Migration preserves the previous choice without sending a
+  sound command. A dedicated migration and navigation test covers these paths.
+- Every Settings category and each connection/quick-access tab was rendered in
+  all three languages at the smallest supported content size. Native sheet
+  switching kept both parent and sheet frames unchanged at two window sizes.
+- Real pointer clicks on blank sidebar-row space opened Privacy and Battery
+  alerts in the isolated preview. Both sidebars use the same green style.
+- The final native preview showed the new filled faders and aligned sections.
+  These are visual/interaction checks; no hearing-aid adjustment was issued by
+  the preview.

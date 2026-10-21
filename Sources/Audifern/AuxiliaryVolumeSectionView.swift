@@ -52,11 +52,13 @@ struct AuxiliaryVolumeSectionView: View {
         VStack(alignment: .leading, spacing: 16) {
             Label(L(source.title), systemImage: source.symbol).font(AppType.headline).foregroundStyle(source.tint)
             if aids.count == 2 {
+                EarControlModePicker(together: $linked, available: linkAvailable, accent: source.tint, scope: L(source.title),
+                                     identifier: source == .tinnitus ? "link-tinnitus-volume" : "link-streaming-volume")
+                    .frame(maxWidth: .infinity)
                 EarSettingsRow {
                     cell(aids[0], showButtons: !linked)
                 } center: {
-                    EarLinkButton(title: source.title, linked: $linked, available: linkAvailable,
-                                  identifier: source == .tinnitus ? "link-tinnitus-volume" : "link-streaming-volume", accent: source.tint)
+                    EmptyView()
                 } right: {
                     cell(aids[1], showButtons: !linked)
                 }

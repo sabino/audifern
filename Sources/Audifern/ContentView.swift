@@ -23,16 +23,13 @@ struct ContentView: View {
                         Text(L("Your listening space")).font(AppType.caption).foregroundStyle(.secondary)
                     }
                 }.padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 20)
-                List(selection: $navigation.page) {
+                VStack(spacing: 6) {
                     ForEach(AppPage.mainPages) { navigationRow($0) }
-                }.listStyle(.sidebar)
+                }.padding(.horizontal, 12)
                 Spacer(minLength: 0)
-                Button { navigation.present(.settings) } label: {
-                    Label(L("Settings"), systemImage: "gearshape").font(AppType.body)
-                        .labelStyle(AlignedLabelStyle())
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 4).padding(.vertical, 16)
-                }.buttonStyle(.plain).padding(.horizontal, 12)
+                SidebarNavigationButton(title: L("Settings"), symbol: "gearshape", selected: navigation.sheet == .settings,
+                                        identifier: "navigation-settings") { navigation.present(.settings) }
+                    .padding(.horizontal, 12).padding(.vertical, 8)
                 Button { navigation.show(.devices) } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "dot.radiowaves.left.and.right").font(.system(size: 18, weight: .medium))
@@ -82,14 +79,8 @@ struct ContentView: View {
     }
 
     private func navigationRow(_ page: AppPage) -> some View {
-        Label(page.title, systemImage: page.symbol)
-            .labelStyle(AlignedLabelStyle())
-            .font(.system(size: 17, weight: .medium))
-            .frame(maxWidth: .infinity, minHeight: 46, alignment: .leading)
-            .contentShape(Rectangle())
-            .tag(page)
-            .accessibilityIdentifier(page.accessibilityID)
-            .accessibilityAddTraits(navigation.page == page ? [.isSelected] : [])
+        SidebarNavigationButton(title: page.title, symbol: page.symbol, selected: navigation.page == page,
+                                identifier: page.accessibilityID) { navigation.show(page) }
     }
 
     @ViewBuilder private var pageContent: some View {
@@ -114,7 +105,7 @@ struct ContentView: View {
         case .fitting:
             HearingProfileView(store: store, workspace: fittingWorkspace, backups: backups, audiograms: audiogramStore)
         case .backups: DeviceBackupsView(store: store, backups: backups)
-        case .devices: DevicesPageView(store: store)
+        case .devices: ListenView(store: store)
         case .audiogram:
             AudiogramEditorView(store: audiogramStore, onSaved: { exam in
                 presets.linkedAudiogramID = exam.id

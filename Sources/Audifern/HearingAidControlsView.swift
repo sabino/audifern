@@ -7,7 +7,10 @@ struct HearingAidControlsView: View {
     @ObservedObject var store: BluetoothStore
     var mode: Mode = .sound
     @EnvironmentObject private var preferences: AppPreferences
-    @AppStorage("groupedHearingAidControls") private var grouped = true
+    @AppStorage("groupedEqualizerControls") private var grouped = true
+    @AppStorage("groupedProgramControls") private var programsGrouped = true
+    @AppStorage("groupedStreamingControls") private var streamingGrouped = true
+    @AppStorage("groupedTinnitusControls") private var tinnitusGrouped = true
     enum SoundSection: String, CaseIterable, Identifiable {
         case microphone, streaming, tinnitus
         var id: String { rawValue }
@@ -47,12 +50,14 @@ struct HearingAidControlsView: View {
                     if mode == .programs { Divider() }
                     if mode == .programs {
                         if aids.count == 2 {
+                            EarControlModePicker(together: $programsGrouped, available: canLink && !commonPrograms(aids).isEmpty,
+                                                 scope: L("Listening program"), identifier: "link-program")
                             EarSettingsRow {
-                                ProgramSelectionView(store: store, aid: aids[0], targetIDs: grouped && canLink ? aids.map(\.id) : [aids[0].id])
+                                ProgramSelectionView(store: store, aid: aids[0], targetIDs: programsGrouped && canLink ? aids.map(\.id) : [aids[0].id])
                             } center: {
-                                EarLinkButton(title: "Program", linked: $grouped, available: canLink && !commonPrograms(aids).isEmpty, identifier: "link-program", accent: Brand.accent)
+                                EmptyView()
                             } right: {
-                                ProgramSelectionView(store: store, aid: aids[1], targetIDs: grouped && canLink ? aids.map(\.id) : [aids[1].id])
+                                ProgramSelectionView(store: store, aid: aids[1], targetIDs: programsGrouped && canLink ? aids.map(\.id) : [aids[1].id])
                             }
                         } else if let aid = aids.first {
                             ProgramSelectionView(store: store, aid: aid, targetIDs: [aid.id])
@@ -62,15 +67,15 @@ struct HearingAidControlsView: View {
                         case .microphone:
                             PairedEqualizerView(store: store, aids: aids, microphone: true, linked: $grouped, canLink: canLink)
                         case .streaming:
-                            PairedEqualizerView(store: store, aids: aids, microphone: false, linked: $grouped, canLink: canLink)
+                            PairedEqualizerView(store: store, aids: aids, microphone: false, linked: $streamingGrouped, canLink: canLink)
                             Divider()
-                            AuxiliaryVolumeSectionView(store: store, aids: aids, source: .streaming, linked: $grouped)
+                            AuxiliaryVolumeSectionView(store: store, aids: aids, source: .streaming, linked: $streamingGrouped)
                         case .tinnitus:
                             VStack(alignment: .leading, spacing: 16) {
                                 Label(L("Tinnitus relief"), systemImage: "waveform.path").font(AppType.headline).foregroundStyle(.orange)
                                 Text(L("Tinnitus controls require a program already fitted for you. Reported ranges alone do not enable therapy."))
                                     .font(AppType.callout).foregroundStyle(.secondary)
-                                AuxiliaryVolumeSectionView(store: store, aids: aids, source: .tinnitus, linked: $grouped)
+                                AuxiliaryVolumeSectionView(store: store, aids: aids, source: .tinnitus, linked: $tinnitusGrouped)
                             }.padding(18).background(Color.orange.opacity(0.055), in: RoundedRectangle(cornerRadius: 14))
                         }
                     }
@@ -149,29 +154,6 @@ struct EarSettingsRow<Left: View, Center: View, Right: View>: View {
             center().frame(width: 64).padding(.top, 3)
             right().frame(maxWidth: .infinity)
         }
-    }
-}
-
-struct EarLinkButton: View {
-    @EnvironmentObject private var preferences: AppPreferences
-    let title: String
-    @Binding var linked: Bool
-    var available: Bool
-    let identifier: String
-    var accent: Color = .teal
-    var body: some View {
-        Button { linked.toggle() } label: {
-            VStack(spacing: 5) {
-                Image(systemName: linked ? "link" : "link.badge.plus")
-                    .font(.system(size: 16, weight: .semibold)).frame(width: 38, height: 30)
-                    .background(linked ? accent.opacity(0.14) : Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
-                Text(linked ? L("Together") : L("Separate")).font(.system(size: 13, weight: .medium))
-            }.foregroundStyle(linked ? accent : Color.secondary)
-        }.buttonStyle(.plain).disabled(!available)
-            .accessibilityLabel(L("Control mode: %@", linked ? L("Together") : L("Separate")))
-            .accessibilityValue(linked ? L("Together") : L("Separate"))
-            .accessibilityIdentifier(identifier)
-            .help(L("Together groups all supported sound controls. Switching mode does not change current settings."))
     }
 }
 
