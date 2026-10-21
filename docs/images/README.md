@@ -65,3 +65,8 @@ strip gives most of the workspace to the inline EQ. `audifern-eq-eight-bands.png
 shows both eight-band editors at once. `audifern-device-details.png` shows the
 fixed device-information panel's Diagnostics tab. These are native captures of
 the isolated demo app. No actual device information or sound commands were used.
+
+The two Sound overview captures were subsequently refreshed for **0.8.0 (14)**,
+using the horizontal daily-volume layout. The device-information capture
+continues to show the same tabbed panel introduced in build 13. EQ controls
+remain vertical and both source grouping modes are shown in the overview shots.

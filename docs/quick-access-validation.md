@@ -1,6 +1,6 @@
 # Quick-access validation — 2026-10-21
 
-Local development build: **0.8.0 (13)**. This records the extent of verification;
+Local development build: **0.8.0 (14)**. This records the extent of verification;
 it is not a claim that a new public release has been published.
 
 - Swift: 170 app tests and 131 core tests passed; the XCTest suite ran 68 cases
@@ -82,3 +82,19 @@ GPG signatures are retained as requested.
 - The two mailbox-expiry fixtures now use a fixed shared timestamp. Separate
   clock reads could accidentally make their sample snapshot come from the
   future; production freshness validation remains strict and unchanged.
+
+## Horizontal daily volume follow-up
+
+- Daily volume now runs horizontally with a fixed level label above, minus and
+  plus buttons at the ends, and mute below. Together places one shared control
+  between the original device images; Separate keeps both devices together with
+  an explicitly labeled control for each ear. EQ bands stay vertical.
+- The short-viewport test now verifies horizontal native volume controls and
+  vertical EQ controls simultaneously, with all real fader frames inside the
+  viewport. The full 170-app/131-core Swift suites passed. Compact and expanded
+  layouts were rendered and reviewed in all three languages, including the
+  740 × 700 point Portuguese layout. Widget and protocol behavior are unchanged.
+- Native accessibility confirmed one horizontal volume fader for Together and
+  two for Separate, while the sixteen detailed EQ faders remained vertical.
+  Folding and reopening EQ preserved the eight-band choice. No scrollbar was
+  present in the Sound workspace; protected focus was restored after capture.

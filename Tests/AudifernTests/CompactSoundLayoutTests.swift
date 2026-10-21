@@ -31,7 +31,7 @@ import Testing
         #expect(volumes.count == (grouped ? 1 : 2))
         #expect(equalizers.count == (grouped ? 3 : 6))
         for slider in volumes {
-            #expect(slider.bounds.height >= 72 && slider.bounds.height <= 90)
+            #expect(slider.isVertical == false && slider.bounds.width > slider.bounds.height)
         }
         for slider in volumes + equalizers {
             let frame = slider.convert(slider.bounds, to: host)

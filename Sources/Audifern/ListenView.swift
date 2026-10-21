@@ -107,11 +107,7 @@ struct ListenView: View {
                     AidBatteryView(store: store, aid: aid, compact: true)
                 }
                 Spacer(minLength: 0)
-                VolumeFader(store: store, aid: aid, targets: [aid], height: 88, width: 32)
-                VStack(spacing: 4) {
-                    VolumeLevelButtons(store: store, aid: aid, targets: [aid], compact: true)
-                    StableMuteToggle(store: store, targets: [aid])
-                }
+                DailyVolumeControl(store: store, aid: aid, targets: [aid]).frame(maxWidth: 280)
                 Spacer(minLength: 0)
                 VStack(spacing: 8) {
                     DeviceSoundButtons(aid: aid)

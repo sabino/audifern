@@ -7,7 +7,7 @@ reopen the window from the Dock. Quit ends app-owned connections.
 
 ## Together and Separate
 
-The selector above the main faders is the **master control**: choose Together or
+The selector above the volume controls is the **master control**: choose Together or
 Separate to set volume/mute, SpeechBooster, fitted-program controls, microphone
 EQ, streaming controls and tinnitus controls at once. Pressing Together again
 reapplies it even if volume was already grouped. Each section can override its
@@ -43,12 +43,13 @@ Sound includes connection actions and per-ear device details; Find hearing aids
 opens nearby discovery in the existing attached sheet. The separate Devices
 sidebar destination is no longer needed. Legacy feature links still open discovery.
 
-The main sound card keeps each device and its centered mode selector in place
-while faders merge into a central control. The filled vertical faders use native
-AppKit tracking and accessibility over Liquid Glass on macOS 26+, with a solid
-fallback on older systems or when Reduce Transparency is enabled. Reduced Motion disables that animation. Level values, mute switches,
-runtime text, refresh indicators and action feedback have reserved space so
-ordinary readback does not move neighboring controls.
+The main sound card keeps the device images close together. Daily volume runs
+horizontally: its level is above the slider, minus/plus buttons sit at the two
+ends and mute is below. Together shows one shared control between the devices;
+Separate shows an individually labeled control for each ear. Sliders preview
+while dragging and send only the final value on release. Battery/runtime,
+feedback and level text have reserved space so readback does not move adjacent
+controls. EQ bands remain vertical. Reduced Motion disables layout animation.
 
 ## Desktop widgets and system controls
 

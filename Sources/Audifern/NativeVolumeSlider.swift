@@ -10,13 +10,14 @@ struct NativeVolumeSlider: NSViewRepresentable {
     let enabled: Bool
     let label: String
     var style: Style = .standard
+    var vertical = true
     var preview: (Int?) -> Void
     var commit: (Int) -> Void
 
     func makeNSView(context: Context) -> ReleaseVolumeSlider {
         let slider = ReleaseVolumeSlider()
         if style == .capsule { slider.cell = CapsuleVolumeSliderCell() }
-        slider.isVertical = true
+        slider.isVertical = vertical
         slider.controlSize = .large
         slider.isContinuous = true
         slider.target = context.coordinator
@@ -27,6 +28,7 @@ struct NativeVolumeSlider: NSViewRepresentable {
     }
     func updateNSView(_ slider: ReleaseVolumeSlider, context: Context) {
         context.coordinator.parent = self
+        slider.isVertical = vertical
         slider.isEnabled = enabled && range.lowerBound < range.upperBound
         slider.setAccessibilityLabel(label)
         slider.trackFillColor = NSColor(Brand.accent)

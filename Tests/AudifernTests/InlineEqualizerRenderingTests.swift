@@ -10,6 +10,7 @@ func renderInlineEqualizersInBothGroupingModesAndAllLanguages() throws {
     let folder = URL(fileURLWithPath: try #require(ProcessInfo.processInfo.environment["AUDIFERN_INLINE_EQ_PREVIEWS"]))
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
     let services = AudifernServices(demo: true)
+    let workspaceOnly = ProcessInfo.processInfo.environment["AUDIFERN_SOUND_WORKSPACE_ONLY"] == "1"
     let initialWindows = NSApplication.shared.windows.count
     func render<V: View>(_ view: V, name: String, width: CGFloat, height: CGFloat) throws {
         let host = NSHostingView(rootView: view
@@ -49,6 +50,7 @@ func renderInlineEqualizersInBothGroupingModesAndAllLanguages() throws {
             services.defaults.set(true, forKey: "soundDevicesExpanded")
             try render(ListenView(store: services.bluetooth), name: "expanded-\(language.rawValue)-\(grouped ? "together" : "separate")", width: 800, height: 740)
             services.defaults.set(false, forKey: "soundDevicesExpanded")
+            if workspaceOnly { continue }
             for microphone in [true, false] {
                 for detailed in [false, true] {
                     try render(PairedEqualizerView(store: services.bluetooth, aids: aids, microphone: microphone,
@@ -58,6 +60,7 @@ func renderInlineEqualizersInBothGroupingModesAndAllLanguages() throws {
                 }
             }
         }
+        if workspaceOnly { continue }
         for section in DeviceInformationPanel.Section.allCases {
             try render(DeviceInformationPanel(store: services.bluetooth, id: DemoData.leftID, section: section),
                 name: "device-\(language.rawValue)-\(section.rawValue)", width: 960, height: 597)
