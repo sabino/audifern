@@ -44,6 +44,7 @@ final class UTLSession {
     private let progress: @MainActor (String) -> Void
     private let diagnostic: @MainActor (String) -> Void
     private let batteryUpdate: @MainActor (OticonBattery.State) -> Void
+    private let acquisitionNow: @MainActor () -> Date
     private let payloadMTU: Int
     private var credits: UTLProtocol.Credits
     private var transportDecoder = UTLProtocol.TransportDecoder()
@@ -77,6 +78,7 @@ final class UTLSession {
     init(info: UTLProtocol.GattInformation, physicalATTMTU: Int, progress: @escaping @MainActor (String) -> Void = { _ in },
          diagnostic: @escaping @MainActor (String) -> Void = { _ in },
          batteryUpdate: @escaping @MainActor (OticonBattery.State) -> Void = { _ in },
+         acquisitionNow: @escaping @MainActor () -> Date = { Date() },
          write: @escaping @MainActor (String, Data) async throws -> Void) throws {
         guard info.freeConnections > 0,
               let channelIndex = info.channels.prefix(Int(info.maximumChannels)).firstIndex(where: { $0.state == .closed }) else {
@@ -90,6 +92,7 @@ final class UTLSession {
         self.progress = progress
         self.diagnostic = diagnostic
         self.batteryUpdate = batteryUpdate
+        self.acquisitionNow = acquisitionNow
     }
 
     static func loadKey(_ url: URL) throws -> Data {
@@ -525,10 +528,12 @@ final class UTLSession {
         }
     }
     private func checkDeadline(_ deadline: Date?) throws {
-        if let deadline, !(Date() < deadline) { throw SessionError.timeout }
+        if let deadline, !(acquisitionNow() < deadline) { throw SessionError.timeout }
     }
     private func waitUntil(deadline: Date? = nil, _ condition: () -> Bool) async throws {
-        let waitDeadline = min(deadline ?? .distantFuture, Date().addingTimeInterval(8))
+        // Keep the transport backstop on real time even when a synthetic peer
+        // advances the acquisition clock at an exact protocol boundary.
+        let waitDeadline = Date().addingTimeInterval(8)
         while true {
             if let failure { throw failure }
             // Check before the condition: a response or ACK buffered after the

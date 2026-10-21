@@ -278,17 +278,26 @@ private func syntheticEUSInventory(access: String = "NVRAM") -> Data {
 
 @MainActor @Test func expiredEQDeadlineStartsNoTransactionAndAnUnansweredReadCancelsWithoutSettingSound() async throws {
     let peer = SyntheticUTLPeer()
+    var now = Date(timeIntervalSince1970: 1_000)
+    let deadline = now.addingTimeInterval(1)
     let info = try UTLProtocol.GattInformation(data: Data([1, 0, 1, 0, 0, 244, 1, 1, 0x80, 0x80, 0x80, 0x80]))
-    let session = try UTLSession(info: info, physicalATTMTU: 247) { uuid, data in try await peer.write(uuid, data) }
+    let session = try UTLSession(info: info, physicalATTMTU: 247, acquisitionNow: { now }) { uuid, data in try await peer.write(uuid, data) }
     peer.session = session
     try await session.start(key: peer.key)
     let count = peer.serviceTrace.count
     await expectAcquisitionTimeout { _ = try await session.equalizerStep(deadline: .distantPast) }
     await expectAcquisitionTimeout { _ = try await session.equalizer(microphone: true, stepDB: 1, deadline: .distantPast) }
     #expect(peer.serviceTrace.count == count)
-    peer.suppressResponse = { handle, opcode, _ in handle == 9 && opcode == 3 }
+    peer.suppressResponse = { handle, opcode, _ in
+        guard handle == 9 && opcode == 3 else { return false }
+        // Expire only once the EQ request actually reaches the peer. A busy
+        // runner must not spend a tiny wall-clock budget opening a transaction
+        // and accidentally exercise a different, pre-request timeout instead.
+        now = deadline
+        return true
+    }
     await expectAcquisitionTimeout {
-        _ = try await session.equalizer(microphone: true, stepDB: 1, deadline: Date().addingTimeInterval(0.08))
+        _ = try await session.equalizer(microphone: true, stepDB: 1, deadline: deadline)
     }
     #expect(peer.transaction == nil && session.isReady)
     #expect(peer.serviceTrace.filter { $0.handle == 9 }.map(\.opcode) == [3])
