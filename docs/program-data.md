@@ -28,7 +28,7 @@ restore remain unimplemented. See [fitting backups](fitting-backups.md) and the
 | Can we save a differently named local preset? | Yes. The existing local `SoundPreset` stores volume and EQ for the existing program. | Saving does not allocate a hearing-aid program slot. Applying is a separate user action that adjusts controls. |
 | Does the consumer program service add programs? | No creation operation appears in the recovered ProgramControl 2.0/2.1 contracts. | This is a negative within these contracts, not proof that all manufacturer interfaces lack creation. |
 | Does `IFittingManager.GetProgramAsync` export the program configuration? | No. Its processor returns the current program name. `SetProgramAsync` changes the selected program. | The API names alone do not imply export/import or cloning. |
-| Is fuller fitting readback represented in the SDK? | Yes: `GetDeviceDataAsync` reconstructs a `DeviceData` object; versioned HIID also defines a fitting-data entry. | Neither its availability on these aids nor complete decoding of their fitted program state was demonstrated in this pass. |
+| Is fuller fitting readback available? | Yes: the 0.7.0 reader captured entry 1009 and all advertised persisted EUS scopes from both tested Intent 3 aids. | The inspector decodes the researched profile. Complete fitting reconstruction, live DSP state and clinical restore remain separate work. |
 | Can we create a new fitted program now? | A verified creation/slot-allocation workflow has not been recovered. | Persistent fitting requires model-specific transformations, compatible data and further protocol work. No guessed slot writes are implemented. |
 
 ## Ordinary consumer program reads
@@ -118,20 +118,25 @@ inaccessible to an interactive session:
 
 - `ReadHiidChipCommand` is supported in Interactive and performs typed reads.
   `GetHiidDataAsync` uses that route for named HIID properties.
-- HIID 4.6 defines DIET entry `1009`, `fitting_system_data`, containing version,
+- The matched HIID 4.5 map defines DIET entry `1009`, `fitting_system_data`, containing version,
   size, checksum, eight reserved bytes and a maximum 4,000-byte fitting-data
   vector. The corresponding memory map places the vector at offset 16.
-- Whether these aids return entry 1009 through their ordinary `get_hiid`, what
-  it actually contains, and how to reconstruct their full fitting remain
-  unverified. The current identification parser deliberately skips this data.
+- Both tested aids now return entry 1009 through the bounded HIID NVRAM read
+  path in an owned ReadOnly session. The reader validates its length, repeated
+  header and CRC before decoding the researched profile. It also preserves the
+  original identification response privately. These reads do not construct a
+  complete SDK fitting session or capture live RAM.
 
 `GetFittingSystemDataChipCommandProcessor` also queries
 `end_user_settings.get_eus_scope_info` and reads advertised scopes. Recovered
-EndUserSettings 1.1, service `0x02000017`, has read opcodes 0 (scope metadata), 1
+EndUserSettings contracts, service `0x02000017`, have read opcodes 0 (scope metadata), 1
 (field metadata), and 2 (`get_eus_nvram`: UInt8 scope plus UInt8 ID, returning
 CBOR). Scope enumerations are global=0, situation=1 and profile=2. These names
 are not proof that a scope is the Geral program. Device-returned counts and
 metadata must define any subsequent read; no arbitrary scope IDs are probed.
+The tested pair advertises version 2.1. Audifern captured its persisted scopes
+through ReadOnly/READ_NVRAM transactions. An NVRAM read mirrored into the SDK's
+host cache does not establish a read of current device RAM.
 
 The fitting `DeviceData` model contains FittingId, HIPC configuration, HIID
 selection, ProdRegs, business data and optional end-user settings. Companion's
@@ -142,7 +147,12 @@ identity data. Its restore calls `SetDeviceDataAsync`.
 `SetDeviceDataAsync` produces `HIConfigurationChipCommand`. That processor can
 write audible RAM settings and persist NVRAM, fitting-system data and end-user
 settings; persistence options explicitly include audible and background
-persist. This is a fitting operation. Recovering that setter does not supply a
+persist. The full path also transforms the saved model into runtime chip
+parameters, checks fitted side and fitting identity, updates staging data,
+manages RAM and NVRAM EUS values, and finishes queued persistence. Its matching
+fitting-ID branch may only establish the host cache after checking the fitting
+checksum. Reproducing those lifecycle and transformation steps is part of
+clinical restore. Recovering that setter does not supply a
 correct new-program prescription or prove that adding an entry to a dictionary
 allocates a valid program slot.
 
@@ -155,9 +165,10 @@ treated as permission to allocate an unadvertised ID.
 
 A broader search of the 872 decoded configuration documents and selected SDK
 sources did not recover a consumer add/create/clone/remove-program contract.
-Remaining work includes the compatible fitting model, actual fitted data,
-program capacity/slot allocation, DSP-state schema and clinically meaningful
-transformations. Noah itself supplies hosting/data exchange rather than the
+The researched model and captured data now support the saved fitting inspector.
+Remaining work includes complete model-specific calculation and chip-state
+transformation, program capacity/slot allocation and verified fitting-session
+persistence/restore. Noah itself supplies hosting/data exchange rather than the
 Oticon fitting algorithm; see [noah-investigation.md](noah-investigation.md).
 
 ## Original Companion languages

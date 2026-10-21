@@ -19,7 +19,7 @@ volume against the original consumer checkpoint.
 | Data | Coverage |
 | --- | --- |
 | Consumer checkpoint | Active program metadata, volume/mute and supported EQ/source/SpeechBooster getters that succeeded. The shareable consumer export keeps its narrower scope. |
-| Identity and registry | Reported model, versions, local identifiers and observed services. New captures also retain the validated raw HIID response privately, including hardware selection fields. Presence does not establish every operation. |
+| Identity and registry | Reported model, versions, local identifiers and observed services. New captures also retain the validated raw HIID response privately, including hardware selection fields. The tested pair returned 19 entries per aid; uninterpreted entries remain intact. Presence does not establish every operation. |
 | Fitting record | HIID 4.5 entry 1009: header plus declared meaningful payload. The header is read twice and the device CRC checked. |
 | End-user settings | EUS 2.1 inventory, optional metadata and successful persisted NVRAM getters. IDs/counts come from that inventory. Unknown, additional and RAM-only scopes remain outside coverage. |
 | Excluded | Live RAM, complete calibration/device memory, installed firmware, original patient records and verified clinical restore. |
