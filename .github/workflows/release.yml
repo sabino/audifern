@@ -6,9 +6,14 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag on main (for retrying a failed release)
+        description: Maintainer-signed version tag on main
         required: true
         type: string
+      publish:
+        description: Publish a new release after notarization (false only uploads verified Actions artifacts)
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -18,24 +23,48 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  dispatch:
+    name: Dispatch trusted main workflow
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh workflow run release.yml --ref main -f tag="$RELEASE_TAG" -f publish=true
+
   resolve:
-    name: Resolve version tag
+    name: Verify maintainer-signed source
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'sabino/audifern'
     runs-on: ubuntu-24.04
     outputs:
-      tag: ${{ steps.tag.outputs.tag }}
+      tag: ${{ steps.source.outputs.tag }}
+      commit: ${{ steps.source.outputs.commit }}
+      tagObject: ${{ steps.source.outputs.tagObject }}
     steps:
-      - id: tag
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: source
         env:
-          REQUESTED_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/release_source.py "$RELEASE_TAG" --github-output
+      - name: Refuse to replace a published release
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
         run: |
-          python3 - <<'PY'
-          import os, re
-          tag = os.environ['REQUESTED_TAG']
-          if not re.fullmatch(r'v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?', tag):
-              raise SystemExit('Expected an existing semantic version tag, for example v0.6.0.')
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('tag=' + tag + '\n')
-          PY
+          if gh release view "$RELEASE_TAG" --json isDraft > release-state.json 2>/dev/null; then
+            python3 -c 'import json; assert json.load(open("release-state.json"))["isDraft"], "Published releases are immutable; use a new version tag."'
+          fi
 
   build:
     name: Verify and package
@@ -43,83 +72,100 @@ jobs:
     uses: ./.github/workflows/ci.yml
     with:
       release_tag: ${{ needs.resolve.outputs.tag }}
+      release_commit: ${{ needs.resolve.outputs.commit }}
 
-  prepared:
-    name: Find locally notarized draft
-    needs: resolve
-    runs-on: ubuntu-24.04
-    # GitHub hides draft releases from read-only installation tokens.
-    permissions:
-      contents: write
-    outputs:
-      ready: ${{ steps.draft.outputs.ready }}
-    env:
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
-      RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
-    steps:
-      - id: draft
-        run: |
-          set -euo pipefail
-          if ! gh release view "$RELEASE_TAG" --json isDraft,assets > draft.json; then
-            echo 'ready=false' >> "$GITHUB_OUTPUT"
-            echo 'Build checks continue. A notarized draft is required before publishing.' >> "$GITHUB_STEP_SUMMARY"
-            echo 'Prepare it locally as documented in docs/distribution.md, then dispatch Release with this tag.' >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          python3 - <<'PY'
-          import json, os
-          data = json.load(open('draft.json'))
-          assert data['isDraft'], 'A published release is never overwritten; use a new version tag.'
-          prefix = 'Audifern-' + os.environ['RELEASE_TAG'][1:] + '-macos-universal'
-          expected = {prefix + '.dmg', prefix + '.zip', 'SHA256SUMS', 'build-info.json'}
-          ready = {asset['name'] for asset in data['assets']} == expected
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('ready=' + str(ready).lower() + '\n')
-          if not ready:
-              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as report:
-                  report.write('The draft is incomplete. Upload all four locally notarized assets and dispatch Release again.\n')
-          PY
-
-  verify:
-    name: Verify Apple tickets and Gatekeeper
-    needs: [resolve, build, prepared]
-    if: needs.prepared.outputs.ready == 'true'
+  notarize:
+    name: Sign and notarize with Apple
+    needs: [resolve, build]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: macos-15
-    timeout-minutes: 15
-    # Access to a private draft requires push access, even when only downloading.
+    timeout-minutes: 75
+    # Configured on GitHub to allow only the main branch, never tags or PRs.
+    environment: apple-notarization
     permissions:
-      contents: write
+      contents: read
     env:
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
       RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
-      EXPECTED_TEAM: ${{ vars.AUDIFERN_TEAM_ID }}
+      SOURCE_COMMIT: ${{ needs.resolve.outputs.commit }}
+      TAG_OBJECT: ${{ needs.resolve.outputs.tagObject }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out the validated application source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.resolve.outputs.tag }}
+          ref: ${{ needs.resolve.outputs.commit }}
+          fetch-depth: 0
           persist-credentials: false
-      - name: Download and independently verify prepared release
+          path: product
+      - name: Check out trusted workflow tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          path: automation
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: macos-universal
+          path: product/build/unsigned
+      - name: Verify the unsigned input before loading credentials
         run: |
-          set -euo pipefail
-          test -n "$EXPECTED_TEAM"
-          gh release download "$RELEASE_TAG" --dir downloads
-          python3 scripts/verify_release.py downloads --tag "$RELEASE_TAG" --team "$EXPECTED_TEAM"
+          python3 automation/scripts/ci_signing.py prepare --project product --directory product/build/unsigned \
+            --tag "$RELEASE_TAG" --commit "$SOURCE_COMMIT" --tag-object "$TAG_OBJECT"
+      - id: signing
+        name: Import only the expected Developer ID identity
+        env:
+          AUDIFERN_CERTIFICATE_P12: ${{ secrets.AUDIFERN_CERTIFICATE_P12 }}
+          AUDIFERN_CERTIFICATE_PASSWORD: ${{ secrets.AUDIFERN_CERTIFICATE_PASSWORD }}
+          AUDIFERN_NOTARY_KEY: ${{ secrets.AUDIFERN_NOTARY_KEY }}
+          AUDIFERN_NOTARY_KEY_ID: ${{ secrets.AUDIFERN_NOTARY_KEY_ID }}
+          AUDIFERN_NOTARY_ISSUER: ${{ secrets.AUDIFERN_NOTARY_ISSUER }}
+          AUDIFERN_SIGN_IDENTITY: ${{ vars.AUDIFERN_SIGN_IDENTITY }}
+          AUDIFERN_TEAM_ID: ${{ vars.AUDIFERN_TEAM_ID }}
+        run: python3 automation/scripts/ci_signing.py setup --state "$RUNNER_TEMP/audifern-signing-state.json"
+      - name: Sign, submit, staple and verify the app and DMG
+        env:
+          AUDIFERN_SIGN_IDENTITY: ${{ steps.signing.outputs.identity }}
+          AUDIFERN_NOTARY_KEY_PATH: ${{ steps.signing.outputs.keyPath }}
+          AUDIFERN_NOTARY_KEY_ID: ${{ secrets.AUDIFERN_NOTARY_KEY_ID }}
+          AUDIFERN_NOTARY_ISSUER: ${{ secrets.AUDIFERN_NOTARY_ISSUER }}
+        run: python3 product/scripts/notarize-release.py --tag "$RELEASE_TAG"
+      - name: Remove signing credentials before uploading anything
+        if: always()
+        run: python3 automation/scripts/ci_signing.py cleanup --state "$RUNNER_TEMP/audifern-signing-state.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos-universal-notarized
           path: |
-            downloads/*.dmg
-            downloads/*.zip
-            downloads/SHA256SUMS
-            downloads/build-info.json
+            product/build/release/*.dmg
+            product/build/release/*.zip
+            product/build/release/SHA256SUMS
+            product/build/release/build-info.json
           if-no-files-found: error
           retention-days: 14
+
+  verify:
+    name: Verify Apple tickets on a fresh Mac
+    needs: [resolve, notarize]
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: macos-universal-notarized
+          path: downloads
+      - name: Independently verify the release without Apple credentials
+        env:
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          EXPECTED_TEAM: ${{ vars.AUDIFERN_TEAM_ID }}
+        run: python3 scripts/verify_release.py downloads --tag "$RELEASE_TAG" --team "$EXPECTED_TEAM"
 
   publish:
     name: Publish notarized downloads
     needs: [resolve, verify]
+    if: inputs.publish
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -128,37 +174,43 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+      SOURCE_COMMIT: ${{ needs.resolve.outputs.commit }}
+      TAG_OBJECT: ${{ needs.resolve.outputs.tagObject }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.resolve.outputs.tag }}
+          ref: ${{ needs.resolve.outputs.commit }}
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: macos-universal-notarized
           path: downloads
-      - name: Verify artifact checksums and provenance
+      - name: Verify hashes, immutable tag and source provenance
         run: |
-          cd downloads
-          sha256sum --check SHA256SUMS
+          (cd downloads && sha256sum --check SHA256SUMS)
           python3 - <<'PY'
           import json, os, subprocess
           from pathlib import Path
-          data = json.loads(Path('build-info.json').read_text())
-          commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
-          assert data['sourceCommit'] == commit, 'Artifact source differs from the tag'
+          data = json.loads(Path('downloads/build-info.json').read_text())
+          assert data['sourceCommit'] == os.environ['SOURCE_COMMIT']
           assert data['releaseVersion'] == os.environ['RELEASE_TAG'][1:]
           assert data['architectures'] == ['arm64', 'x86_64']
           assert data['signing'] == 'developer-id' and data['notarized'] is True
           assert data['hardenedRuntime'] is True and data['secureTimestamp'] is True
+          remote = subprocess.check_output(['git', 'ls-remote', 'origin', 'refs/tags/' + os.environ['RELEASE_TAG']], text=True).split()
+          assert remote == [os.environ['TAG_OBJECT'], 'refs/tags/' + os.environ['RELEASE_TAG']], 'The signed release tag changed'
           PY
       - name: Prepare and publish release
         run: |
           set -euo pipefail
-          gh release view "$RELEASE_TAG" --json isDraft > release-state.json
-          python3 -c 'import json; assert json.load(open("release-state.json"))["isDraft"], "A published release is never overwritten; use a new version tag."'
+          if gh release view "$RELEASE_TAG" --json isDraft > release-state.json 2>/dev/null; then
+            python3 -c 'import json; assert json.load(open("release-state.json"))["isDraft"], "Published releases are immutable; use a new version tag."'
+          else
+            notes="docs/releases/${RELEASE_TAG#v}.md"
+            if [[ ! -f "$notes" ]]; then notes=docs/releases/default.md; fi
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "Audifern ${RELEASE_TAG#v}" --notes-file "$notes"
+          fi
           gh release upload "$RELEASE_TAG" downloads/*.dmg downloads/*.zip downloads/SHA256SUMS downloads/build-info.json --clobber
-          # Address the release by ID while its assets are still in a draft.
           release_api_url="$(gh release view "$RELEASE_TAG" --json apiUrl --jq .apiUrl)"
           gh api "$release_api_url" > release-assets.json
           python3 - <<'PY'
@@ -168,8 +220,7 @@ jobs:
           local = {path.name: path for path in Path('downloads').iterdir() if path.is_file()}
           assert set(assets) == set(local), 'Release asset set differs from verified downloads'
           for name, path in local.items():
-              digest = assets[name].get('digest')
-              assert digest == 'sha256:' + hashlib.sha256(path.read_bytes()).hexdigest(), 'Uploaded asset digest mismatch'
+              assert assets[name].get('digest') == 'sha256:' + hashlib.sha256(path.read_bytes()).hexdigest(), 'Uploaded digest mismatch'
           PY
           if [[ "$RELEASE_TAG" == *-* ]]; then
             gh release edit "$RELEASE_TAG" --draft=false --prerelease

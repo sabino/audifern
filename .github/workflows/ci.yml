@@ -12,6 +12,11 @@ on:
         required: false
         default: ''
         type: string
+      release_commit:
+        description: Validated immutable commit for the release tag
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -28,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.release_tag || github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ inputs.release_commit || inputs.release_tag || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Workflow syntax
         env:
@@ -58,7 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.release_tag || github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ inputs.release_commit || inputs.release_tag || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Toolchain
         run: |
@@ -67,6 +72,9 @@ jobs:
           uname -m
       - name: Swift tests
         run: swift test --jobs 2
+      - name: Compile the selected-identity exporter without accessing any key
+        if: hashFiles('scripts/export-signing-identity.swift') != ''
+        run: xcrun swiftc scripts/export-signing-identity.swift -o "$RUNNER_TEMP/audifern-export-check"
 
   package:
     name: Universal DMG and ZIP
@@ -78,10 +86,11 @@ jobs:
       AUDIFERN_BUILD_ARCH: universal
       AUDIFERN_SIGN_IDENTITY: '-'
       RELEASE_TAG: ${{ inputs.release_tag || '' }}
+      RELEASE_COMMIT: ${{ inputs.release_commit || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.release_tag || github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ inputs.release_commit || inputs.release_tag || github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Validate release source
@@ -89,6 +98,7 @@ jobs:
         run: |
           python3 scripts/release_metadata.py version --tag "$RELEASE_TAG"
           test "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" = "$(git rev-parse HEAD)"
+          if [[ -n "$RELEASE_COMMIT" ]]; then test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"; fi
           git fetch --no-tags origin main
           git merge-base --is-ancestor HEAD origin/main
       - name: Build and verify downloads

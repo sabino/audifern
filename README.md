@@ -53,6 +53,8 @@ Releases from **0.6.1** are **Developer ID signed and Apple-notarized**.
 Continuous-build artifacts and the original 0.6.0 release remain ad hoc signed.
 Read the [installation and release guide](docs/distribution.md) for verification,
 continuous-build artifacts and the release process.
+From 0.6.2, signed version tags also trigger signing and notarization in GitHub
+Actions, using a protected environment available only to the trusted main workflow.
 Advanced credentials are provisioned locally and are excluded from downloads.
 
 ## Build and try it
