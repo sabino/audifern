@@ -295,7 +295,16 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                     if let session, session.isReady,
                        let eqService = session.services.first(where: { UTLAdvanced.supportsEqualizer($0, microphone: false) }) {
                         var step: Double?
-                        do { step = eqService.major >= 2 ? try await session.equalizerStep() : OticonEqualizer.defaultStepDB }
+                        do {
+                            if eqService.major >= 2 { step = try await session.equalizerStep() }
+                            else {
+                                // Historical consumer scale remains authoritative
+                                // for 1.x. Read optional get_info labels without
+                                // substituting its reported scale.
+                                _ = try? await session.equalizerStep()
+                                step = OticonEqualizer.defaultStepDB
+                            }
+                        }
                         catch { notes.append("\(label): EQ step size unavailable."); await self.cleanFailedSnapshotSession(id, link: link) }
                         if let step {
                             for microphone in [true, false] where UTLAdvanced.supportsEqualizer(eqService, microphone: microphone) && session.isReady {
@@ -1131,6 +1140,9 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
     }
     func setEqualizers(_ ids: [UUID], microphone: Bool, bandsDB: [Double]) {
         performConsumerChange(ids, change: .equalizer(microphone: microphone, bandsDB: bandsDB))
+    }
+    func setEqualizerChannels(_ ids: [UUID], microphone: Bool, levelsByAid: [UUID: [Double]]) {
+        performConsumerChange(ids, change: .equalizerChannels(microphone: microphone, levelsByAid: levelsByAid))
     }
     func selectPrograms(_ ids: [UUID], program: Int) {
         performConsumerChange(ids, change: .program(program))

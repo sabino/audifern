@@ -53,3 +53,39 @@ func renderSyntheticWorkspacePreviewsWithoutBluetoothOrPrivateData() throws {
       }
     }
 }
+
+@MainActor @Test(.enabled(if: ProcessInfo.processInfo.environment["AUDIFERN_PREVIEW_OUTPUT"] != nil))
+func renderDetailedConsumerEQWithReportedAndMissingFrequencyLabels() throws {
+    let output = try #require(ProcessInfo.processInfo.environment["AUDIFERN_PREVIEW_OUTPUT"])
+    let folder = URL(fileURLWithPath: output, isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    let services = AudifernServices(demo: true)
+    services.preferences.language = .english
+    NSApplication.shared.setActivationPolicy(.prohibited)
+    var aids = services.bluetooth.orderedConnections
+    #expect(aids.count == 2)
+    for index in aids.indices {
+        aids[index].microphoneEqualizer = try .init(rawSteps: [1, 2, 3, 0, -1, -2, 0, 2],
+            minimumSteps: .init(repeating: -24, count: 8), maximumSteps: .init(repeating: 24, count: 8),
+            stepDB: 0.25, frequenciesHz: index == 0 ? [250, 500, 1000, 2000, 3000, 4000, 6000, 8000] : nil)
+    }
+    for scheme in [ColorScheme.light, .dark] {
+        for width in [1120, 820] {
+            NSApplication.shared.appearance = NSAppearance(named: scheme == .light ? .aqua : .darkAqua)
+            let content = Surface {
+                PairedEqualizerView(store: services.bluetooth, aids: aids, microphone: true,
+                    linked: .constant(false), canLink: false, detailed: true)
+            }.padding(30)
+                .environmentObject(services.preferences).environmentObject(services.equalizerDrafts)
+                .environment(\.colorScheme, scheme).preferredColorScheme(scheme)
+                .frame(width: CGFloat(width), height: 620, alignment: .topLeading).background(Brand.background).tint(Brand.accent)
+            let hosting = NSHostingView(rootView: content)
+            hosting.frame = NSRect(x: 0, y: 0, width: width, height: 620)
+            hosting.layoutSubtreeIfNeeded()
+            let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+            hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+            let png = try #require(bitmap.representation(using: .png, properties: [:]))
+            try PrivateDocuments.writeNew(png, to: folder.appendingPathComponent("consumer-eight-band-\(scheme == .light ? "light" : "dark")-\(width).png"))
+        }
+    }
+}

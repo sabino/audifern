@@ -43,6 +43,74 @@ private func consumerAid(right: Bool = false, scale: Double = 0.25) throws -> Ai
     }
 }
 
+@Test func channelEQPlansIndependentBandsWithEachAidScaleAndExistingRevalidation() throws {
+    let left = try consumerAid(scale: 0.25), right = try consumerAid(right: true, scale: 0.5)
+    let levels = [0.25, 0.75, -0.25, -0.75, 1, 2, -1, -2]
+    let plan = try ConsumerControlPlan(aids: [left, right], change: .equalizerChannels(microphone: true, levelsByAid: [left.id: levels, right.id: levels]))
+    guard case .equalizer(true, let leftSteps, _) = plan.steps[0].setting,
+          case .equalizer(true, let rightSteps, _) = plan.steps[1].setting else {
+        Issue.record("Missing independent-channel EQ plan"); return
+    }
+    #expect(leftSteps == [1, 3, -1, -3, 4, 8, -4, -8])
+    #expect(rightSteps == [0, 2, 0, -2, 2, 4, -2, -4])
+    var changed = right
+    changed.activeProgram = 1
+    #expect(throws: (any Error).self) { try plan.steps[1].validate(changed) }
+    changed.activeProgram = 0
+    changed.writableMicrophoneEqualizer = false
+    #expect(throws: (any Error).self) { try plan.steps[1].validate(changed) }
+}
+
+@Test func channelEQPreflightRejectsTheWholePairForAnUnsupportedSecondBand() throws {
+    let left = try consumerAid(scale: 0.5), right = try consumerAid(right: true, scale: 0.125)
+    var levels = [Double](repeating: 0, count: 8)
+    levels[7] = 4
+    #expect(throws: (any Error).self) {
+        try ConsumerControlPlan(aids: [left, right], change: .equalizerChannels(microphone: false, levelsByAid: [left.id: levels, right.id: levels]))
+    }
+    #expect(throws: (any Error).self) {
+        try ConsumerControlPlan(aids: [left], change: .equalizerChannels(microphone: true, levelsByAid: [left.id: [0, 0, 0]]))
+    }
+}
+
+@Test func linkedEQRefusesConflictingReportedAxesAndRevalidatesItsSelectedAxis() throws {
+    var left = try consumerAid(), right = try consumerAid(right: true)
+    func eq(_ frequencies: [Double]) throws -> OticonEqualizer.State {
+        try .init(rawSteps: .init(repeating: 0, count: 8), minimumSteps: .init(repeating: -24, count: 8),
+                  maximumSteps: .init(repeating: 24, count: 8), stepDB: 0.25, frequenciesHz: frequencies)
+    }
+    left.microphoneEqualizer = try eq([250, 500, 1000, 2000, 3000, 4000, 6000, 8000])
+    right.microphoneEqualizer = try eq([300, 600, 1200, 2400, 3600, 4800, 6400, 8800])
+    let change = ConsumerControlPlan.Change.equalizerChannels(microphone: true,
+        levelsByAid: [left.id: .init(repeating: 0.5, count: 8), right.id: .init(repeating: 0.5, count: 8)])
+    #expect(throws: (any Error).self) { try ConsumerControlPlan(aids: [left, right], change: change) }
+    let singleChange = ConsumerControlPlan.Change.equalizerChannels(microphone: true,
+        levelsByAid: [left.id: .init(repeating: 0.5, count: 8)])
+    let step = try #require(ConsumerControlPlan(aids: [left], change: singleChange).steps.first)
+    left.microphoneEqualizer = right.microphoneEqualizer
+    #expect(throws: (any Error).self) { try step.validate(left) }
+    // A neutral reset is independently valid for each aid's own channel layout.
+    #expect(try ConsumerControlPlan(aids: [left, right], change: .restore(.microphone)).steps.count == 2)
+}
+
+@Test func channelEQNeedsOneIndependentVectorPerSelectedAid() throws {
+    let left = try consumerAid(), right = try consumerAid(right: true)
+    let first = [Double](repeating: 0.25, count: 8), second = [Double](repeating: -0.25, count: 8)
+    let plan = try ConsumerControlPlan(aids: [left, right],
+        change: .equalizerChannels(microphone: true, levelsByAid: [left.id: first, right.id: second]))
+    #expect(plan.steps.count == 2)
+    guard case .equalizer(true, let leftValues, _) = plan.steps[0].setting,
+          case .equalizer(true, let rightValues, _) = plan.steps[1].setting else {
+        Issue.record("Missing per-aid vectors"); return
+    }
+    #expect(leftValues == .init(repeating: 1, count: 8) && rightValues == .init(repeating: -1, count: 8))
+    for invalid in [[left.id: first], [left.id: first, right.id: second, UUID(): first]] {
+        #expect(throws: (any Error).self) {
+            try ConsumerControlPlan(aids: [left, right], change: .equalizerChannels(microphone: true, levelsByAid: invalid))
+        }
+    }
+}
+
 @Test func resetAllUsesOnlyNeutralConsumerSettingsInCurrentProgram() throws {
     let aid = try consumerAid()
     let plan = try ConsumerControlPlan(aids: [aid], change: .restore(.all))

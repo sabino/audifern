@@ -20,11 +20,13 @@ import Testing
     var holdNextInput = false
     var releaseAcknowledgement: CheckedContinuation<Void, Never>?
     var currentSteps = [Int](repeating: 0, count: 8)
+    var currentStreamingSteps = [Int](repeating: 0, count: 8)
     var consumerOpen = false
     var pipelineOpen = false
     var transaction: Data?
     var serviceTrace: [(handle: UInt8, opcode: UInt8, payload: Data)] = []
     var failNextEqualizerRead = false
+    var equalizerInfoOverride: Data?
     var failCancellation = false
     var advertiseSpeechBooster = false
     var advertiseBattery = false
@@ -182,13 +184,14 @@ import Testing
                 failNextEqualizerRead = false
                 status = 0xD4; payload = Data()
             } else if request.code == 2 {
-                payload = Data([0xA1, 0x68]) + Data("stepsize".utf8) + Data([0xF9, 0x34, 0]) // 0.25
-            } else if request.code == 4 {
+                payload = equalizerInfoOverride ?? (Data([0xA1, 0x68]) + Data("stepsize".utf8) + Data([0xF9, 0x34, 0])) // 0.25
+            } else if request.serviceHandle == 9 && [UInt8(1), 4].contains(request.code!) {
                 guard case .array(let values) = try UTLCBOR.decodeSequence(request.payload).first else { throw OticonEqualizer.EQError.malformed }
-                currentSteps = values.map { let value = $0.int!; return value > 127 ? value - 256 : value }
+                let steps = values.map { let value = $0.int!; return value > 127 ? value - 256 : value }
+                if request.code == 4 { currentSteps = steps } else { currentStreamingSteps = steps }
                 payload = Data()
             } else {
-                payload = try UTLCBOR.unsignedVector(currentSteps)
+                payload = try UTLCBOR.unsignedVector(request.serviceHandle == 9 && request.code == 0 ? currentStreamingSteps : currentSteps)
                     + UTLCBOR.unsignedVector(.init(repeating: -127, count: 8))
                     + UTLCBOR.unsignedVector(.init(repeating: 127, count: 8))
             }
@@ -471,6 +474,58 @@ private func syntheticEUSInventory(access: String = "NVRAM") -> Data {
     #expect(state.minimumSteps == .init(repeating: -127, count: 8))
     #expect(peer.serviceOpcodes == [1, 2, 3]) // discovery, info, microphone read
     #expect(peer.serviceTrace.map { "\($0.handle)/\($0.opcode)" } == ["0/1", "8/0", "8/4", "8/7", "9/2", "8/8", "8/7", "9/3", "8/8"])
+}
+
+@MainActor @Test func reportedEQFrequenciesStayWithTheirSessionAndBothConsumerSources() async throws {
+    let peer = SyntheticUTLPeer()
+    let frequencies = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000]
+    var payload = Data([0xA2, 0x68]) + Data("stepsize".utf8) + Data([0xF9, 0x34, 0, 0x65]) + Data("freqs".utf8) + Data([0x88])
+    for hz in frequencies { payload += Data([0x19, UInt8(hz >> 8), UInt8(hz & 255)]) }
+    peer.equalizerInfoOverride = payload
+    let info = try UTLProtocol.GattInformation(data: Data([1, 0, 1, 0, 0, 244, 1, 3, 0x80, 0x80, 0x80, 0x80]))
+    let session = try UTLSession(info: info, physicalATTMTU: 247) { uuid, data in try await peer.write(uuid, data) }
+    peer.session = session
+    try await session.start(key: peer.key)
+    let step = try await session.equalizerStep()
+    for source in [true, false] {
+        let state = try await session.equalizer(microphone: source, stepDB: step)
+        #expect(state.frequenciesHz == frequencies.map(Double.init))
+    }
+    #expect(peer.serviceTrace.filter { $0.handle == 9 }.map(\.opcode) == [2, 3, 0])
+    await session.stop()
+    #expect(session.equalizerMetadata == nil)
+}
+
+@MainActor @Test func eightChannelWritesConfirmExactReadbackAndKeepTheOtherConsumerSource() async throws {
+    let peer = SyntheticUTLPeer()
+    peer.currentSteps = [-9, 2, 11, 5, -1, 8, 7, -6]
+    peer.currentStreamingSteps = [4, -2, 1, 0, -3, 5, -8, 6]
+    let originalMicrophone = peer.currentSteps, originalStreaming = peer.currentStreamingSteps
+    let info = try UTLProtocol.GattInformation(data: Data([1, 0, 1, 0, 0, 244, 1, 3, 0x80, 0x80, 0x80, 0x80]))
+    let session = try UTLSession(info: info, physicalATTMTU: 247) { uuid, data in try await peer.write(uuid, data) }
+    peer.session = session
+    try await session.start(key: peer.key)
+    let step = try await session.equalizerStep()
+    let microphone = try await session.equalizer(microphone: true, stepDB: step)
+    var desired = microphone.channelDB
+    desired[3] += step
+    let result = try await session.setEqualizer(microphone: true,
+        steps: microphone.steps(forChannelDB: desired), expected: microphone)
+    var expectedMicrophone = originalMicrophone
+    expectedMicrophone[3] += 1
+    #expect(result.rawSteps == expectedMicrophone && peer.currentSteps == expectedMicrophone)
+    #expect(peer.currentStreamingSteps == originalStreaming)
+    let streaming = try await session.equalizer(microphone: false, stepDB: step)
+    desired = streaming.channelDB; desired[6] -= step
+    let streamed = try await session.setEqualizer(microphone: false,
+        steps: streaming.steps(forChannelDB: desired), expected: streaming)
+    var expectedStreaming = originalStreaming
+    expectedStreaming[6] -= 1
+    #expect(streamed.rawSteps == expectedStreaming && peer.currentStreamingSteps == expectedStreaming)
+    #expect(peer.currentSteps == expectedMicrophone)
+    #expect(peer.serviceTrace.filter { $0.handle == 9 && $0.opcode == 4 }.count == 1)
+    #expect(peer.serviceTrace.filter { $0.handle == 9 && $0.opcode == 1 }.count == 1)
+    await session.stop()
 }
 
 @MainActor @Test func invalidServerProofStopsBeforeClientProofOrServiceRequests() async throws {

@@ -24,6 +24,18 @@ These are working readers and local preparation tools. The catalog below also
 contains future editors and measurement tools; it is not a claim that every
 Genie operation can already be performed by Audifern.
 
+Everyday consumer EQ also has an eight-band editor, using frequency metadata
+reported by each aid. This does not edit the 24-band fitted-parameter matrix.
+See [advanced consumer controls](advanced-controls.md).
+
+Calculation research has selected the calibration document family uniquely for
+each captured hardware profile. One original managed acoustic interpolation
+kernel also passed nine synthetic checks on .NET 10 / Apple Silicon in a process
+denied network and hearing-device access. That private experiment uses no patient
+input or factory curves and ships no vendor component. It establishes only that
+bounded stage: complete gain/MPO calculation, legalization and clinical equivalence
+remain unverified.
+
 ## Workflow and interface
 
 Genie's current workflow is **Welcome → Prepare → Fit → Finish**, with a **Client** step when running without NOAH. Each step has a task list; program selection, connection status and common commands stay accessible across tools.

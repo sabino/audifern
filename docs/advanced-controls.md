@@ -32,8 +32,14 @@ The official UI's three bands expand to eight wire coefficients:
 - Mid: coefficients 1, 2, 3.
 - High: coefficients 4, 5, 6, 7.
 
-These positions do not establish eight specific center frequencies. The app
-does not label them with guessed Hz values. Coefficients are signed 8-bit
+This grouping alone does not establish eight specific center frequencies.
+Audifern now retains validated `freqs` from the same aid's consumer `get_info`
+response. Both original SDK source readers query this shared service metadata.
+The UI names channels only from that response; absent or invalid optional labels
+leave numbered bands. An ordered eight-frequency axis is bounded to finite,
+ascending audio frequencies. Saved EUS microphone labels corroborate this axis
+for the researched pair, but are never substituted for live metadata or borrowed
+as a streaming map. Coefficients are signed 8-bit
 values transported either as raw two's-complement bytes or CBOR integers.
 The historical step is `20 * log10(2) / 32`, approximately 0.18814 dB.
 UTL `get_info` may report a `stepsize` that replaces that scale; Audifern
@@ -100,7 +106,42 @@ read, 4 microphone write. Command numbers are sent to the discovered runtime
 handle, never used as fixed GATT handles. Writes are initiated only by a user
 control or explicit preset apply, then followed by a confirming read.
 Version-1 consumer readers use the historical dB scale; `get_info` is diagnostic
-for that path. Version 2 uses the reported `stepsize` and min/max arrays.
+for scale selection on that path; validated frequency labels can still be
+retained. Version 2 uses the reported `stepsize` and min/max arrays.
+
+## Detailed eight-band controls
+
+In **Sound**, choose **8 bands** above either microphone or streaming EQ. Both
+sources retain their independent vectors and drafts. Returning to **Tone controls**
+does not send or discard edits: the tone controls group the same eight pending
+coefficients. Moving one tone slider changes its group; moving one detailed
+slider changes only that coefficient. A tone value displays its group's minimum,
+matching the historical consumer interpretation.
+
+![Native eight-band EQ preview with synthetic data](images/consumer-eq-eight-bands.png)
+
+This in-memory native render uses invented values and a synthetic frequency map;
+the second aid deliberately omits labels to show the numbered-band fallback.
+Preview mode sends no controls.
+
+Linking mirrors new edits to the selected channel/group in each ear's own draft.
+It does not copy the other ear's untouched bands or clamp them to a shared range.
+Each aid quantizes with its own scale and bounds when Apply is pressed. Both
+vectors are preflighted before any request; connection, program, ranges and
+reported frequency layout are checked again before each write. Conflicting
+reported layouts require separate-ear edits. A successful write still requires
+the existing exact coefficient readback; a paired change is not atomic.
+
+Frequency metadata is scoped to one owned session and cleared on closure.
+Changed axes invalidate pending drafts. Optional frequency fields in consumer
+exports/backups preserve older archive compatibility. These are consumer sound
+adjustments, separate from the fitted Gain/MPO grids.
+
+The 2026-10-21 read-only capture received all eight Hz labels for both sources
+on both aids: 500, 750, 1000, 1500, 2000, 4000, 6000 and 8000. The saved fitting
+records stayed byte-identical to the previous capture. The new eight-band UI
+has synthetic write/readback tests and native light/dark/narrow renders. A user
+listening check of the new individual-band controls has not been performed.
 
 The first physical advanced read authenticated and discovered services but
 returned `0xD9` because the prototype omitted the SDK's ordinary consumer

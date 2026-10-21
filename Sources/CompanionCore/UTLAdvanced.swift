@@ -16,12 +16,31 @@ public enum UTLAdvanced {
         return (service.major == 1 && service.minor <= 2 && (!microphone || service.minor >= 1)) || (service.major == 2 && service.minor == 0)
     }
     public static func equalizerInfo(_ payload: Data) throws -> Double {
-        let values = try UTLCBOR.decodeSequence(payload)
-        guard values.count == 1, case .map(let map) = values[0], let step = map["stepsize"]?.double,
-              step.isFinite, step > 0, step <= 12 else { throw OticonEqualizer.EQError.malformed }
-        return step
+        try equalizerMetadata(payload).stepDB
     }
-    public static func equalizerState(_ payload: Data, stepDB: Double, sdkConsumerRangeDB: ClosedRange<Double>? = nil) throws -> OticonEqualizer.State {
+    public struct EqualizerMetadata: Equatable, Sendable {
+        public let stepDB: Double
+        public let frequenciesHz: [Double]?
+    }
+    public static func equalizerMetadata(_ payload: Data, legacyConsumerScale: Bool = false) throws -> EqualizerMetadata {
+        let values = try UTLCBOR.decodeSequence(payload)
+        guard values.count == 1, case .map(let map) = values[0] else { throw OticonEqualizer.EQError.malformed }
+        // Companion's supported 1.x readers ignore a reported scale and use
+        // this historical conversion. Optional labels are independent of it.
+        let scale = legacyConsumerScale ? OticonEqualizer.defaultStepDB : map["stepsize"]?.double
+        guard let step = scale,
+              step.isFinite, step > 0, step <= 12 else { throw OticonEqualizer.EQError.malformed }
+        var frequencies: [Double]?
+        if case .array(let vector)? = map["freqs"] {
+            let decoded = vector.compactMap(\.double)
+            if decoded.count == vector.count, OticonEqualizer.State.validFrequenciesHz(decoded) { frequencies = decoded }
+        }
+        // Missing or invalid optional labels in a valid CBOR map never invent
+        // an axis. The original step and bounded wire decoder remain mandatory.
+        return EqualizerMetadata(stepDB: step, frequenciesHz: frequencies)
+    }
+    public static func equalizerState(_ payload: Data, stepDB: Double, sdkConsumerRangeDB: ClosedRange<Double>? = nil,
+                                     frequenciesHz: [Double]? = nil) throws -> OticonEqualizer.State {
         let values = try UTLCBOR.decodeSequence(payload)
         guard values.count == 3 else { throw ParseError("EQ expected three CBOR vectors; received \(values.count) values.") }
         let vectors = try values.enumerated().map { index, value -> [Int] in
@@ -43,9 +62,11 @@ public enum UTLAdvanced {
             let lower = Int((range.lowerBound / stepDB).rounded(.toNearestOrEven)), upper = Int((range.upperBound / stepDB).rounded(.toNearestOrEven))
             guard (-128...127).contains(lower), (-128...127).contains(upper), lower <= upper else { throw OticonEqualizer.EQError.malformed }
             return try OticonEqualizer.State(rawSteps: vectors[0], minimumSteps: .init(repeating: lower, count: 8),
-                maximumSteps: .init(repeating: upper, count: 8), stepDB: stepDB, rangesReportedByDevice: false)
+                maximumSteps: .init(repeating: upper, count: 8), stepDB: stepDB, rangesReportedByDevice: false,
+                frequenciesHz: frequenciesHz)
         }
-        return try OticonEqualizer.State(rawSteps: vectors[0], minimumSteps: vectors[1], maximumSteps: vectors[2], stepDB: stepDB)
+        return try OticonEqualizer.State(rawSteps: vectors[0], minimumSteps: vectors[1], maximumSteps: vectors[2],
+                                        stepDB: stepDB, frequenciesHz: frequenciesHz)
     }
 
     /// EQ-only bounded structural information; never use for authentication data.

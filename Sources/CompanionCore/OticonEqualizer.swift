@@ -23,16 +23,30 @@ public enum OticonEqualizer {
         public let maximumSteps: [Int]
         public let stepDB: Double
         public let rangesReportedByDevice: Bool
+        /// Optional frequencies reported by this aid's consumer EQ get_info.
+        /// No fitted-gain or streaming-source frequency map is substituted.
+        public let frequenciesHz: [Double]?
 
         public init(rawSteps: [Int], minimumSteps: [Int], maximumSteps: [Int], stepDB: Double,
-                    rangesReportedByDevice: Bool = true) throws {
+                    rangesReportedByDevice: Bool = true, frequenciesHz: [Double]? = nil) throws {
             guard [rawSteps, minimumSteps, maximumSteps].allSatisfy({ $0.count == 8 && $0.allSatisfy { (-128...127).contains($0) } }),
                   stepDB.isFinite, stepDB > 0, stepDB <= 12,
-                  (0..<8).allSatisfy({ minimumSteps[$0] <= maximumSteps[$0] && (minimumSteps[$0]...maximumSteps[$0]).contains(rawSteps[$0]) }) else { throw EQError.malformed }
+                  (0..<8).allSatisfy({ minimumSteps[$0] <= maximumSteps[$0] && (minimumSteps[$0]...maximumSteps[$0]).contains(rawSteps[$0]) }),
+                  frequenciesHz.map(Self.validFrequenciesHz) ?? true else { throw EQError.malformed }
             self.rawSteps = rawSteps; self.minimumSteps = minimumSteps; self.maximumSteps = maximumSteps
             self.stepDB = stepDB; self.rangesReportedByDevice = rangesReportedByDevice
+            self.frequenciesHz = frequenciesHz
         }
 
+        static func validFrequenciesHz(_ values: [Double]) -> Bool {
+            values.count == 8 && values.allSatisfy { $0.isFinite && (20...24_000).contains($0) }
+                && zip(values, values.dropFirst()).allSatisfy { $0.0 < $0.1 }
+        }
+
+        public var channelDB: [Double] { rawSteps.map { Double($0) * stepDB } }
+        public var channelRangesDB: [ClosedRange<Double>] {
+            zip(minimumSteps, maximumSteps).map { Double($0.0) * stepDB...Double($0.1) * stepDB }
+        }
         public var threeBandDB: [Double] { groups.map { group in Double(group.map { rawSteps[$0] }.min()!) * stepDB } }
         public var threeBandRangesDB: [ClosedRange<Double>] {
             groups.map { group in
@@ -52,6 +66,19 @@ public enum OticonEqualizer {
             }
             try validate(result)
             return result
+        }
+
+        /// Independent consumer channels, in the device's existing wire order.
+        /// Frequency labels require a separately verified map for that source.
+        public func steps(forChannelDB levels: [Double]) throws -> [Int] {
+            guard levels.count == 8, levels.allSatisfy(\.isFinite) else { throw EQError.malformed }
+            let steps = try levels.map { level -> Int in
+                let value = (level / stepDB).rounded(.toNearestOrEven)
+                guard (-128...127).contains(value) else { throw EQError.outOfRange }
+                return Int(value)
+            }
+            try validate(steps)
+            return steps
         }
 
         public func validate(_ steps: [Int]) throws {

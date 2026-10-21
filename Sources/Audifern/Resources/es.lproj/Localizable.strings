@@ -1563,3 +1563,17 @@
 "Generic model identifier" = "Identificador del modelo genérico";
 "Hardware configuration" = "Configuración de hardware";
 "Hardware identification" = "Identificación del hardware";
+
+/* Detailed consumer equalizer. */
+"EQ detail" = "Detalle del EQ";
+"Tone controls" = "Controles de tono";
+"8 bands" = "8 bandas";
+"%@ %@ EQ · %@" = "EQ de %2$@ %1$@ · %3$@";
+"Band %d" = "Banda %d";
+"%@ kHz" = "%@ kHz";
+"Numbered bands follow device order. This aid has not reported frequency labels." = "Las bandas numeradas siguen el orden del dispositivo. Este audífono no ha indicado las etiquetas de frecuencia.";
+"Frequencies reported by this hearing aid. These are consumer EQ adjustments." = "Frecuencias indicadas por este audífono. Estos son ajustes del EQ de usuario.";
+"%@ Hz" = "%@ Hz";
+"The aids report different EQ frequency layouts. Adjust each ear separately." = "Los audífonos indican distribuciones de frecuencia diferentes en el EQ. Ajuste cada oído por separado.";
+"An EQ draft must match every selected hearing aid exactly." = "El borrador de EQ debe corresponder exactamente a los audífonos seleccionados.";
+"New edits are mirrored to both ears. Each aid keeps its other bands and confirms its own EQ." = "Las nuevas ediciones se reflejan en ambos oídos. Cada audífono conserva las demás bandas y confirma su propio EQ.";

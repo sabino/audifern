@@ -73,7 +73,11 @@ struct HearingAidControlsView: View {
                             sideHeading(aid)
                             if mode == .programs { program(aid, ids: [aid.id]) }
                             else {
-                                EqualizerControlsView(store: store, aidID: aid.id)
+                                PairedEqualizerView(store: store, aids: [aid], microphone: true,
+                                    linked: .constant(false), canLink: false)
+                                Divider()
+                                PairedEqualizerView(store: store, aids: [aid], microphone: false,
+                                    linked: .constant(false), canLink: false)
                                 AuxiliaryVolumeSectionView(store: store, aids: [aid], source: .streaming, linked: .constant(false))
                                 AuxiliaryVolumeSectionView(store: store, aids: [aid], source: .tinnitus, linked: .constant(false))
                                 restoreMenu(aid)

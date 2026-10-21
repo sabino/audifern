@@ -60,17 +60,19 @@ public struct ConsumerProgramSnapshot: Codable, Equatable, Sendable {
         public let minimumSteps: [Int]
         public let maximumSteps: [Int]
         public let rangesReportedByDevice: Bool
+        public let frequenciesHz: [Double]?
 
         public init(state: OticonEqualizer.State) {
             rawSteps = state.rawSteps; stepDB = state.stepDB
             minimumSteps = state.minimumSteps; maximumSteps = state.maximumSteps
             rangesReportedByDevice = state.rangesReportedByDevice
+            frequenciesHz = state.frequenciesHz
         }
         fileprivate func validate() throws {
             do {
                 _ = try OticonEqualizer.State(rawSteps: rawSteps, minimumSteps: minimumSteps,
                                              maximumSteps: maximumSteps, stepDB: stepDB,
-                                             rangesReportedByDevice: rangesReportedByDevice)
+                                             rangesReportedByDevice: rangesReportedByDevice, frequenciesHz: frequenciesHz)
             } catch { throw SnapshotError.invalid }
         }
     }

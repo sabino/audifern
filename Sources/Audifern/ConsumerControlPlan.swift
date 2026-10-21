@@ -28,6 +28,7 @@ struct ConsumerControlPlan {
     }
     enum Change {
         case equalizer(microphone: Bool, bandsDB: [Double])
+        case equalizerChannels(microphone: Bool, levelsByAid: [UUID: [Double]])
         case speechBooster(Bool)
         case program(Int)
         case restore(ResetScope)
@@ -68,7 +69,8 @@ struct ConsumerControlPlan {
                 let eq = microphone ? aid.microphoneEqualizer : aid.streamingEqualizer
                 let ready = microphone ? available.canChangeMicrophoneEqualizer : available.canChangeStreamingEqualizer
                 guard ready, let eq, eq.stepDB == expected.stepDB,
-                      eq.minimumSteps == expected.minimumSteps, eq.maximumSteps == expected.maximumSteps else {
+                      eq.minimumSteps == expected.minimumSteps, eq.maximumSteps == expected.maximumSteps,
+                      eq.frequenciesHz == expected.frequenciesHz else {
                     throw PlanError.unavailable("\(side) EQ limits changed. Reload its advanced controls.")
                 }
                 try eq.validate(steps)
@@ -98,6 +100,17 @@ struct ConsumerControlPlan {
                 throw PlanError.unavailable("The program must have the same reported ID and name on both aids.")
             }
         }
+        switch change {
+        case .equalizer(let microphone, _), .equalizerChannels(let microphone, _):
+            let layouts = aids.compactMap { (microphone ? $0.microphoneEqualizer : $0.streamingEqualizer)?.frequenciesHz }
+            if let first = layouts.first, layouts.contains(where: { $0 != first }) {
+                throw PlanError.unavailable("The aids report different EQ frequency layouts. Adjust each ear separately.")
+            }
+        default: break
+        }
+        if case .equalizerChannels(_, let levels) = change, Set(levels.keys) != Set(aids.map(\.id)) {
+            throw PlanError.unavailable("An EQ draft must match every selected hearing aid exactly.")
+        }
         var planned: [Step] = []
         for aid in aids {
             guard aid.isConnected, !aid.actionPending, !aid.advancedBusy, !aid.groupActionPending else {
@@ -116,6 +129,12 @@ struct ConsumerControlPlan {
             }
             switch change {
             case .equalizer(let microphone, let bandsDB): try equalizer(microphone, bandsDB)
+            case .equalizerChannels(let microphone, let levelsByAid):
+                guard let bandsDB = levelsByAid[aid.id],
+                      let eq = microphone ? aid.microphoneEqualizer : aid.streamingEqualizer else {
+                    throw PlanError.unavailable("Load \(aid.sideLabel.lowercased()) advanced controls first.")
+                }
+                try append(.equalizer(microphone: microphone, steps: eq.steps(forChannelDB: bandsDB), expected: eq))
             case .speechBooster(let enabled): try append(.speechBooster(enabled))
             case .program(let program): try append(.program(program))
             case .restore(let scope):

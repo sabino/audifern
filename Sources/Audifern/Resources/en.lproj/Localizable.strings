@@ -1563,3 +1563,17 @@
 "Generic model identifier" = "Generic model identifier";
 "Hardware configuration" = "Hardware configuration";
 "Hardware identification" = "Hardware identification";
+
+/* Detailed consumer equalizer. */
+"EQ detail" = "EQ detail";
+"Tone controls" = "Tone controls";
+"8 bands" = "8 bands";
+"%@ %@ EQ · %@" = "%@ %@ EQ · %@";
+"Band %d" = "Band %d";
+"%@ kHz" = "%@ kHz";
+"Numbered bands follow device order. This aid has not reported frequency labels." = "Numbered bands follow device order. This aid has not reported frequency labels.";
+"Frequencies reported by this hearing aid. These are consumer EQ adjustments." = "Frequencies reported by this hearing aid. These are consumer EQ adjustments.";
+"%@ Hz" = "%@ Hz";
+"The aids report different EQ frequency layouts. Adjust each ear separately." = "The aids report different EQ frequency layouts. Adjust each ear separately.";
+"An EQ draft must match every selected hearing aid exactly." = "An EQ draft must match every selected hearing aid exactly.";
+"New edits are mirrored to both ears. Each aid keeps its other bands and confirms its own EQ." = "New edits are mirrored to both ears. Each aid keeps its other bands and confirms its own EQ.";

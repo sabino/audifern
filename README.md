@@ -98,7 +98,7 @@ advertising. A complete first-time pairing flow is not established.
 | --- | --- |
 | Volume and mute | Direct BLE controls, per aid or linked, using reported limits and readback. |
 | Program selection | Existing fitted programs only; more than one program has not been physically tested. |
-| Consumer EQ | Three bands for microphone and streaming; advanced authentication required for supported UTL controls. |
+| Consumer EQ | Tone controls or eight independent bands for microphone and streaming, with device-reported frequency labels when available. Advanced authentication is required for supported UTL controls. |
 | SpeechBooster | Available only when the current program reports support and its controls can be loaded. |
 | Tinnitus relief | Separate source volume/mute for an already fitted tinnitus program; unavailable when unsupported. |
 | Streaming-source volume | Separate from EQ and Mac media volume; restricted to supported streamer programs. |

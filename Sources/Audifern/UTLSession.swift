@@ -58,6 +58,7 @@ final class UTLSession {
     private(set) var services: [UTLProtocol.Service] = []
     private(set) var isReady = false
     private(set) var identificationPayload: Data?
+    private(set) var equalizerMetadata: UTLAdvanced.EqualizerMetadata?
     private var openAttempted = false
     private var consumerOpenAttempted = false
     private var sessionService: UTLProtocol.Service?
@@ -143,6 +144,7 @@ final class UTLSession {
     func stop() async {
         isReady = false
         identificationPayload = nil
+        equalizerMetadata = nil
         if consumerOpenAttempted, let sessionService {
             if let activeTransaction {
                 _ = try? await request(handle: sessionService.handle, opcode: 9,
@@ -159,6 +161,7 @@ final class UTLSession {
     func disconnected() {
         failure = SessionError.disconnected; isReady = false; openAttempted = false
         identificationPayload = nil
+        equalizerMetadata = nil
         consumerOpenAttempted = false; activeTransaction = nil
     }
 
@@ -207,14 +210,20 @@ final class UTLSession {
         diagnostic("\(label) response: bytes=\(response.payload.count), \(UTLAdvanced.equalizerPayloadSummary(response.payload)), hexPrefix=\(response.payload.prefix(256).hexString)")
         do {
             let sdkRange: ClosedRange<Double>? = service.major == 1 ? (microphone ? -6.0...6.0 : -12.0...6.0) : nil
-            return try UTLAdvanced.equalizerState(response.payload, stepDB: stepDB, sdkConsumerRangeDB: sdkRange)
+            return try UTLAdvanced.equalizerState(response.payload, stepDB: stepDB, sdkConsumerRangeDB: sdkRange,
+                                                 frequenciesHz: equalizerMetadata?.frequenciesHz)
         } catch { throw UTLAdvanced.ParseError("\(label) \(service.major).\(service.minor): \(error.localizedDescription)") }
     }
     func equalizerStep() async throws -> Double {
+        equalizerMetadata = nil
         let service = try equalizerService(microphone: false)
         let response = try await consumerRequest(handle: service.handle, opcode: 2)
         diagnostic("EQ info response: bytes=\(response.payload.count), \(UTLAdvanced.equalizerPayloadSummary(response.payload)), hexPrefix=\(response.payload.prefix(256).hexString)")
-        do { return try UTLAdvanced.equalizerInfo(response.payload) }
+        do {
+            let metadata = try UTLAdvanced.equalizerMetadata(response.payload, legacyConsumerScale: service.major == 1)
+            equalizerMetadata = metadata
+            return metadata.stepDB
+        }
         catch { throw UTLAdvanced.ParseError("EQ info \(service.major).\(service.minor): \(error.localizedDescription)") }
     }
     func setEqualizer(microphone: Bool, steps: [Int], expected: OticonEqualizer.State) async throws -> OticonEqualizer.State {

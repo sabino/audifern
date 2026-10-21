@@ -331,3 +331,20 @@ before completing the pair read. Their integrity and acquisition-stage labels
 were checked from disk; all completed fitting/EUS reads survived as separate
 files. The final result and the earlier verified capture are in the private
 local backup library. No original fitting bytes were replaced.
+
+
+## 2026-10-21: reported eight-channel consumer EQ metadata
+
+A fresh owned read-only acquisition on the same pair returned eight frequency
+labels for both microphone and streaming EQ on each aid. The equalizer service
+was 1.2, so the historical consumer scale and SDK bounds remained in use; only
+validated frequency labels were added. Both CRC-valid fitting records were
+byte-identical to the preceding capture, all 25 advertised persisted scopes per
+ear were captured, and the final program/volume checks passed. The private
+archives and original records remain local. No EQ or clinical change was sent.
+
+The new eight-band editor was checked with synthetic per-ear scales, unequal
+shapes/limits, independent sources, exact service write/readback and failure
+preflight. Native renders cover reported/missing labels, light/dark appearances
+and 820/1120 widths. These do not establish a physical listening result for the
+new individual-band UI. See [advanced controls](advanced-controls.md).
