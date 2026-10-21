@@ -85,6 +85,26 @@ not clinical approval. Unknown acoustics stay unknown; failed loads preserve
 the old file and block silent replacement. The [feature map](genie-feature-map.md)
 separates working controls, local planning, fitting-engine and measurement work.
 
+**Plan history** keeps immutable, checksum-verified revisions on this Mac. Each
+save preserves the preceding plan, including a plan created before history was
+available. Repeated saves without edits do not create duplicates. The inline
+browser shows which preparation sections differ from the editor; choosing a
+revision preserves the current draft before loading it. Choose **Save plan** to
+make that editor state the current saved plan. History cannot restore hearing-aid
+settings, and a linked audiogram is a reference to the separate exam library,
+not a copy of that exam. Unreadable revisions stay on disk and are reported.
+
+The revision folder is `~/Library/Application Support/Audifern/FittingPlanRevisions/`.
+New directories use mode 0700 and files use mode 0600. History is never pruned
+automatically. An unreadable history directory blocks plan replacement; a plan
+changed externally also needs an explicit reload before it can be saved again.
+An interrupted save can leave a verified revision even when the current plan
+file was not replaced. These files may include personal preparation notes.
+
+![Native plan history with synthetic data](images/fitting-plan-history-light.png)
+
+[Plan history in dark mode](images/fitting-plan-history-dark.png).
+
 ![Native fitting-plan view with synthetic content in light mode](images/fitting-plan-light.png)
 
 [Dark appearance](images/fitting-plan-dark.png). These are in-memory native view

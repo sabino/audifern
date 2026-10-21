@@ -1577,3 +1577,33 @@
 "The aids report different EQ frequency layouts. Adjust each ear separately." = "The aids report different EQ frequency layouts. Adjust each ear separately.";
 "An EQ draft must match every selected hearing aid exactly." = "An EQ draft must match every selected hearing aid exactly.";
 "New edits are mirrored to both ears. Each aid keeps its other bands and confirms its own EQ." = "New edits are mirrored to both ears. Each aid keeps its other bands and confirms its own EQ.";
+
+/* Local fitting-plan history. */
+"Saved plan" = "Saved plan";
+"Draft before restoring" = "Draft before restoring";
+"Plan details" = "Plan details";
+"Model and ears" = "Model and ears";
+"Patient details and goals" = "Patient details and goals";
+"Left acoustics" = "Left acoustics";
+"Right acoustics" = "Right acoustics";
+"Adaptation preference" = "Adaptation preference";
+"No changes to save. Your saved plan is preserved." = "No changes to save. Your saved plan is preserved.";
+"Revision loaded into the editor. Your previous draft is preserved in history. Save when ready." = "Revision loaded into the editor. Your previous draft is preserved in history. Save when ready.";
+"The revision could not be loaded. Your editor and saved plan have been preserved." = "The revision could not be loaded. Your editor and saved plan have been preserved.";
+"Review earlier plans and bring one back into the editor. Your current draft is saved in history before it is replaced." = "Review earlier plans and bring one back into the editor. Your current draft is saved in history before it is replaced.";
+"Plan history could not be read. Existing files have been preserved." = "Plan history could not be read. Existing files have been preserved.";
+"%d revisions could not be verified. Their files have been preserved." = "%d revisions could not be verified. Their files have been preserved.";
+"Your first saved plan starts its history. Revisions stay privately on this Mac." = "Your first saved plan starts its history. Revisions stay privately on this Mac.";
+"Plan history contains preparation details. It cannot restore the fitting in your hearing aids." = "Plan history contains preparation details. It cannot restore the fitting in your hearing aids.";
+"Plan history" = "Plan history";
+"%d revisions" = "%d revisions";
+"Use this plan revision?" = "Use this plan revision?";
+"Load into editor" = "Load into editor";
+"Your current draft will be preserved in history. The saved plan stays in place until you choose Save plan." = "Your current draft will be preserved in history. The saved plan stays in place until you choose Save plan.";
+"%@ · %d program ideas" = "%@ · %d program ideas";
+"Matches the current editor" = "Matches the current editor";
+"Different from your current editor" = "Different from your current editor";
+"Use this revision…" = "Use this revision…";
+"%d revision" = "%d revision";
+"%d program idea" = "%d program idea";
+"%d program ideas" = "%d program ideas";

@@ -1577,3 +1577,33 @@
 "The aids report different EQ frequency layouts. Adjust each ear separately." = "Los audífonos indican distribuciones de frecuencia diferentes en el EQ. Ajuste cada oído por separado.";
 "An EQ draft must match every selected hearing aid exactly." = "El borrador de EQ debe corresponder exactamente a los audífonos seleccionados.";
 "New edits are mirrored to both ears. Each aid keeps its other bands and confirms its own EQ." = "Las nuevas ediciones se reflejan en ambos oídos. Cada audífono conserva las demás bandas y confirma su propio EQ.";
+
+/* Local fitting-plan history. */
+"Saved plan" = "Plan guardado";
+"Draft before restoring" = "Borrador antes de restaurar";
+"Plan details" = "Detalles del plan";
+"Model and ears" = "Modelo y oídos";
+"Patient details and goals" = "Datos y objetivos del paciente";
+"Left acoustics" = "Acústica izquierda";
+"Right acoustics" = "Acústica derecha";
+"Adaptation preference" = "Preferencia de adaptación";
+"No changes to save. Your saved plan is preserved." = "No hay cambios que guardar. Tu plan guardado se conserva.";
+"Revision loaded into the editor. Your previous draft is preserved in history. Save when ready." = "Revisión cargada en el editor. Tu borrador anterior se conserva en el historial. Guarda cuando quieras.";
+"The revision could not be loaded. Your editor and saved plan have been preserved." = "No se pudo cargar la revisión. Se han conservado el editor y el plan guardado.";
+"Review earlier plans and bring one back into the editor. Your current draft is saved in history before it is replaced." = "Revisa planes anteriores y recupera uno en el editor. Tu borrador actual se guarda en el historial antes de sustituirlo.";
+"Plan history could not be read. Existing files have been preserved." = "No se pudo leer el historial de planes. Se han conservado los archivos existentes.";
+"%d revisions could not be verified. Their files have been preserved." = "No se pudieron verificar %d revisiones. Se han conservado sus archivos.";
+"Your first saved plan starts its history. Revisions stay privately on this Mac." = "Tu primer plan guardado inicia su historial. Las revisiones se mantienen de forma privada en este Mac.";
+"Plan history contains preparation details. It cannot restore the fitting in your hearing aids." = "El historial contiene detalles de preparación. No restaura la adaptación de tus audífonos.";
+"Plan history" = "Historial de planes";
+"%d revisions" = "%d revisiones";
+"Use this plan revision?" = "¿Usar esta revisión del plan?";
+"Load into editor" = "Cargar en el editor";
+"Your current draft will be preserved in history. The saved plan stays in place until you choose Save plan." = "Tu borrador actual se conservará en el historial. El plan guardado se mantiene hasta que elijas Guardar plan.";
+"%@ · %d program ideas" = "%@ · %d ideas de programa";
+"Matches the current editor" = "Coincide con el editor actual";
+"Different from your current editor" = "Diferencias respecto al editor actual";
+"Use this revision…" = "Usar esta revisión…";
+"%d revision" = "%d revisión";
+"%d program idea" = "%d idea de programa";
+"%d program ideas" = "%d ideas de programa";

@@ -12,7 +12,8 @@ gain/MPO parameter tables, stored rationale codes, fitting software version,
 audiogram levels/tags and additional real-ear/in-situ metadata. Saved acoustics,
 hardware identification, lowering/input/tinnitus choices and context-specific
 tap/notification preferences are also readable for the exact researched profile.
-Program and ear
+The local plan also has immutable revision history with a section comparison and
+recovery into the editor. Program and ear
 selection in this inspector only changes what is displayed. The local plan
 records context, per-ear acoustics, a linked exam, supported rationale/adaptation
 preferences and program ideas. **Backups** preserves completed reads
@@ -29,12 +30,13 @@ reported by each aid. This does not edit the 24-band fitted-parameter matrix.
 See [advanced consumer controls](advanced-controls.md).
 
 Calculation research has selected the calibration document family uniquely for
-each captured hardware profile. One original managed acoustic interpolation
-kernel also passed nine synthetic checks on .NET 10 / Apple Silicon in a process
-denied network and hearing-device access. That private experiment uses no patient
-input or factory curves and ships no vendor component. It establishes only that
-bounded stage: complete gain/MPO calculation, legalization and clinical equivalence
-remain unverified.
+each captured hardware profile. An original managed acoustic interpolation kernel
+passed nine synthetic checks on .NET 10 / Apple Silicon. Its vent-reference path
+then passed six checks using the original packaged constants, explicit synthetic
+geometry and independent numerical expectations. Both ran in processes denied
+network and hearing-device access. These private experiments ship no vendor
+component or calculation table. They establish bounded acoustic stages: complete
+gain/MPO calculation, legalization and clinical equivalence remain unverified.
 
 ## Workflow and interface
 

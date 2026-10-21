@@ -89,3 +89,40 @@ func renderDetailedConsumerEQWithReportedAndMissingFrequencyLabels() throws {
         }
     }
 }
+
+@MainActor @Test(.enabled(if: ProcessInfo.processInfo.environment["AUDIFERN_PREVIEW_OUTPUT"] != nil))
+func renderSyntheticFittingHistoryWithoutOpeningAWindow() throws {
+    let output = try #require(ProcessInfo.processInfo.environment["AUDIFERN_PREVIEW_OUTPUT"])
+    let folder = URL(fileURLWithPath: output, isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: temporary) }
+    let workspace = FittingWorkspaceStore(file: temporary.appendingPathComponent("plan.json"))
+    workspace.draft.name = "Everyday clarity"; workspace.draft.model = .intent3
+    workspace.draft.programs = [.init(name: "Everyday", purpose: .everyday)]
+    workspace.save()
+    workspace.draft.programs.append(.init(name: "Music", purpose: .music))
+    workspace.draft.rationale = .vacPlus; workspace.save()
+    workspace.draft.leftAcoustics.receiver = "Recorded speaker"
+    workspace.draft.rightAcoustics.coupling = .ventedDome
+    workspace.draft.listeningGoals = "Discuss conversations and music"
+    workspace.draft.adaptation = .step2
+    #expect(workspace.revisions.count == 2)
+    NSApplication.shared.setActivationPolicy(.prohibited)
+    for scheme in [ColorScheme.light, .dark] {
+        for width in [1120, 820] {
+            NSApplication.shared.appearance = NSAppearance(named: scheme == .light ? .aqua : .darkAqua)
+            let content = FittingPlanHistoryView(workspace: workspace, expanded: true)
+                .padding(30).environment(\.colorScheme, scheme).preferredColorScheme(scheme)
+                .frame(width: CGFloat(width), height: 460, alignment: .topLeading).background(Brand.background).tint(Brand.accent)
+            let hosting = NSHostingView(rootView: content)
+            hosting.frame = NSRect(x: 0, y: 0, width: width, height: 460)
+            hosting.layoutSubtreeIfNeeded()
+            let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+            hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+            let png = try #require(bitmap.representation(using: .png, properties: [:]))
+            #expect(bitmap.pixelsWide == width && bitmap.pixelsHigh == 460)
+            try PrivateDocuments.writeNew(png, to: folder.appendingPathComponent("plan-history-\(scheme == .light ? "light" : "dark")-\(width).png"))
+        }
+    }
+}

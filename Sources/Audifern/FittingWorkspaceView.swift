@@ -11,6 +11,7 @@ struct FittingWorkspaceView: View {
     let loadDraft: () -> Void
     var persistenceStatus: String? = nil
     var canLoadDraft = true
+    var history: FittingWorkspaceStore? = nil
     @EnvironmentObject private var navigation: AppNavigation
     @EnvironmentObject private var preferences: AppPreferences
     @State private var showingAcoustics = false
@@ -37,6 +38,7 @@ struct FittingWorkspaceView: View {
                 }
                 backupFirst
                 planOverview
+                if let history { FittingPlanHistoryView(workspace: history) }
                 HStack(alignment: .top, spacing: 20) {
                     patientCard.frame(minWidth: 0, maxWidth: .infinity)
                     VStack(spacing: 20) {

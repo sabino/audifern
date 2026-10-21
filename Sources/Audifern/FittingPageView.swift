@@ -21,7 +21,8 @@ struct FittingPageView: View {
             } else {
                 FittingWorkspaceView(store: store, audiograms: audiograms, draft: $workspace.draft,
                     saveDraft: { workspace.save() }, loadDraft: { workspace.reload() },
-                    persistenceStatus: workspace.status, canLoadDraft: workspace.canLoadDraft && !workspace.loadFailed)
+                    persistenceStatus: workspace.status, canLoadDraft: workspace.canLoadDraft && !workspace.loadFailed,
+                    history: workspace)
             }
         }
     }
