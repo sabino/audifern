@@ -46,6 +46,8 @@ class ReleaseMetadataTests(unittest.TestCase):
                 resource.rename(bundle / resource.name)
             (bundle / 'Contents/Resources').rmdir(); (bundle / 'Contents').rmdir()
             release.vet_payload(app)
+            (bundle / 'pt-BR.lproj').rename(bundle / 'pt-br.lproj')
+            release.vet_payload(app)
             (bundle / 'private-token.json').write_text('{}')
             with self.assertRaises(ValueError): release.vet_payload(app)
 

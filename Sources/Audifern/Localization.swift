@@ -87,9 +87,14 @@ final class Localization: @unchecked Sendable {
     }
 
     static func bundle(for language: AppLanguage) -> Bundle? {
-        guard language != .system,
-              let url = AppResources.bundle.url(forResource: language.rawValue, withExtension: "lproj") else { return nil }
-        return Bundle(url: url)
+        guard language != .system else { return nil }
+        // Native SwiftPM lowercases regional resource directories (pt-br),
+        // while Xcode preserves the source spelling (pt-BR).
+        for name in [language.rawValue, language.rawValue.lowercased()] {
+            if let url = AppResources.bundle.url(forResource: name, withExtension: "lproj"),
+               let bundle = Bundle(url: url) { return bundle }
+        }
+        return nil
     }
     private static func translation(_ key: String, language: AppLanguage) -> String? {
         let sentinel = "__AUDIFERN_MISSING_LOCALIZATION__"

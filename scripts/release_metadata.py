@@ -69,7 +69,11 @@ def vet_payload(app: Path) -> None:
         resources = bundle + "Resources/"
     else:
         resources = bundle
-    required = fixed | {bundle + "Info.plist"} | {resources + name for name in RESOURCES}
+    names = set(RESOURCES)
+    if "pt-BR.lproj" not in {path.name for path in (app / resources).glob("*.lproj")}:
+        names.remove("pt-BR.lproj/Localizable.strings")
+        names.add("pt-br.lproj/Localizable.strings")
+    required = fixed | {bundle + "Info.plist"} | {resources + name for name in names}
     allowed = set(required)
     for prefix in ["Contents/_CodeSignature/", bundle + "_CodeSignature/"]:
         allowed.update(prefix + name for name in SIGNATURE_FILES)
