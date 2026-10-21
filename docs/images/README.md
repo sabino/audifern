@@ -32,13 +32,15 @@ Original branding and the generic hearing-aid illustration are described in
 [the design provenance](../design/prompts.md). Preview screenshots demonstrate
 the interface, not physical interoperability or complete clinical fitting.
 
-The 0.8.0 quick-access captures also use the isolated `--demo` application:
+The 0.8.0 quick-access captures use synthetic demo services, either in the
+isolated `--demo` application or in a direct SwiftUI/AppKit render as noted:
 
 - `audifern-sound-together.png` and `audifern-sound-separate.png`: fixed central
   volume selector, filled glass-style faders, original device illustrations and
   aligned per-section controls. SpeechBooster and programs can remain Separate
   while volume is Together.
-- `audifern-menu-bar.png`: the native AppKit popover with SwiftUI sound controls.
+- `audifern-menu-bar.png`: the compact menu panel rendered directly with
+  SwiftUI/AppKit at its native fitting height; see the build 16 note below.
 - `audifern-help.png`: searching Battery in the attached Help sheet.
 
 The native Help menu search was also checked through AppKit accessibility: it
@@ -76,3 +78,9 @@ stay in fixed outer columns, with a wider horizontal control between them.
 Mute, Details and program buttons share one aligned action row, and SpeechBooster
 is in the header. Both images are native captures of the isolated demo app at
 the same window size. Device/action frames were measured unchanged across modes.
+
+The menu-panel capture was refreshed for **0.8.0 (16)** with the Volume heading
+removed and the two mode selectors centered. It is a direct NSHostingView render
+of the real menu panel, using only synthetic devices, rather than a screenshot
+of an onscreen popover. Twelve menu renders cover the three languages, both
+grouping modes and compact/expanded layouts. Non-pixel PNG metadata was removed.

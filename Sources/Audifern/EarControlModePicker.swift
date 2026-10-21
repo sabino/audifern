@@ -22,9 +22,10 @@ struct EarControlModePicker: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(scope)
         .accessibilityIdentifier(identifier)
-        .accessibilityValue(isMixed ? L("Custom grouping") : together ? L("Together") : L("Separate"))
+        .accessibilityValue(isMixed ? L("Mixed modes") : together ? L("Together") : L("Separate"))
         .help(affectsAllSections
-              ? L("Sets Together or Separate for every sound section. Section selectors can override it. Changing mode sends no device command.")
+              ? isMixed ? L("Some sections use Together and others use Separate. Choose a mode here to apply it to all sound controls.")
+                  : L("Sets Together or Separate for every sound section. Section selectors can override it. Changing mode sends no device command.")
               : L("Applies only to this section. Changing mode does not change current settings."))
     }
 

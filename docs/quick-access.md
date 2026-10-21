@@ -11,10 +11,17 @@ The selector above the volume controls is the **master control**: choose Togethe
 Separate to set volume/mute, SpeechBooster, fitted-program controls, microphone
 EQ, streaming controls and tinnitus controls at once. Pressing Together again
 reapplies it even if volume was already grouped. Each section can override its
-own choice afterward; the master then shows **Custom grouping**. The purple
+own choice afterward; the master then shows **Mixed modes**. Hover over that
+label for an explanation: some sections use Together and others use Separate.
+The purple
 selector affects only SpeechBooster. Menu-bar section controls keep the matching
 section preference. Switching grouping sends no device command and copies no
 values or unapplied EQ drafts.
+
+In the menu-bar panel, the green volume/mute selector sits centered above its
+controls, aligned with the purple SpeechBooster selector. The redundant Volume
+heading has been removed; the selector retains its volume/mute accessibility
+label. It still changes only that section's grouping.
 
 Sound is a bounded workspace without an outer scroll view. In its default
 layout, a compact device strip keeps the original artwork, batteries, volume,

@@ -96,12 +96,9 @@ struct MenuBarPanel: View {
     private var soundControls: some View {
         panel {
             VStack(spacing: 10) {
-                HStack {
-                    Text(L("Volume")).font(AppType.callout.weight(.semibold))
-                    Spacer()
-                    EarControlModePicker(together: $together, available: aids.count == 2,
-                                         scope: L("Volume and mute"), identifier: "menu-volume-mode")
-                }
+                EarControlModePicker(together: $together, available: aids.count == 2,
+                                     scope: L("Volume and mute"), identifier: "menu-volume-mode")
+                    .frame(maxWidth: .infinity)
                 if let first = aids.first {
                     if together || aids.count == 1 {
                         if preferences.menuBarExpanded { horizontalVolume(first, targets: aids) }

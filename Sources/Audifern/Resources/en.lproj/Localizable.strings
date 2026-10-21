@@ -2006,14 +2006,14 @@
 "Automatic connection starts off. Connect your aids in Sound, then remember them in Connections. Nearby retry and wake/unlock attempts are optional. Pause persists until you resume or connect manually. This controls Audifern’s BLE link, not the operating system’s audio profile." = "Automatic connection starts off. Connect your aids in Sound, then remember them in Connections. Nearby retry and wake/unlock attempts are optional. Pause persists until you resume or connect manually. This controls Audifern’s BLE link, not the operating system’s audio profile.";
 
 /* Master grouping and inline equalizers. */
-"Custom grouping" = "Custom grouping";
+"Mixed modes" = "Mixed modes";
 "Sets Together or Separate for every sound section. Section selectors can override it. Changing mode sends no device command." = "Sets Together or Separate for every sound section. Section selectors can override it. Changing mode sends no device command.";
 "EQ changes remain a draft until you choose Apply." = "EQ changes remain a draft until you choose Apply.";
 "More sound controls…" = "More sound controls…";
 "Mixed" = "Mixed";
 "%@ · %@ dB" = "%@ · %@ dB";
 "≠ means the ears differ. Together keeps existing settings until you edit and Apply." = "≠ means the ears differ. Together keeps existing settings until you edit and Apply.";
-"The top selector sets Together or Separate for every sound section, including EQ. A section selector can override that choice; the master then shows Custom grouping. Switching modes never copies settings or sends a hearing-aid command." = "The top selector sets Together or Separate for every sound section, including EQ. A section selector can override that choice; the master then shows Custom grouping. Switching modes never copies settings or sends a hearing-aid command.";
+"The top selector sets Together or Separate for every sound section, including EQ. A section selector can override that choice; the master then shows Mixed modes. Switching modes never copies settings or sends a hearing-aid command." = "The top selector sets Together or Separate for every sound section, including EQ. A section selector can override that choice; the master then shows Mixed modes. Switching modes never copies settings or sends a hearing-aid command.";
 "In Sound, choose the Microphone EQ tab. Tone controls show three vertical faders; 8 bands uses the device-reported layout. Separate shows both ears side by side, while Together shows one set. Changes remain drafts until Apply. A ≠ marker means the ears currently differ." = "In Sound, choose the Microphone EQ tab. Tone controls show three vertical faders; 8 bands uses the device-reported layout. Separate shows both ears side by side, while Together shows one set. Changes remain drafts until Apply. A ≠ marker means the ears currently differ.";
 "In Sound, choose the Streaming EQ tab to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Streaming-source volume is a different control under More sound controls." = "In Sound, choose the Streaming EQ tab to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Streaming-source volume is a different control under More sound controls.";
 
@@ -2025,3 +2025,5 @@
 "Expand volume controls" = "Expand volume controls";
 "Compact volume controls" = "Compact volume controls";
 "Details…" = "Details…";
+
+"Some sections use Together and others use Separate. Choose a mode here to apply it to all sound controls." = "Some sections use Together and others use Separate. Choose a mode here to apply it to all sound controls.";

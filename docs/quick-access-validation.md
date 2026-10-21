@@ -1,13 +1,13 @@
 # Quick-access validation — 2026-10-21
 
-Local development build: **0.8.0 (15)**. This records the extent of verification;
+Local development build: **0.8.0 (16)**. This records the extent of verification;
 it is not a claim that a new public release has been published.
 
 - Swift: 170 app tests and 131 core tests passed; the XCTest suite ran 68 cases
   with one optional case skipped and no failures.
 - Python: 64 tests passed, including strict extension payload checks and nested
   signing without unnecessary provisioning-profile entitlements.
-- Localization: 1,985 matching keys in English, Brazilian Portuguese and Spanish;
+- Localization: 1,986 matching keys in English, Brazilian Portuguese and Spanish;
   reference and format checks passed. All Help articles have translations.
 - Universal release build: the host and extension both contain arm64 and x86_64
   slices with a macOS 14 minimum. Both signatures and matching app groups passed
@@ -59,7 +59,7 @@ GPG signatures are retained as requested.
 
 - The master Together/Separate selector updates all six grouping preferences,
   including each EQ source. Re-selecting Together clears later section overrides;
-  Custom grouping is visible if a section overrides the master. No grouping or
+  Mixed modes is visible if a section overrides the master. No grouping or
   layout action sends a hearing-aid command.
 - Sound uses a compact device strip and an inline EQ editor with vertical three-
   or eight-band controls. Separate displays two editors simultaneously. Together
@@ -116,3 +116,22 @@ GPG signatures are retained as requested.
   tested full-width window size. Both grouping modes exposed zero scrollbars.
 - The isolated preview uses synthetic devices and issued no hearing-aid sound
   change. These checks establish layout and navigation, not a new audio test.
+
+## Centered menu selectors and clearer mixed modes
+
+- Removed the menu panel's Volume heading so its green Together/Separate
+  selector centers over the controls, aligned with the purple SpeechBooster
+  selector. Its volume/mute scope and accessible label remain unchanged.
+- The master now says Mixed modes when sections disagree, with translated hover
+  guidance explaining how to apply one mode to all sections.
+- The full 170-app/131-core Swift suites and 68 XCTest cases passed, with one
+  optional XCTest skip. The strict localization audit passed with 1,986 matching
+  keys in all three languages and no hardcoded-string candidates.
+- Twelve complete menu panels were rendered at their natural height: all three
+  languages, both grouping modes and compact/expanded layouts. English and
+  Portuguese captures were reviewed. The render harness now measures the same
+  native fitting height as the running popover instead of clipping its footer.
+- The isolated preview was refreshed. A fresh foreground capture could not be
+  completed because another app reclaimed focus; the protected focus was
+  restored. The updated menu screenshot is explicitly a direct AppKit render.
+  No hearing-aid sound command or new physical audio check was performed.

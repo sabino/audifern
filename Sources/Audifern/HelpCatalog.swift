@@ -28,7 +28,7 @@ enum HelpCatalog {
             keywords: "volume level mute unmute sound som silenciar nível volumen sonido", destination: .sound),
         .init(id: "grouping", title: "Together and Separate", path: ["Sound"], symbol: "link",
             summary: "Choose whether future sound changes affect both ears.",
-            guidance: "The top selector sets Together or Separate for every sound section, including EQ. A section selector can override that choice; the master then shows Custom grouping. Switching modes never copies settings or sends a hearing-aid command.",
+            guidance: "The top selector sets Together or Separate for every sound section, including EQ. A section selector can override that choice; the master then shows Mixed modes. Switching modes never copies settings or sends a hearing-aid command.",
             keywords: "sync synchronize group ungroup linked ears agrupar desagrupar juntos separados sincronizar vincular", destination: .sound),
         .init(id: "speech-booster", title: "SpeechBooster", path: ["Sound"], symbol: "mic",
             summary: "Use speech support in a program that reports support for it.",

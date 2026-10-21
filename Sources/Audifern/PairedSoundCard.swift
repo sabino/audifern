@@ -17,7 +17,8 @@ struct PairedSoundCard: View {
             VStack(spacing: compact ? 6 : 8) {
                 ZStack {
                     HStack {
-                        Text(masterMixed ? L("Custom grouping") : L("Hearing aids")).font(AppType.callout.weight(.semibold)).lineLimit(1)
+                        Text(masterMixed ? L("Mixed modes") : L("Hearing aids")).font(AppType.callout.weight(.semibold)).lineLimit(1)
+                            .help(masterMixed ? L("Some sections use Together and others use Separate. Choose a mode here to apply it to all sound controls.") : L("All sound controls"))
                         Spacer(minLength: 0)
                         SpeechBoosterQuickButton(store: store, aids: pair)
                         Button { expanded.toggle() } label: {
@@ -49,7 +50,7 @@ struct PairedSoundCard: View {
                     DeviceSoundButtons(aid: right)
                 }.frame(height: 32)
                 if !compact {
-                    Text(store.linkedActionStatus.map(M) ?? (masterMixed ? L("Custom grouping") : L("All sound controls")))
+                    Text(store.linkedActionStatus.map(M) ?? (masterMixed ? L("Mixed modes") : L("All sound controls")))
                         .font(AppType.caption).foregroundStyle(store.linkedActionFailed ? Color.orange : .secondary)
                         .lineLimit(1).frame(height: 20)
                         .accessibilityIdentifier("sound-change-status")

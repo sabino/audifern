@@ -14,6 +14,7 @@ func renderQuickAccessSurfacesAndGroupedSoundAtTheirActualSizes() throws {
     let folder = URL(fileURLWithPath: try #require(ProcessInfo.processInfo.environment["AUDIFERN_QUICK_ACCESS_PREVIEWS"]))
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
     let services = AudifernServices(demo: true)
+    let menuOnly = ProcessInfo.processInfo.environment["AUDIFERN_MENU_ONLY"] == "1"
     let initialWindows = NSApplication.shared.windows.count
     func render<V: View>(_ view: V, name: String, width: CGFloat, height: CGFloat, scheme: ColorScheme) throws {
         let content = view.environmentObject(services.preferences).environmentObject(services.navigation)
@@ -43,18 +44,25 @@ func renderQuickAccessSurfacesAndGroupedSoundAtTheirActualSizes() throws {
         NSApplication.shared.appearance = NSAppearance(named: scheme == .light ? .aqua : .darkAqua)
         for together in [true, false] {
             services.defaults.set(together, forKey: "groupedHearingAidControls")
-            try render(ListenView(store: services.bluetooth), name: "sound-\(language.rawValue)-\(together ? "together" : "separate")", width: 960, height: 920, scheme: scheme)
+            if !menuOnly { try render(ListenView(store: services.bluetooth), name: "sound-\(language.rawValue)-\(together ? "together" : "separate")", width: 960, height: 920, scheme: scheme) }
             for expanded in [false, true] {
                 services.preferences.menuBarExpanded = expanded
                 let panel = MenuBarPanel(store: services.bluetooth, automation: services.connectionAutomation, help: services.help)
-                try render(panel, name: "menu-\(language.rawValue)-\(together ? "together" : "separate")-\(expanded ? "expanded" : "compact")", width: expanded ? 422 : 382, height: expanded && !together ? 850 : expanded ? 760 : together ? 675 : 755, scheme: scheme)
+                let width: CGFloat = expanded ? 422 : 382
+                let measurement = NSHostingView(rootView: panel.environmentObject(services.preferences)
+                    .defaultAppStorage(services.defaults).fixedSize(horizontal: false, vertical: true))
+                measurement.frame.size.width = width
+                let height = ceil(measurement.fittingSize.height)
+                try render(panel, name: "menu-\(language.rawValue)-\(together ? "together" : "separate")-\(expanded ? "expanded" : "compact")", width: width, height: height, scheme: scheme)
             }
         }
+        if menuOnly { continue }
         services.help.query = "battery"
         services.help.selection = "battery-alerts"
         try render(HelpView(), name: "help-\(language.rawValue)", width: 970, height: 650, scheme: scheme)
         try render(QuickAccessSettingsView(), name: "quick-settings-\(language.rawValue)", width: 675, height: 650, scheme: scheme)
     }
+    if menuOnly { return }
     for scheme in [ColorScheme.light, .dark] {
         NSApplication.shared.appearance = NSAppearance(named: scheme == .light ? .aqua : .darkAqua)
         for (size, width, height, name) in [(QuickWidgetSize.small, 155, 155, "small"), (.medium, 329, 155, "medium"), (.large, 329, 345, "large")] {
