@@ -2,6 +2,7 @@
 import hashlib
 import importlib.util
 import json
+import plistlib
 from pathlib import Path
 import subprocess
 import sys
@@ -76,6 +77,63 @@ class NotarizationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'rejected'):
                 notary.notarize_dmg(Path('/synthetic.dmg'), [], 30, Path('/logs'))
             self.assertEqual(run.call_count, 1)
+
+    def test_ticket_service_failure_retries_same_artifact_without_new_submission(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(notary.subprocess, 'run') as run, \
+                patch.object(notary.time, 'sleep') as sleep, patch.object(notary, 'notarize') as submit:
+            logs = Path(folder); artifact = logs / 'synthetic.app'
+            run.side_effect = [subprocess.CompletedProcess([], 68, 'ticket service unavailable', ''),
+                               subprocess.CompletedProcess([], 0, 'ticket attached', '')]
+            notary.staple_ticket(artifact, 'app', logs)
+            self.assertEqual([call.args[0] for call in run.call_args_list],
+                             [['xcrun', 'stapler', 'staple', str(artifact)]] * 2)
+            sleep.assert_called_once_with(15)
+            submit.assert_not_called()
+            self.assertIn('ticket service unavailable', (logs / 'app-staple-1.log').read_text())
+            self.assertIn('exitCode=0', (logs / 'app-staple-2.log').read_text())
+
+    def test_persistent_ticket_service_failure_is_bounded_and_fails_closed(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(notary.subprocess, 'run') as run, \
+                patch.object(notary.time, 'sleep') as sleep:
+            run.return_value = subprocess.CompletedProcess([], 68, 'synthetic service failure', '')
+            with self.assertRaisesRegex(ValueError, 'No package was published'):
+                notary.staple_ticket(Path('/synthetic.app'), 'app', Path(folder))
+            self.assertEqual(run.call_count, 4)
+            self.assertEqual([call.args[0] for call in sleep.call_args_list], [15, 30, 60])
+            self.assertEqual(len(list(Path(folder).glob('app-staple-*.log'))), 4)
+
+    def test_invalid_or_revoked_tickets_are_not_retried(self):
+        for code in [65, 77]:
+            with self.subTest(code=code), tempfile.TemporaryDirectory() as folder, \
+                    patch.object(notary.subprocess, 'run') as run, patch.object(notary.time, 'sleep') as sleep:
+                run.return_value = subprocess.CompletedProcess([], code, 'synthetic permanent failure', '')
+                with self.assertRaisesRegex(ValueError, 'stapling failed'):
+                    notary.staple_ticket(Path('/synthetic.dmg'), 'dmg', Path(folder))
+                self.assertEqual(run.call_count, 1)
+                sleep.assert_not_called()
+
+    def test_ticket_request_timeout_retains_partial_diagnostics_and_retries(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(notary.subprocess, 'run') as run, \
+                patch.object(notary.time, 'sleep') as sleep:
+            run.side_effect = [subprocess.TimeoutExpired(['xcrun', 'stapler'], 60, b'partial reply', b'timeout detail'),
+                               subprocess.CompletedProcess([], 0, '', '')]
+            notary.staple_ticket(Path('/synthetic.app'), 'app', Path(folder))
+            log = (Path(folder) / 'app-staple-1.log').read_text()
+            self.assertIn('partial replytimeout detail', log)
+            self.assertEqual(run.call_args.kwargs['timeout'], 60)
+            sleep.assert_called_once_with(15)
+
+    def test_trusted_tooling_uses_pinned_product_version_and_app_path(self):
+        with tempfile.TemporaryDirectory() as folder:
+            project = Path(folder); (project / 'Resources').mkdir()
+            (project / 'Resources/Info.plist').write_bytes(plistlib.dumps({'CFBundleShortVersionString': '1.2.3'}))
+            arguments = ['notarize-release.py', '--project', str(project), '--identity', 'A' * 40,
+                         '--profile', 'synthetic-local', '--tag', 'v1.2.3']
+            with patch.object(sys, 'argv', arguments), patch.object(notary.metadata, 'ROOT', notary.ROOT), \
+                    patch.object(notary.metadata, 'verify_app', side_effect=RuntimeError('stop before signing')) as verify:
+                with self.assertRaisesRegex(RuntimeError, 'stop before signing'):
+                    notary.main()
+                verify.assert_called_once_with((project / 'build/Audifern.app').resolve(), 'universal')
 
     def fixture(self, directory):
         prefix = 'Audifern-0.6.1-macos-universal'

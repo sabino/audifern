@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import time
 import uuid
 
@@ -95,16 +96,48 @@ def notarize(path: Path, label: str, auth: list[str], timeout: int, logs: Path) 
         time.sleep(15)
 
 
+def staple_ticket(path: Path, label: str, logs: Path) -> None:
+    # EX_NOHOST (68) includes unexpected ticket-service responses. Apple may
+    # accept the submission before a particular retrieval succeeds. Never
+    # retry invalid/revoked tickets or bypass the later ticket verification.
+    output = ""
+    for attempt, delay in enumerate([0, 15, 30, 60], 1):
+        if delay:
+            print(f"Apple ticket retrieval ({label}): retrying in {delay} seconds", flush=True)
+            time.sleep(delay)
+        try:
+            result = subprocess.run(["xcrun", "stapler", "staple", str(path)],
+                                    capture_output=True, text=True, timeout=60)
+            code = result.returncode
+            output = result.stdout + result.stderr
+        except subprocess.TimeoutExpired as error:
+            code = None
+            def decoded(value):
+                return value.decode(errors="replace") if isinstance(value, bytes) else value or ""
+            output = "Ticket retrieval timed out.\n" + decoded(error.stdout) + decoded(error.stderr)
+        (logs / f"{label}-staple-{attempt}.log").write_text(f"exitCode={code}\n" + output)
+        if code == 0:
+            return
+        if code not in {68, None}:
+            break
+    # stapler receives no credentials. Preserve a bounded diagnostic in CI;
+    # complete attempt logs remain outside the release artifact directory.
+    print(output[-4000:], file=sys.stderr)
+    raise ValueError(f"Apple ticket stapling failed ({label}); inspect the notarization logs. No package was published.")
+
+
 def notarize_dmg(dmg: Path, auth: list[str], timeout: int, logs: Path) -> None:
     # Stapling changes the DMG bytes. An accepted, stapled image needs no new upload.
     if subprocess.run(["xcrun", "stapler", "validate", "-q", str(dmg)], capture_output=True).returncode != 0:
         notarize(dmg, "dmg", auth, timeout, logs)
-        run("xcrun", "stapler", "staple", "-q", str(dmg))
+        staple_ticket(dmg, "dmg", logs)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--app", type=Path, default=ROOT / "build/Audifern.app")
+    parser.add_argument("--project", type=Path, default=ROOT,
+                        help="Validated application source checkout; defaults to this script's checkout.")
+    parser.add_argument("--app", type=Path)
     parser.add_argument("--identity", default=os.environ.get("AUDIFERN_SIGN_IDENTITY", ""))
     parser.add_argument("--tag", default="")
     parser.add_argument("--profile", default=os.environ.get("AUDIFERN_NOTARY_PROFILE", ""))
@@ -113,13 +146,17 @@ def main() -> None:
     args = parser.parse_args()
     if not args.identity or args.identity == "-": raise ValueError("A Developer ID Application signing identity is required.")
     if args.timeout < 1: raise ValueError("The notarization timeout must be positive.")
+    project = args.project.resolve()
+    # Trusted main tooling must validate and package the pinned product's
+    # version, Git commit and source notice, rather than its own checkout.
+    metadata.ROOT = project
     version = metadata.release_version(metadata.version(), args.tag)
     auth = authentication(args.profile, os.environ.get("AUDIFERN_NOTARY_KEY_PATH", ""),
                           os.environ.get("AUDIFERN_NOTARY_KEY_ID", ""), os.environ.get("AUDIFERN_NOTARY_ISSUER", ""))
-    app = args.app.resolve()
+    app = (args.app or project / "build/Audifern.app").resolve()
     metadata.verify_app(app, "universal")
     os.umask(0o077)
-    logs = ROOT / "build/notarization"
+    logs = project / "build/notarization"
     logs.mkdir(parents=True, exist_ok=True, mode=0o700)
     # Keep an existing valid signature so retries retain their submission hash.
     current = metadata.signing_details(app)
@@ -137,18 +174,18 @@ def main() -> None:
     if subprocess.run(["xcrun", "stapler", "validate", "-q", str(app)], capture_output=True).returncode != 0:
         submitted_zip = archive_app(app, logs)
         notarize(submitted_zip, "app", auth, args.timeout, logs)
-        run("xcrun", "stapler", "staple", "-q", str(app))
+        staple_ticket(app, "app", logs)
     metadata.verify_notarization(app)
     env = os.environ.copy()
     env.update({"AUDIFERN_PACKAGE_APP": str(app), "AUDIFERN_PACKAGE_NOTARIZED": "1",
                 "AUDIFERN_SIGN_IDENTITY": args.identity, "AUDIFERN_BUILD_ARCH": "universal"})
-    output = ROOT / "build/release"
+    output = project / "build/release"
     prefix = f"Audifern-{version}-macos-universal"
     if output.exists() and any(output.iterdir()) and not args.rebuild_packages:
         verification.verify_downloads(output, args.tag)
         print("Reusing verified packages; pending Apple submissions will resume.", flush=True)
     else:
-        run(str(ROOT / "scripts/package-release.sh"), args.tag, cwd=ROOT, env=env)
+        run(str(project / "scripts/package-release.sh"), args.tag, cwd=project, env=env)
     dmg = output / (prefix + ".dmg")
     notarize_dmg(dmg, auth, args.timeout, logs)
     run("xcrun", "stapler", "validate", "-q", str(dmg))

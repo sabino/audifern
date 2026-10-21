@@ -127,7 +127,7 @@ jobs:
           AUDIFERN_NOTARY_KEY_PATH: ${{ steps.signing.outputs.keyPath }}
           AUDIFERN_NOTARY_KEY_ID: ${{ secrets.AUDIFERN_NOTARY_KEY_ID }}
           AUDIFERN_NOTARY_ISSUER: ${{ secrets.AUDIFERN_NOTARY_ISSUER }}
-        run: python3 product/scripts/notarize-release.py --tag "$RELEASE_TAG"
+        run: python3 automation/scripts/notarize-release.py --project product --tag "$RELEASE_TAG"
       - name: Remove signing credentials before uploading anything
         if: always()
         run: python3 automation/scripts/ci_signing.py cleanup --state "$RUNNER_TEMP/audifern-signing-state.json"
