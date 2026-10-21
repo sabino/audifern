@@ -38,7 +38,7 @@ struct AudifernApp: App {
         Window(services.bluetooth.isDemo ? L("Audifern Preview") : Brand.name, id: "main") {
             ContentView(store: services.bluetooth, audiogramStore: services.audiograms,
                         notifications: services.batteryNotifications,
-                        fittingWorkspace: services.fittingWorkspace, backups: services.backups)
+                        fittingWorkspace: services.fittingWorkspace, backups: services.backups, connectionAutomation: services.connectionAutomation)
                 .environmentObject(services.presets)
                 .environmentObject(services.navigation)
                 .environmentObject(services.preferences)
@@ -48,7 +48,7 @@ struct AudifernApp: App {
             .defaultSize(width: 1240, height: 920)
             .commands { CompanionCommands(navigation: services.navigation, preferences: services.preferences) }
         MenuBarExtra {
-            CompanionMenuBarView(store: services.bluetooth, navigation: services.navigation)
+            CompanionMenuBarView(store: services.bluetooth, navigation: services.navigation, connectionAutomation: services.connectionAutomation)
                 .environmentObject(services.preferences)
         } label: {
             CompanionMenuBarLabel(store: services.bluetooth, preferences: services.preferences)
@@ -74,6 +74,7 @@ private struct CompanionMenuBarLabel: View {
 private struct CompanionMenuBarView: View {
     @ObservedObject var store: BluetoothStore
     @ObservedObject var navigation: AppNavigation
+    let connectionAutomation: ConnectionAutomation
     @EnvironmentObject private var preferences: AppPreferences
     @Environment(\.openWindow) private var openWindow
 
@@ -97,6 +98,7 @@ private struct CompanionMenuBarView: View {
             Button(L("Connect both hearing aids")) { store.connectPair() }.disabled(!store.isPoweredOn)
         }
         Divider()
+        ConnectionQuickActions(automation: connectionAutomation)
         Text(L("Closing the window keeps Bluetooth and alerts running."))
         Button(L("Quit Audifern")) { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q", modifiers: .command)
@@ -144,6 +146,7 @@ final class AudifernServices: ObservableObject {
     let preferences: AppPreferences
     let fittingWorkspace: FittingWorkspaceStore
     let backups: DeviceBackupStore
+    let connectionAutomation: ConnectionAutomation
     let equalizerDrafts = EqualizerDraftStore()
     let defaults: UserDefaults
     private var batteryObservation: AnyCancellable?
@@ -163,6 +166,12 @@ final class AudifernServices: ObservableObject {
             preferences.showIdentifiers = false
         }
         bluetooth = BluetoothStore(demo: demo)
+        let audio: any MacAudioOutputClient = demo ? PreviewMacAudioOutput() : SystemMacAudioOutput()
+        connectionAutomation = ConnectionAutomation(defaults: defaults, transport: bluetooth, audio: audio,
+            runTimer: !demo, observeSession: !demo)
+        let automation = connectionAutomation
+        bluetooth.onManualConnect = { [weak automation] in automation?.manualConnectionRequested() }
+        bluetooth.onManualDisconnect = { [weak automation] in automation?.pause(disconnect: false) }
         let previewFolder = FileManager.default.temporaryDirectory.appendingPathComponent("audifern-preview-\(ProcessInfo.processInfo.processIdentifier)")
         fittingWorkspace = FittingWorkspaceStore(preview: demo)
         backups = DeviceBackupStore(folder: demo ? previewFolder.appendingPathComponent("backups", isDirectory: true) : nil)

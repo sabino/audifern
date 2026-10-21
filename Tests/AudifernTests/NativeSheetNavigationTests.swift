@@ -19,7 +19,8 @@ func nativeSheetsKeepTheirFrameWhenChangingSettingsAndOpeningAnAudiogram() async
     services.preferences.language = .english
     services.preferences.appearance = .light
     let content = ContentView(store: services.bluetooth, audiogramStore: services.audiograms,
-        notifications: services.batteryNotifications, fittingWorkspace: services.fittingWorkspace, backups: services.backups)
+        notifications: services.batteryNotifications, fittingWorkspace: services.fittingWorkspace, backups: services.backups,
+        connectionAutomation: services.connectionAutomation)
         .environmentObject(services.preferences).environmentObject(services.navigation)
         .environmentObject(services.presets).environmentObject(services.equalizerDrafts)
         .defaultAppStorage(services.defaults)
@@ -73,7 +74,7 @@ func nativeSheetsKeepTheirFrameWhenChangingSettingsAndOpeningAnAudiogram() async
     try await settle()
     let settings = try #require(window.attachedSheet)
     let settingsFrame = settings.frame
-    for section in ["battery", "privacy", "diagnostics", "about", "general"] {
+    for section in ["connections", "battery", "privacy", "diagnostics", "about", "general"] {
         services.defaults.set(section, forKey: "settingsSection")
         try await settle()
         stage("settings \(section)")

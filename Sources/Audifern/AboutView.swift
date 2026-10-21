@@ -23,31 +23,39 @@ struct AboutView: View {
     private var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—" }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 26) {
+            VStack(alignment: .leading, spacing: 16) {
                 identity
-                Surface {
-                    VStack(alignment: .leading, spacing: 22) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(L("Support Audifern")).font(.system(size: 25, weight: .semibold))
-                            Text(L("If Audifern is useful to you, you can support its development with a voluntary contribution."))
-                                .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Surface(insets: 18) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(L("Support Audifern")).font(.system(size: 23, weight: .semibold))
+                            Text(L("Voluntary contributions support development."))
+                                .font(AppType.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         }
                         Picker(L("Ways to support"), selection: $method) {
                             ForEach(ContributionMethod.allCases) { Text($0.title).tag($0) }
-                        }.pickerStyle(.segmented).accessibilityIdentifier("support-method")
+                        }.pickerStyle(.segmented).labelsHidden().accessibilityIdentifier("support-method")
                         if method == .mercadoPago { mercadoPago }
                         else { cryptocurrency }
                     }
                 }
-                HStack(spacing: 22) {
-                    Link(L("Source code"), destination: SupportInfo.sourceURL)
-                    Link(L("License · GPL-3.0-only"), destination: SupportInfo.licenseURL)
-                }.font(AppType.callout)
-                Text(L("An independent project, licensed under GNU GPLv3. Not affiliated with or endorsed by the hearing-aid manufacturer."))
-                    .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }.frame(maxWidth: 800, alignment: .leading).padding(28)
-        }
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 22) {
+                        Link(L("Source code"), destination: SupportInfo.sourceURL)
+                        Link(L("License · GPL-3.0-only"), destination: SupportInfo.licenseURL)
+                    }.font(AppType.callout)
+                    Text(L("An independent project, licensed under GNU GPLv3. Not affiliated with or endorsed by the hearing-aid manufacturer."))
+                        .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }.accessibilityIdentifier("about-footer")
+                Spacer(minLength: 8)
+                VStack(spacing: 10) {
+                    Divider().opacity(0.45)
+                    Text(L("Made with ❤️ and 🤖 in 🇧🇷"))
+                        .font(AppType.caption).foregroundStyle(.secondary).opacity(0.7)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .accessibilityIdentifier("about-made-with")
+                }
+            }.padding(22)
         .font(AppType.body).tint(Brand.accent)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .accessibilityIdentifier("about-audifern")
@@ -56,61 +64,63 @@ struct AboutView: View {
     }
 
     private var identity: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 22) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 16) {
                 Image(nsImage: AppResources.brandMark).resizable().scaledToFit()
-                    .frame(width: 68, height: 82).accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(Brand.name).font(.system(size: 36, weight: .bold))
-                    Text(L("Version %@ · Build %@", version, build))
-                        .font(AppType.callout).foregroundStyle(.secondary)
+                    .frame(width: 48, height: 60).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(Brand.name).font(.system(size: 30, weight: .bold))
+                        Spacer(minLength: 12)
+                        Text(L("Version %@ · Build %@", version, build))
+                            .font(AppType.caption).foregroundStyle(.secondary)
+                    }
+                    HStack(spacing: 5) {
+                        Text(L("Developed by"))
+                        Link(SupportInfo.author, destination: SupportInfo.authorURL).fontWeight(.semibold)
+                    }.font(AppType.callout).accessibilityIdentifier("about-developer")
                 }
             }
-            HStack(spacing: 5) {
-                Text(L("Developed by"))
-                Link(SupportInfo.author, destination: SupportInfo.authorURL).fontWeight(.semibold)
-            }.accessibilityIdentifier("about-developer")
-            Text(L("Made with ❤️ and 🤖 in 🇧🇷")).font(AppType.body)
-                .accessibilityIdentifier("about-made-with")
-            Label(L("Open source · GPL-3.0-only"), systemImage: "chevron.left.forwardslash.chevron.right")
-                .labelStyle(AlignedLabelStyle(iconSize: 16)).font(AppType.callout).foregroundStyle(.secondary)
         }
     }
 
     private var mercadoPago: some View {
-        HStack(alignment: .top, spacing: 24) {
+        HStack(alignment: .top, spacing: 18) {
             qr(SupportInfo.mercadoPagoURL.absoluteString, label: L("Mercado Pago donation link QR code"))
-            VStack(alignment: .leading, spacing: 14) {
-                Text(ContributionMethod.mercadoPago.title).font(AppType.headline)
-                Text(L("Choose your contribution on the payment page, or scan this code with your phone."))
+            VStack(alignment: .leading, spacing: 10) {
+                Text(L("Scan or open the donation page."))
                     .font(AppType.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Link(destination: SupportInfo.mercadoPagoURL) {
-                    Label(L("Donate with Mercado Pago"), systemImage: "arrow.up.right")
-                }.buttonStyle(.borderedProminent).font(AppType.body)
-                    .accessibilityIdentifier("donate-mercado-pago")
-                copyButton(SupportInfo.mercadoPagoURL.absoluteString, title: L("Copy link"))
-                Text(L("Opens in your browser. Audifern does not receive payment details or send a device identifier."))
+                HStack(spacing: 10) {
+                    Link(destination: SupportInfo.mercadoPagoURL) {
+                        Label(L("Open donation page"), systemImage: "arrow.up.right")
+                    }.buttonStyle(.borderedProminent).font(AppType.callout)
+                        .accessibilityIdentifier("donate-mercado-pago")
+                    copyButton(SupportInfo.mercadoPagoURL.absoluteString, title: L("Copy link"))
+                }
+                Text(L("Opens in your browser. No device ID is sent."))
                     .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
     private var cryptocurrency: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Picker(L("Cryptocurrency"), selection: $asset) {
-                ForEach(DonationAsset.allCases) { Text($0.title).tag($0) }
-            }.accessibilityIdentifier("donation-asset")
-            Label(asset.network, systemImage: "network").font(AppType.callout.weight(.medium)).foregroundStyle(Brand.accent)
-            HStack(alignment: .top, spacing: 24) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Picker(L("Cryptocurrency"), selection: $asset) {
+                    ForEach(DonationAsset.allCases) { Text($0.title).tag($0) }
+                }.labelsHidden().accessibilityIdentifier("donation-asset")
+                Spacer(minLength: 8)
+                Label(asset == .usdc ? L("Ethereum mainnet · ERC-20") : asset.network, systemImage: "network")
+                    .font(AppType.caption.weight(.medium)).foregroundStyle(Brand.accent)
+            }
+            HStack(alignment: .top, spacing: 18) {
                 qr(asset.qrPayload, label: L("%@ receiving address QR code", asset.title))
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(asset.assetDescription).font(AppType.headline)
-                    Text(L("Receiving address")).font(AppType.caption).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
                     Text(asset.address).font(.system(size: 14, design: .monospaced))
                         .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("donation-address")
                     copyButton(asset.address, title: L("Copy address"))
-                    Text(L("This QR contains only the receiving address. Choose the asset and network shown in your wallet."))
+                    Text(L("Choose this asset and network in your wallet."))
                         .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -122,7 +132,7 @@ struct AboutView: View {
             if let image = DonationQRCode.image(for: payload) {
                 Image(nsImage: image).interpolation(.none).resizable().scaledToFit()
             } else { Text(L("QR code unavailable")).font(AppType.caption).foregroundStyle(.black) }
-        }.frame(width: 150, height: 150).padding(8)
+        }.frame(width: 128, height: 128).padding(8)
             .background(.white, in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.gray.opacity(0.2)))
             .accessibilityLabel(label)
@@ -135,7 +145,7 @@ struct AboutView: View {
         } label: {
             Label(copied == value ? L("Copied") : title, systemImage: copied == value ? "checkmark" : "doc.on.doc")
                 .labelStyle(AlignedLabelStyle(iconSize: 15, iconWidth: 18, spacing: 7))
-                .frame(minWidth: 130, alignment: .leading)
+                .frame(alignment: .leading)
         }.buttonStyle(.bordered).font(AppType.callout)
     }
 }

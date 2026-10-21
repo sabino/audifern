@@ -11,6 +11,7 @@ struct AppTaskSheet: View {
     let audiograms: AudiogramEditorStore
     let notifications: BatteryNotificationManager
     var availableSize: CGSize? = nil
+    var connectionAutomation: ConnectionAutomation? = nil
     // Keep the presentation geometry for the sheet's lifetime. Switching a
     // settings category or opening a child editor must not renegotiate its size.
     @State private var presentationSize: CGSize?
@@ -63,7 +64,7 @@ struct AppTaskSheet: View {
                 }.padding(28)
             }
         case .savePreset: SaveSoundPresetView(store: store)
-        case .settings: AppSettingsView(notifications: notifications, isDemo: store.isDemo)
+        case .settings: AppSettingsView(notifications: notifications, isDemo: store.isDemo, connectionAutomation: connectionAutomation)
         case .about: AboutView()
         case .diagnostics: DeveloperView(store: store)
         case .backups: DeviceBackupsView(store: store, backups: backups)

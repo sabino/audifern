@@ -15,6 +15,12 @@ visibility; the app cannot make a payment anonymous.
 
 ## Information the app uses
 
+Optional connection automation stores your chosen hearing aids' Mac-local
+peripheral identifiers and sides, a signal threshold and an optional audio
+output identifier in local app preferences. These identifiers stay on this Mac;
+there is no phone/cloud coordination service or donation association. Signal
+measurements are used locally for reconnection. See [connection controls](docs/connections.md).
+
 The app reads nearby/connected device information, available consumer controls,
 battery state and the values needed to confirm a requested change. Model,
 software, firmware, program names and optional serial fields can be returned by

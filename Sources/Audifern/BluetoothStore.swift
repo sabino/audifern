@@ -58,7 +58,7 @@ private struct AuxiliaryVolumeSnapshot: Equatable {
 
 /// Independent, main-queue connections. Probe mode cannot issue hearing-setting writes.
 @MainActor
-final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentralManagerDelegate, @preconcurrency CBPeripheralDelegate {
+final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTransport, @preconcurrency CBCentralManagerDelegate, @preconcurrency CBPeripheralDelegate {
     let isDemo: Bool
     @Published private(set) var bluetoothStatus = "Starting Bluetooth…"
     @Published private(set) var isPoweredOn = false
@@ -83,6 +83,10 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
     private var scanTask: Task<Void, Never>?
     private var probeTask: Task<Void, Never>?
     private var pendingScan = false
+    private var automaticScan = false
+    private var measuredSignals: [UUID: ConnectionSignal] = [:]
+    var onManualConnect: (() -> Void)?
+    var onManualDisconnect: (() -> Void)?
     private var probeConfiguration: LaunchConfiguration?
     private var recorder: ProbeRecorder?
     private var probeHasAttemptedConnect = false
@@ -155,12 +159,14 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
             NSApplication.shared.terminate(nil)
         }
     }
-    func startScan(seconds: Double = 15) {
+    func startScan(seconds: Double = 15, automatic: Bool = false) {
         guard isPoweredOn else { pendingScan = true; record("scan_waiting", "Waiting for Bluetooth permission and power"); return }
         pendingScan = false
+        automaticScan = automatic
         scanTask?.cancel()
         recoverConnectedPeripherals()
-        central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
+        central.scanForPeripherals(withServices: automatic ? HearingAidDiscovery.connectedRetrievalServices.map { CBUUID(string: $0) } : nil,
+                                  options: [CBCentralManagerScanOptionAllowDuplicatesKey: !automatic])
         isScanning = true
         record("scan_started", "Scanning nearby BLE advertisements", details: ["duration_seconds": String(seconds)])
         scanTask = Task { [weak self] in
@@ -171,6 +177,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
     }
     func stopScan() {
         scanTask?.cancel(); scanTask = nil
+        automaticScan = false
         guard isScanning else { return }
         central.stopScan(); isScanning = false
         record("scan_stopped", "Scan stopped")
@@ -179,11 +186,12 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         guard probeConfiguration == nil else { return }
         for id in pairCandidateIDs { connect(to: id) }
     }
-    func connect(to id: UUID) {
+    func connect(to id: UUID, manual: Bool = true) {
         guard isPoweredOn, let target = peripherals[id], links[id] == nil else { return }
         let link = AidLink(target)
         links[id] = link
         connections[id] = AidConnection(id: id, name: target.name ?? devices.first(where: { $0.id == id })?.name ?? "Hearing aid", phase: .connecting)
+        if manual { onManualConnect?() }
         selectedPeripheralID = id
         target.delegate = self
         record("connection_requested", "Connecting to \(target.name ?? "device")", details: ["uuid": id.uuidString])
@@ -193,11 +201,12 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
             guard !Task.isCancelled, let self, let link, self.links[id] === link, self.connections[id]?.phase == .connecting else { return }
             self.connections[id]?.error = "Connection timed out. The device may be busy with another host."
             self.record("connection_timeout", "Connection did not complete within 20 seconds", details: ["uuid": id.uuidString])
-            self.disconnect(id)
+            self.disconnect(id, manual: false)
         }
     }
-    func disconnect(_ id: UUID) {
+    func disconnect(_ id: UUID, manual: Bool = true) {
         guard let link = links[id] else { return }
+        if manual { onManualDisconnect?() }
         link.connectTimeout?.cancel(); link.pending?.timeout?.cancel()
         connections[id]?.clearLiveValues()
         connections[id]?.phase = .disconnecting
@@ -207,6 +216,36 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
     }
     func disconnect() { for id in Array(links.keys) { disconnect(id) } }
     func clearEvents() { events = [] }
+
+    var automationPoweredOn: Bool { !isDemo && probeConfiguration == nil && isPoweredOn }
+    var automationPhases: [UUID: ConnectionPhase] { connections.mapValues(\.phase) }
+    var automationSignals: [UUID: ConnectionSignal] { measuredSignals }
+    var automationCurrentAids: [RememberedHearingAid] {
+        orderedConnections.filter { $0.canChangeVolume && ["Left", "Right"].contains($0.sideLabel) }
+            .map { RememberedHearingAid(id: $0.id, side: $0.sideLabel) }
+    }
+    func retrieveRemembered(_ ids: [UUID]) {
+        guard automationPoweredOn else { return }
+        for peripheral in central.retrievePeripherals(withIdentifiers: ids) { peripherals[peripheral.identifier] = peripheral }
+    }
+    func scanForRemembered() {
+        guard automationPoweredOn, !isScanning else { return }
+        startScan(seconds: 4, automatic: true)
+    }
+    func stopAutomaticScan() { if automaticScan { stopScan() } }
+    func connectRemembered(_ id: UUID) -> Bool {
+        guard automationPoweredOn, peripherals[id] != nil, links[id] == nil else { return false }
+        connect(to: id, manual: false); return true
+    }
+    func disconnectAutomaticConnections() { for id in Array(links.keys) { disconnect(id, manual: false) } }
+    func measureConnectedSignal() {
+        guard automationPoweredOn else { return }
+        for link in links.values where link.peripheral.state == .connected { link.peripheral.readRSSI() }
+    }
+    func peripheral(_ peripheral: CBPeripheral, didReadRSSI RSSI: NSNumber, error: (any Error)?) {
+        guard error == nil, (-127 ... -1).contains(RSSI.intValue), liveLink(peripheral.identifier)?.peripheral === peripheral else { return }
+        measuredSignals[peripheral.identifier] = .init(rssi: RSSI.intValue, measuredAt: Date())
+    }
 
     /// Fresh consumer controls only. The metadata cursor is released after a
     /// legacy query; this never selects a listening program or writes a setting.
@@ -1600,6 +1639,9 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         let manufacturerData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data
         let connectable = (advertisementData[CBAdvertisementDataIsConnectable] as? NSNumber)?.boolValue
         let validRSSI = RSSI.intValue == 127 ? nil : RSSI.intValue
+        if let validRSSI, (-127 ... -1).contains(validRSSI) {
+            measuredSignals[peripheral.identifier] = .init(rssi: validRSSI, measuredAt: Date())
+        }
         upsert(peripheral, name: name, rssi: validRSSI, services: advertisedServices + overflowServices, manufacturerData: manufacturerData, source: "Advertisement", connectable: connectable)
         if Date().timeIntervalSince(loggedDiscoveryAt[peripheral.identifier] ?? .distantPast) >= 5 {
             loggedDiscoveryAt[peripheral.identifier] = Date()

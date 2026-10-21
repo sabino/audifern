@@ -12,23 +12,23 @@ func renderAboutAndContributionsWithoutOpeningLinksOrBluetooth() throws {
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
     NSApplication.shared.setActivationPolicy(.prohibited)
     let services = AudifernServices(demo: true)
-    let cases: [(String, AppLanguage, ColorScheme, AboutView.ContributionMethod, DonationAsset, Int)] = [
-        ("en-mp", .english, .light, .mercadoPago, .bitcoin, 900),
-        ("en-btc", .english, .light, .cryptocurrency, .bitcoin, 900),
-        ("pt-btc", .portugueseBrazil, .light, .cryptocurrency, .bitcoin, 714),
-        ("es-usdc", .spanish, .light, .cryptocurrency, .usdc, 714),
-        ("en-eth-dark", .english, .dark, .cryptocurrency, .ethereum, 714),
-        ("pt-sol-dark", .portugueseBrazil, .dark, .cryptocurrency, .solana, 714)
+    let cases: [(String, AppLanguage, ColorScheme, AboutView.ContributionMethod, DonationAsset, Int, Int)] = [
+        ("en-mp", .english, .light, .mercadoPago, .bitcoin, 900, 638),
+        ("en-btc", .english, .light, .cryptocurrency, .bitcoin, 900, 638),
+        ("pt-btc", .portugueseBrazil, .light, .cryptocurrency, .bitcoin, 609, 598),
+        ("es-usdc", .spanish, .light, .cryptocurrency, .usdc, 609, 598),
+        ("en-eth-dark", .english, .dark, .cryptocurrency, .ethereum, 714, 638),
+        ("pt-sol-dark", .portugueseBrazil, .dark, .cryptocurrency, .solana, 609, 598)
     ]
-    for (name, language, scheme, method, asset, width) in cases {
+    for (name, language, scheme, method, asset, width, height) in cases {
         services.preferences.language = language
         services.preferences.appearance = scheme == .light ? .light : .dark
         NSApplication.shared.appearance = NSAppearance(named: scheme == .light ? .aqua : .darkAqua)
         let content = AboutView(initialMethod: method, initialAsset: asset)
             .environmentObject(services.preferences).environment(\.colorScheme, scheme)
-            .frame(width: CGFloat(width), height: 1050).background(Brand.background)
+            .frame(width: CGFloat(width), height: CGFloat(height)).background(Brand.background)
         let hosting = NSHostingView(rootView: content)
-        hosting.frame = NSRect(x: 0, y: 0, width: width, height: 1050)
+        hosting.frame = NSRect(x: 0, y: 0, width: width, height: height)
         hosting.layoutSubtreeIfNeeded()
         #expect(hosting.window == nil && services.bluetooth.isDemo)
         let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))

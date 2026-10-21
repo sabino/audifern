@@ -26,13 +26,15 @@ import Testing
         #expect(features.first?.messageString == payload)
         // Also decode the QR at its smallest on-screen 1x size, rather than
         // trusting only the generator's full-resolution image.
-        let scaled = try #require(CGContext(data: nil, width: 150, height: 150, bitsPerComponent: 8,
-            bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
-        scaled.interpolationQuality = .none
-        scaled.draw(cg, in: CGRect(x: 0, y: 0, width: 150, height: 150))
-        let small = try #require(scaled.makeImage())
-        let smallFeatures = detector.features(in: CIImage(cgImage: small)).compactMap { $0 as? CIQRCodeFeature }
-        #expect(smallFeatures.first?.messageString == payload)
+        for size in [128, 150] {
+            let scaled = try #require(CGContext(data: nil, width: size, height: size, bitsPerComponent: 8,
+                bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+            scaled.interpolationQuality = .none
+            scaled.draw(cg, in: CGRect(x: 0, y: 0, width: size, height: size))
+            let small = try #require(scaled.makeImage())
+            let smallFeatures = detector.features(in: CIImage(cgImage: small)).compactMap { $0 as? CIQRCodeFeature }
+            #expect(smallFeatures.first?.messageString == payload)
+        }
     }
 }
 

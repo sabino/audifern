@@ -37,9 +37,10 @@ struct PageHeading<Trailing: View>: View {
 }
 
 struct Surface<Content: View>: View {
+    var insets: CGFloat = 24
     @ViewBuilder var content: () -> Content
     var body: some View {
-        content().padding(24).frame(maxWidth: .infinity, alignment: .leading)
+        content().padding(insets).frame(maxWidth: .infinity, alignment: .leading)
             .background(Brand.surface, in: RoundedRectangle(cornerRadius: 20))
             .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.065)))
             .shadow(color: .black.opacity(0.025), radius: 12, x: 0, y: 4)

@@ -40,6 +40,13 @@ It credits [sabino](https://github.com/sabino), shows the localized
 cryptocurrency contributions with local QR codes and copyable receiving
 addresses. See [contributions and future supporter features](docs/contributions.md).
 
+About fits both its standalone sheet and Settings without a nested scroll area.
+**Settings → Connections** adds optional reconnection to chosen aids, wake/unlock
+attempts, a tunable RSSI threshold, persistent pause/resume and explicit Mac
+audio-output preferences. Automatic connection starts off. Control connections
+and system audio are distinct; Android↔Mac audio handoff still needs physical
+testing. See [connections and the handoff research](docs/connections.md).
+
 | Destination | What you can do |
 | --- | --- |
 | **Sound** | See both device images, batteries and active programs; adjust volume, mute and SpeechBooster. Open the equalizers or save a sound from here. |

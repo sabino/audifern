@@ -1,6 +1,12 @@
 # Screenshot provenance
 
-The 0.7.0 screenshots were captured on macOS on 2026-10-21 from a separately
+The About screenshot was refreshed for the local 0.8.0 development build. It
+shows the compact layout and centered footer without an inner scroll area.
+`audifern-settings-about.png` shows the same view inside Settings;
+`audifern-connections.png` shows the opt-in reconnect controls. These native
+window captures use only the separately launched `--demo` app described below.
+
+The remaining 0.7.0 screenshots were captured on macOS on 2026-10-21 from a separately
 launched, packaged Audifern app with `--demo`. This uses synthetic devices,
 battery values, programs and fitting plans. Demo mode never creates a Bluetooth
 central or changes a hearing aid; it stores preview preferences separately.

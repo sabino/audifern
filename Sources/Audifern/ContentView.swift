@@ -7,6 +7,7 @@ struct ContentView: View {
     let notifications: BatteryNotificationManager
     @ObservedObject var fittingWorkspace: FittingWorkspaceStore
     let backups: DeviceBackupStore
+    var connectionAutomation: ConnectionAutomation? = nil
     @EnvironmentObject private var navigation: AppNavigation
     @EnvironmentObject private var preferences: AppPreferences
     @EnvironmentObject private var presets: SoundPresetStore
@@ -76,7 +77,7 @@ struct ContentView: View {
         .sheet(item: $navigation.sheet, onDismiss: { navigation.sheetPath = [] }) { _ in
             AppTaskSheet(store: store, workspace: fittingWorkspace, backups: backups,
                          audiograms: audiogramStore, notifications: notifications,
-                         availableSize: CGSize(width: windowContentSize.width - 40, height: windowContentSize.height - 40))
+                         availableSize: CGSize(width: windowContentSize.width - 40, height: windowContentSize.height - 40), connectionAutomation: connectionAutomation)
         }
     }
 
@@ -119,7 +120,7 @@ struct ContentView: View {
                 presets.linkedAudiogramID = exam.id
                 presets.linkedAudiogramLabel = exam.name + (exam.examDate.map { " · \($0)" } ?? "")
             }).disabled(store.isDemo)
-        case .settings: AppSettingsView(notifications: notifications, isDemo: store.isDemo)
+        case .settings: AppSettingsView(notifications: notifications, isDemo: store.isDemo, connectionAutomation: connectionAutomation)
         case .developer: DeveloperView(store: store)
         }
     }

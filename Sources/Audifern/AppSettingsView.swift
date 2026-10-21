@@ -3,6 +3,7 @@ import SwiftUI
 struct AppSettingsView: View {
     @ObservedObject var notifications: BatteryNotificationManager
     var isDemo = false
+    var connectionAutomation: ConnectionAutomation? = nil
     @EnvironmentObject private var preferences: AppPreferences
     @EnvironmentObject private var navigation: AppNavigation
     @AppStorage("settingsSection") private var section = "general"
@@ -13,6 +14,7 @@ struct AppSettingsView: View {
         case "privacy": L("Privacy")
         case "diagnostics": L("Diagnostics")
         case "about": L("About Audifern")
+        case "connections": L("Connections")
         default: L("General")
         }
     }
@@ -21,6 +23,7 @@ struct AppSettingsView: View {
         HStack(alignment: .top, spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
                 category("general", title: L("General"), symbol: "gearshape")
+                category("connections", title: L("Connections"), symbol: "antenna.radiowaves.left.and.right")
                 category("battery", title: L("Battery alerts"), symbol: "battery.75percent")
                 category("privacy", title: L("Privacy"), symbol: "lock.shield")
                 category("diagnostics", title: L("Diagnostics"), symbol: "waveform.path.ecg")
@@ -32,6 +35,12 @@ struct AppSettingsView: View {
                 .background(Brand.surface.opacity(0.65))
             Divider()
             if section == "about" { AboutView() }
+            else if section == "connections", let connectionAutomation {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text(title).font(.system(size: 32, weight: .bold))
+                    ConnectionSettingsView(automation: connectionAutomation)
+                }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
             else { ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
                     Text(title).font(.system(size: 32, weight: .bold))
