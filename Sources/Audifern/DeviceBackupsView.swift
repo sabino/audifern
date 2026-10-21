@@ -9,6 +9,7 @@ struct DeviceBackupsView: View {
     @EnvironmentObject private var preferences: AppPreferences
     @State private var error: String?
     @State private var expandedID: UUID?
+    @State private var showComparison = false
 
     var body: some View {
         ScrollView {
@@ -48,6 +49,13 @@ struct DeviceBackupsView: View {
                             .font(.caption).foregroundStyle(.secondary)
                         Text(L("A fitting-system record is only part of a clinical fitting. Any captured end-user settings are listed separately. Live RAM, calibration and firmware are not backed up here, and clinical restore is not available."))
                             .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Surface {
+                    DisclosureGroup(isExpanded: $showComparison) {
+                        BackupComparisonView(backups: backups).padding(.top, 18)
+                    } label: {
+                        Label(L("Compare saved backups"), systemImage: "arrow.left.arrow.right").font(.headline)
                     }
                 }
                 HStack {

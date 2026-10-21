@@ -9,11 +9,15 @@ The reviewed Audifern baseline is `6ebe7826fa443b23f5adb93883cb87c91e211012` (20
 The new **Fitting** page has separate saved-data and planning views. Verified
 private backups expose program names/structure, adaptation, selected processing,
 gain/MPO parameter tables, stored rationale codes, fitting software version,
-audiogram levels/tags and additional real-ear/in-situ metadata. Program and ear
+audiogram levels/tags and additional real-ear/in-situ metadata. Saved acoustics,
+hardware identification, lowering/input/tinnitus choices and context-specific
+tap/notification preferences are also readable for the exact researched profile.
+Program and ear
 selection in this inspector only changes what is displayed. The local plan
 records context, per-ear acoustics, a linked exam, supported rationale/adaptation
 preferences and program ideas. **Backups** preserves completed reads
-incrementally and reports coverage. Existing everyday controls continue to use
+incrementally, reports coverage and compares captured data from two backups.
+Existing everyday controls continue to use
 their proven consumer path.
 
 These are working readers and local preparation tools. The catalog below also
@@ -49,7 +53,7 @@ The same definition explicitly marks **Sensor Fused Audiology, CROS transmission
 
 Availability also depends on physical style, receiver/acoustics, program, firmware and fitted configuration. For example, a coil program needs suitable hardware, and tinnitus source volume requires an already fitted tinnitus source.
 
-The new read-only fitting reader is narrower than the planned editor. It accepts the researched Intent 3 firmware profile, validates the packed layout, and separates standard user slots from accessory records. It recovers stored gain/MPO coordinates, per-channel knee points, adaptation and selected processing settings. It does not recover a rationale name, an acoustic selection label or a frequency axis from those register bits. A four-row internal gain matrix must not be presented as the three input rows in Genie's user interface. Uninterpreted blocks remain opaque, and no device-writing operation is part of this reader.
+The new read-only fitting reader is narrower than the planned editor. It accepts the researched Intent 3 firmware profile, validates the packed layout, and separates standard user slots from accessory records. It recovers stored gain/MPO coordinates, per-channel knee points, adaptation and selected processing settings. Separate readers name the saved acoustic categories and inspect selected end-user preferences only after exact metadata agreement. A rationale code is not yet a validated calculation selection, and the register bits do not establish an acoustic frequency axis. A four-row internal gain matrix must not be presented as the three input rows in Genie's user interface. Uninterpreted blocks remain opaque, and no device-writing operation is part of these readers.
 
 ## Feature catalog
 

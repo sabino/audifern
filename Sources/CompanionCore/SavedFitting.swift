@@ -6,12 +6,27 @@ import Foundation
 public enum SavedFitting {
     public enum ReadError: Error { case unavailable, unsupportedIdentity }
     public static func supports(_ identity: DeviceBackup.Identity) -> Bool {
-        let model = identity.model?.lowercased().replacingOccurrences(of: " ", with: "")
-        guard ["intent3", "oticonintent3"].contains(model ?? ""),
+        guard identity.model.map(DeviceBackup.Identity.modelKey) == "intent3",
               let hiid = identity.hiidVersion, let release = identity.releasePackageVersion,
               let map = identity.runtimeMemoryMapVersion else { return false }
         return OticonFittedConfiguration.Identity(modelUID: 8513, genericModelUID: 8460,
             hiidVersion: hiid, releasePackageVersion: release, runtimeMemoryMapVersion: map).isSupported
+    }
+
+    /// New archives retain authoritative raw identity. Require it to agree
+    /// with the selected format, including numeric model UIDs. Older archives
+    /// without that optional payload keep their original identity gate.
+    public static func supports(_ aid: DeviceBackup.Aid) -> Bool {
+        guard supports(aid.identity) else { return false }
+        guard let raw = aid.identification else { return true }
+        guard let identity = try? OticonIdentification.decodeHiid(raw),
+              let hardware = try? OticonHardwareProfile.decodeHiid(raw),
+              identity.metadata.hiidVersion == aid.identity.hiidVersion,
+              identity.metadata.releasePackageVersion == aid.identity.releasePackageVersion,
+              identity.metadata.runtimeMemoryMapVersion == aid.identity.runtimeMemoryMapVersion,
+              identity.metadata.model.map(DeviceBackup.Identity.modelKey) == "intent3",
+              hardware.product.modelUID == 8513, hardware.product.genericModelUID == 8460 else { return false }
+        return true
     }
     public static func decode(_ aid: DeviceBackup.Aid) throws -> OticonFittedConfiguration.Snapshot {
         let (blob, identity) = try supportedBlob(aid)
@@ -25,7 +40,7 @@ public enum SavedFitting {
 
     private static func supportedBlob(_ aid: DeviceBackup.Aid) throws
         -> (OticonFittingRead.Blob, OticonFittedConfiguration.Identity) {
-        guard supports(aid.identity),
+        guard supports(aid),
               let hiid = aid.identity.hiidVersion, let release = aid.identity.releasePackageVersion,
               let map = aid.identity.runtimeMemoryMapVersion else { throw ReadError.unsupportedIdentity }
         let identity = OticonFittedConfiguration.Identity(modelUID: 8513, genericModelUID: 8460,

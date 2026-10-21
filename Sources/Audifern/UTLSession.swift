@@ -57,6 +57,7 @@ final class UTLSession {
     private var transportMTU = 64
     private(set) var services: [UTLProtocol.Service] = []
     private(set) var isReady = false
+    private(set) var identificationPayload: Data?
     private var openAttempted = false
     private var consumerOpenAttempted = false
     private var sessionService: UTLProtocol.Service?
@@ -141,6 +142,7 @@ final class UTLSession {
 
     func stop() async {
         isReady = false
+        identificationPayload = nil
         if consumerOpenAttempted, let sessionService {
             if let activeTransaction {
                 _ = try? await request(handle: sessionService.handle, opcode: 9,
@@ -156,6 +158,7 @@ final class UTLSession {
     }
     func disconnected() {
         failure = SessionError.disconnected; isReady = false; openAttempted = false
+        identificationPayload = nil
         consumerOpenAttempted = false; activeTransaction = nil
     }
 
@@ -257,12 +260,14 @@ final class UTLSession {
         catch { throw UTLAdvanced.ParseError("Crash-dump counters could not be decoded (\(response.payload.count) bytes).") }
     }
     func identification() async throws -> OticonIdentification.Identity {
+        identificationPayload = nil
         guard let service = services.first(where: OticonIdentification.supports) else {
             throw SessionError.unavailable("No supported hearing aid identification service was advertised.")
         }
         let response = try await consumerRequest(handle: service.handle, opcode: OticonIdentification.hiidInfoOpcode)
         do {
             let identity = try OticonIdentification.decodeHiid(response.payload)
+            identificationPayload = response.payload
             // The HIID map can contain identifying and fitting information.
             // Never include its bytes or the serial number in session events.
             diagnostic("Hearing aid identification read (HIID \(identity.hiidMajor).\(identity.hiidMinor)).")

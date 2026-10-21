@@ -33,7 +33,7 @@ One window keeps the essentials separate from the details:
 | **Sound** | Edit microphone and streaming EQ, load supported SpeechBooster and source controls. |
 | **Programs** | Inspect fitted programs and save local sound presets. |
 | **Fitting** | Explore supported saved fitting data or prepare a local plan with acoustics, an audiogram, rationale preferences and program ideas. |
-| **Backups** | Save verified private copies of readable consumer, fitting-system and persisted end-user data, with explicit coverage. Clinical restore is not implemented. |
+| **Backups** | Save and compare verified private copies of readable consumer, fitting-system and persisted end-user data, with explicit coverage. Clinical restore is not implemented. |
 | **Devices** | Read model, software, firmware and available device diagnostics. Identifiers are hidden by default. |
 | **Audiogram** | Record an existing exam, plot it, and import or export it. |
 | **Settings** | Choose System, Light or Dark appearance; language; battery alerts; privacy preferences. |

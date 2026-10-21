@@ -19,7 +19,7 @@ volume against the original consumer checkpoint.
 | Data | Coverage |
 | --- | --- |
 | Consumer checkpoint | Active program metadata, volume/mute and supported EQ/source/SpeechBooster getters that succeeded. The shareable consumer export keeps its narrower scope. |
-| Identity and registry | Reported model, versions, local identifiers and observed services. Presence does not establish every operation. |
+| Identity and registry | Reported model, versions, local identifiers and observed services. New captures also retain the validated raw HIID response privately, including hardware selection fields. Presence does not establish every operation. |
 | Fitting record | HIID 4.5 entry 1009: header plus declared meaningful payload. The header is read twice and the device CRC checked. |
 | End-user settings | EUS 2.1 inventory, optional metadata and successful persisted NVRAM getters. IDs/counts come from that inventory. Unknown, additional and RAM-only scopes remain outside coverage. |
 | Excluded | Live RAM, complete calibration/device memory, installed firmware, original patient records and verified clinical restore. |
@@ -43,9 +43,27 @@ directories are never silently changed. The private file itself is always 0600.
 Ear/program selection changes only the inspector. The supported decoder shows
 user programs separately from accessory/automatic records, labels, adaptation,
 fitted processing, fitting software/rationale metadata and expandable gain/MPO
-parameters. The decoder requires
+parameters. Additional saved views show acoustic categories, frequency lowering,
+transient/wind choices, tinnitus setup, streaming/input preferences, tap actions
+by listening context and hearing-aid notification preferences. Expandable hardware
+identification stays separate from the saved acoustic selection. These views read
+archived data, without sending controls or playing sounds. The decoder requires
 Intent 3 release 5.0.29, HIID 4.5 and runtime map 10.0.0. Other records remain
-preserved without an invented interpretation.
+preserved without an invented interpretation. When a raw identification response
+is present, its reported profile and numeric model identifiers must agree before
+this decoder is selected. Contradictory overlapping identity fields are rejected.
+
+The [acoustics](saved-acoustics.md), [sound settings](saved-control-wire-evidence.md)
+and [tap/notification preferences](saved-preferences.md) guides describe the exact
+accepted formats and remaining unknowns. A stored setting does not prove current
+activity, hardware availability or physical compatibility.
+
+**Backups → Compare saved backups** compares two verified local captures per ear.
+It checks aid identity before comparing fitting bytes, supported section bytes,
+consumer controls and persisted end-user scopes. Missing observations have their
+own result; two absent values never mean unchanged. A changed record can reflect
+metadata rather than sound processing. This is a captured-data comparison, not a
+restore plan or a sound-quality assessment.
 
 Saved fitting audiograms are limited snapshots whose levels may have been
 interpolated, rounded or clamped. The format omits measurement method, units and
@@ -98,9 +116,14 @@ original captures retained. No fitting was applied.
 
 Both private production-register sections were independently decoded and
 re-encoded byte for byte; the public Swift reader also decodes the actual saved
-archive. Synthetic tests cover bounds, identity/version gates, CRC, fragments,
+archive. An independent schema-driven check also matches all 118 newly exposed
+sound-control coordinates across the pair. Saved tap/indicator preferences agree
+with the captured metadata and global records; raw hardware fields and saved
+acoustic categories agree for both aids. These checks establish format agreement,
+not physical fitting or clinical equivalence. Synthetic tests cover bounds,
+identity/version gates, CRC, fragments,
 changed headers, rejection/cancellation, partial EUS capture, private permissions,
-immutable saves and corrupt-file preservation. Native view renders check light,
+immutable saves, comparison coverage and corrupt-file preservation. Native view renders check light,
 dark and narrow layouts without activating a window. Onscreen interaction and
 clinical fitting equivalence remain separate verification work.
 

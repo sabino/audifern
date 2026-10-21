@@ -48,21 +48,32 @@ struct FittedConfigurationView: View {
                         overview(decoded)
                         programCards(decoded)
                         if let program { processing(program) }
+                        if let program, let controls = try? OticonSavedControls.decode(decoded) {
+                            SavedSoundControlsView(controls: controls, slot: program.slot)
+                        }
                         if let gain = program?.gain { parameters(gain) }
                         if let aid, let business = try? SavedFitting.businessData(aid) {
                             StoredFittingMetadataView(snapshot: business, backup: selected.backup, audiograms: audiograms)
                                 .id("\(selected.id)-\(side.rawValue)")
                         }
                         accessories(decoded)
-                        DisclosureGroup(L("Acoustic selection codes")) {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text(L("These are stored device codes. Audifern has not mapped them to physical receiver, dome or vent dimensions."))
-                                    .foregroundStyle(.secondary)
-                                LabeledContent(L("Earpiece code"), value: String(decoded.selection.earPieceCode))
-                                LabeledContent(L("Vent code"), value: String(decoded.selection.ventCode))
-                                LabeledContent(L("Fitting acoustics code"), value: String(decoded.selection.fittingLevelAcousticsCode))
-                            }.font(.caption).padding(.top, 12)
-                        }.padding(20).background(Brand.surface, in: RoundedRectangle(cornerRadius: 16))
+                        if let acoustics = try? OticonSavedAcoustics.decode(decoded) { SavedAcousticsView(labels: acoustics) }
+                        if let rawIdentification = aid?.identification,
+                           let hardware = try? OticonHardwareProfile.decodeHiid(rawIdentification) {
+                            SavedHardwareView(profile: hardware)
+                        }
+                        if let aid, let settings = aid.endUserSettings {
+                            if let preferences = try? OticonSavedPreferences.decode(settings,
+                                identity: decoded.identity, services: aid.services) {
+                                SavedPreferencesView(preferences: preferences)
+                            } else {
+                                Surface {
+                                    Label(L("Saved button and notification details are unavailable for this capture. The raw settings remain in the backup."),
+                                          systemImage: "info.circle")
+                                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
                     } else {
                         Surface {
                             ContentUnavailableView {

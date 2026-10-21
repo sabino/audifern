@@ -600,11 +600,15 @@ private func syntheticEUSInventory(access: String = "NVRAM") -> Data {
     try await session.start(key: peer.key)
     #expect(session.supportsIdentification)
     let identity = try await session.identification()
+    let retained = try #require(session.identificationPayload)
+    #expect(try OticonIdentification.decodeHiid(retained) == identity)
     #expect(identity.serialNumber == "00000042")
     #expect(peer.serviceTrace.map { "\($0.handle)/\($0.opcode)" }.suffix(3) == ["8/7", "11/3", "8/8"])
     #expect(diagnostics == ["Hearing aid identification read (HIID 4.6)."])
     #expect(!diagnostics.joined().contains("00000042"))
     #expect(!diagnostics.joined().contains("A21903E9"))
+    await session.stop()
+    #expect(session.identificationPayload == nil)
 }
 
 @MainActor @Test func deviceMetadataQueriesUseOnlyTheirReadOpcodesAndConsumerTransactions() async throws {

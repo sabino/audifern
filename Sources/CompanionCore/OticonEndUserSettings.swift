@@ -52,7 +52,7 @@ public enum OticonEndUserSettings {
     /// Preserve exactly one bounded complete CBOR value, including opaque EUS
     /// maps. There is no additional length envelope or fitting-data CRC here.
     public static func validateResponse(_ payload: Data) throws -> Data {
-        _ = try decode(payload)
+        _ = try decodeValue(payload)
         return payload
     }
 
@@ -60,7 +60,7 @@ public enum OticonEndUserSettings {
     /// The shipped getter uses the first inner array. Unknown scopes are retained
     /// but omitted from the plan. Counts must be below 256 and total at most 128.
     public static func decodeInventory(_ payload: Data) throws -> Inventory {
-        let root = try textMap(decode(payload))
+        let root = try textMap(decodeValue(payload))
         guard case .array(let scopeGroups)? = root["scopes"],
               let first = scopeGroups.first, case .array(let rows) = first else {
             throw DecodeError.invalidInventory
@@ -102,7 +102,9 @@ public enum OticonEndUserSettings {
                          hasAdditionalScopeGroups: scopeGroups.count > 1)
     }
 
-    private indirect enum Value {
+    // Shared internally by narrowly scoped saved-preference readers. This is
+    // intentionally not an unbounded public CBOR/object decoding interface.
+    indirect enum Value {
         case unsigned(UInt64), bytes(Data), text(String), array([Value]), map([(Value, Value)]), other
     }
 
@@ -117,7 +119,7 @@ public enum OticonEndUserSettings {
         return result
     }
 
-    private static func decode(_ payload: Data) throws -> Value {
+    static func decodeValue(_ payload: Data) throws -> Value {
         guard payload.count <= maximumResponseBytes else { throw DecodeError.responseTooLarge }
         var reader = Reader(bytes: Array(payload))
         let value = try reader.value(depth: 0)

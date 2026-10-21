@@ -39,6 +39,11 @@ public struct DeviceBackup: Codable, Equatable, Sendable {
             self.firmware = firmware; self.software = software; self.hiidVersion = hiidVersion
             self.releasePackageVersion = releasePackageVersion; self.runtimeMemoryMapVersion = runtimeMemoryMapVersion
         }
+
+        static func modelKey(_ name: String) -> String {
+            let value = name.lowercased().filter { !$0.isWhitespace }
+            return value == "oticonintent3" ? "intent3" : value
+        }
     }
 
     public struct Record: Codable, Equatable, Sendable {
@@ -63,15 +68,20 @@ public struct DeviceBackup: Codable, Equatable, Sendable {
         public let programInventoryComplete: Bool
         public let records: [Record]
         public let endUserSettings: EndUserSettings?
+        /// Exact validated detect_info opcode-3 CBOR, retained privately so
+        /// versioned hardware-configuration fields are not silently discarded.
+        public let identification: Data?
         public let notes: [String]
 
         public init(side: ConsumerProgramSnapshot.Side, identity: Identity, services: [Service] = [],
                     programs: [ConsumerProgramSnapshot.Program] = [], programInventoryComplete: Bool = false,
-                    records: [Record] = [], endUserSettings: EndUserSettings? = nil, notes: [String] = []) {
+                    records: [Record] = [], endUserSettings: EndUserSettings? = nil,
+                    identification: Data? = nil, notes: [String] = []) {
             self.side = side; self.identity = identity; self.services = services; self.programs = programs
             self.programInventoryComplete = programInventoryComplete
             self.records = records; self.notes = notes
             self.endUserSettings = endUserSettings
+            self.identification = identification
         }
     }
 
@@ -170,6 +180,22 @@ public struct DeviceBackup: Codable, Equatable, Sendable {
                 }
             }
             try aid.endUserSettings?.validate()
+            if let payload = aid.identification {
+                let identification = try OticonIdentification.decodeHiid(payload)
+                if let version = aid.identity.hiidVersion {
+                    guard identification.metadata.hiidVersion == version else { throw BackupError.invalid }
+                }
+                if let stored = aid.identity.serialNumber, let decoded = identification.serialNumber {
+                    guard stored == decoded else { throw BackupError.invalid }
+                }
+                let metadata = identification.metadata
+                for (stored, decoded) in [(identity.releasePackageVersion, metadata.releasePackageVersion),
+                                          (identity.runtimeMemoryMapVersion, metadata.runtimeMemoryMapVersion)] {
+                    if let stored, let decoded, stored != decoded { throw BackupError.invalid }
+                }
+                if let stored = identity.model, let decoded = metadata.model,
+                   Identity.modelKey(stored) != Identity.modelKey(decoded) { throw BackupError.invalid }
+            }
         }
     }
 

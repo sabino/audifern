@@ -456,6 +456,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         }
         var programs: [UUID: [ConsumerProgramSnapshot.Program]] = [:]
         var capturedServices: [UUID: [DeviceBackup.Service]] = [:]
+        var capturedIdentification: [UUID: Data] = [:]
         var notes: [UUID: [String]] = [:]
         var records: [UUID: [DeviceBackup.Record]] = [:]
         var endUserSettings: [UUID: DeviceBackup.EndUserSettings] = [:]
@@ -464,7 +465,9 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
             do {
                 let session = try await readyAdvancedSession(id, link: link)
                 capturedServices[id] = session.services.map(DeviceBackup.Service.init)
-                await readDeviceMetadata(id, link: link, session: session)
+                await readDeviceMetadata(id, link: link, session: session) { payload in
+                    capturedIdentification[id] = payload
+                }
                 if session.isReady && session.supportsProgramInformation { programs[id] = try await session.programInformation() }
             } catch {
                 notes[id, default: []].append("Some extended device or program metadata was unavailable.")
@@ -490,7 +493,8 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                     services: capturedServices[id] ?? [],
                     programs: programs[id] ?? consumer.aids.filter { $0.side == side }.map(\.program),
                     programInventoryComplete: programs[id] != nil,
-                    records: records[id] ?? [], endUserSettings: endUserSettings[id], notes: notes[id] ?? [])
+                    records: records[id] ?? [], endUserSettings: endUserSettings[id],
+                    identification: capturedIdentification[id], notes: notes[id] ?? [])
             }
             return try DeviceBackup(consumerControls: consumer, aids: aids, acquisitionStage: stage)
         }
@@ -901,11 +905,15 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         }
     }
 
-    private func readDeviceMetadata(_ id: UUID, link: AidLink, session: UTLSession) async {
+    private func readDeviceMetadata(_ id: UUID, link: AidLink, session: UTLSession,
+                                    didReadIdentification: ((Data) -> Void)? = nil) async {
         var failures: [String] = []
         if session.supportsIdentification {
             do {
                 let identity = try await session.identification()
+                // Preserve a successful response before an ancillary query can
+                // fail and close the session, which clears its live raw state.
+                if let payload = session.identificationPayload { didReadIdentification?(payload) }
                 guard liveLink(id) === link, link.utlSession === session else { return }
                 connections[id]?.deviceMetadata = identity.metadata
                 if let serial = identity.serialNumber { connections[id]?.serialNumber = serial }

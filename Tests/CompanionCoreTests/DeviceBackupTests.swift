@@ -64,3 +64,18 @@ private func backupFixture(sides: [ConsumerProgramSnapshot.Side] = [.left, .righ
         try UTLReadOnlySession.openPayload(service: unknown, privateToken: 1, timeSince2020: 2, version: (0, 6, 2))
     }
 }
+
+@Test func backupPreservesValidatedIdentificationIncludingUnknownHardwareEntries() throws {
+    // Synthetic map: version4.5 plus an uninterpreted key1002 byte string.
+    let payload = Data([0xA2, 0x19, 0x03, 0xE9, 0x42, 4, 5, 0x19, 0x03, 0xEA, 0x43, 1, 2, 3])
+    let original = try backupFixture(sides: [.left])
+    let identity = DeviceBackup.Identity(peripheralID: UUID(), hiidVersion: "4.5")
+    let backup = try DeviceBackup(consumerControls: original.consumerControls,
+        aids: [.init(side: .left, identity: identity, identification: payload)])
+    let decoded = try DeviceBackupArchive.decode(DeviceBackupArchive(backup).encoded()).verifiedBackup()
+    #expect(decoded.aids.first?.identification == payload)
+    #expect(throws: DeviceBackup.BackupError.invalid) {
+        try DeviceBackup(consumerControls: original.consumerControls, aids: [.init(side: .left,
+            identity: .init(peripheralID: UUID(), hiidVersion: "4.6"), identification: payload)])
+    }
+}
