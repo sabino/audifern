@@ -63,6 +63,20 @@ class NotarizationTests(unittest.TestCase):
                     notary.notarize(archive, 'app', [], 1, logs)
                 self.assertTrue((logs / 'app-submission.json').exists())
 
+    def test_stapled_dmg_is_not_uploaded_again_after_its_bytes_change(self):
+        with patch.object(notary.subprocess, 'run') as run, patch.object(notary, 'notarize') as submit:
+            run.return_value = subprocess.CompletedProcess([], 0, '', '')
+            notary.notarize_dmg(Path('/synthetic.dmg'), [], 30, Path('/logs'))
+            submit.assert_not_called()
+            self.assertEqual(run.call_count, 1)
+
+    def test_rejected_dmg_cannot_be_stapled(self):
+        with patch.object(notary.subprocess, 'run') as run, patch.object(notary, 'notarize', side_effect=ValueError('rejected')):
+            run.return_value = subprocess.CompletedProcess([], 65, '', '')
+            with self.assertRaisesRegex(ValueError, 'rejected'):
+                notary.notarize_dmg(Path('/synthetic.dmg'), [], 30, Path('/logs'))
+            self.assertEqual(run.call_count, 1)
+
     def fixture(self, directory):
         prefix = 'Audifern-0.6.1-macos-universal'
         data = {'application': 'Audifern', 'version': '0.6.1', 'releaseVersion': '0.6.1',

@@ -95,6 +95,13 @@ def notarize(path: Path, label: str, auth: list[str], timeout: int, logs: Path) 
         time.sleep(15)
 
 
+def notarize_dmg(dmg: Path, auth: list[str], timeout: int, logs: Path) -> None:
+    # Stapling changes the DMG bytes. An accepted, stapled image needs no new upload.
+    if subprocess.run(["xcrun", "stapler", "validate", "-q", str(dmg)], capture_output=True).returncode != 0:
+        notarize(dmg, "dmg", auth, timeout, logs)
+        run("xcrun", "stapler", "staple", "-q", str(dmg))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app", type=Path, default=ROOT / "build/Audifern.app")
@@ -143,8 +150,7 @@ def main() -> None:
     else:
         run(str(ROOT / "scripts/package-release.sh"), args.tag, cwd=ROOT, env=env)
     dmg = output / (prefix + ".dmg")
-    notarize(dmg, "dmg", auth, args.timeout, logs)
-    run("xcrun", "stapler", "staple", "-q", str(dmg))
+    notarize_dmg(dmg, auth, args.timeout, logs)
     run("xcrun", "stapler", "validate", "-q", str(dmg))
     run("spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "--verbose=4", str(dmg))
     hashes = []
