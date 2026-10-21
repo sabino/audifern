@@ -66,7 +66,12 @@ final class SystemBatteryNotificationDelivery: NSObject, BatteryNotificationDeli
 
     func requestPermission() async throws -> Bool {
         // Called only from the user's Enable action; never on launch or from a BLE update.
-        try await center.requestAuthorization(options: [.alert, .sound])
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
+            center.requestAuthorization(options: [.alert, .sound]) { allowed, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: allowed) }
+            }
+        }
     }
 
     func containsNotification(identifier: String) async -> Bool {
@@ -80,7 +85,13 @@ final class SystemBatteryNotificationDelivery: NSObject, BatteryNotificationDeli
         content.title = notification.title
         content.body = notification.body
         if notification.playSound { content.sound = .default }
-        try await center.add(UNNotificationRequest(identifier: notification.identifier, content: content, trigger: nil))
+        let request = UNNotificationRequest(identifier: notification.identifier, content: content, trigger: nil)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            center.add(request) { error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume() }
+            }
+        }
     }
 
     func cancelPendingBatteryNotifications() async {
