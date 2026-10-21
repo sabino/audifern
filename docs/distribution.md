@@ -62,9 +62,9 @@ gets contents: write. Tag dispatch has actions: write solely to dispatch main.
 Published releases are never replaced. Tag changes detected during a run fail
 the release; never move a published tag.
 
-Signing and ticket retrieval use tooling from the trusted main workflow, while
+Signing and independent verification use tooling from the trusted main workflow, while
 the app, version, packaging inputs and source notices stay pinned to the signed
-tag. Ticket attachment makes up to four attempts for service-response error 68
+tag. Ticket attachment and validation make up to four attempts for service-response error 68
 or request timeouts, with bounded delays. Invalid or revoked tickets fail immediately;
 all signature, ticket and Gatekeeper checks remain required. A failure never
 publishes a release, and credentials are cleaned even when Apple services fail.

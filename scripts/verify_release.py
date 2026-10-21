@@ -11,6 +11,7 @@ import re
 import subprocess
 import tempfile
 
+import apple_tickets
 import release_metadata as metadata
 
 
@@ -56,7 +57,7 @@ def verify_release(directory: Path, tag: str, team: str) -> dict:
     dmg = directory / (prefix + ".dmg")
     subprocess.run(["hdiutil", "verify", "-quiet", str(dmg)], check=True)
     subprocess.run(["codesign", "--verify", "--strict", str(dmg)], check=True)
-    subprocess.run(["xcrun", "stapler", "validate", "-q", str(dmg)], check=True)
+    apple_tickets.run("validate", dmg, "dmg")
     subprocess.run(["spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "--verbose=4", str(dmg)], check=True)
     with tempfile.TemporaryDirectory(prefix="audifern-verify-") as folder:
         staging = Path(folder)
@@ -93,13 +94,20 @@ def _verify_app(app: Path, team: str) -> None:
         raise ValueError("The app's bundled source notice differs from the release commit.")
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
+    parser.add_argument("--project", type=Path, default=metadata.ROOT,
+                        help="Validated application source checkout whose provenance must match.")
     parser.add_argument("--tag", default="")
     parser.add_argument("--team", required=True, help="Expected public Apple developer team ID.")
     args = parser.parse_args()
+    metadata.ROOT = args.project.resolve()
+    verify_release(args.directory.resolve(), args.tag, args.team)
+
+
+if __name__ == "__main__":
     try:
-        verify_release(args.directory.resolve(), args.tag, args.team)
+        main()
     except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as error:
         raise SystemExit(str(error)) from None

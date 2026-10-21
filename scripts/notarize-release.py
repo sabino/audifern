@@ -9,10 +9,10 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import sys
 import time
 import uuid
 
+import apple_tickets
 import release_metadata as metadata
 import verify_release as verification
 
@@ -97,34 +97,7 @@ def notarize(path: Path, label: str, auth: list[str], timeout: int, logs: Path) 
 
 
 def staple_ticket(path: Path, label: str, logs: Path) -> None:
-    # EX_NOHOST (68) includes unexpected ticket-service responses. Apple may
-    # accept the submission before a particular retrieval succeeds. Never
-    # retry invalid/revoked tickets or bypass the later ticket verification.
-    output = ""
-    for attempt, delay in enumerate([0, 15, 30, 60], 1):
-        if delay:
-            print(f"Apple ticket retrieval ({label}): retrying in {delay} seconds", flush=True)
-            time.sleep(delay)
-        try:
-            result = subprocess.run(["xcrun", "stapler", "staple", str(path)],
-                                    capture_output=True, text=True, timeout=60)
-            code = result.returncode
-            output = result.stdout + result.stderr
-        except subprocess.TimeoutExpired as error:
-            code = None
-            def decoded(value):
-                return value.decode(errors="replace") if isinstance(value, bytes) else value or ""
-            output = "Ticket retrieval timed out.\n" + decoded(error.stdout) + decoded(error.stderr)
-        (logs / f"{label}-staple-{attempt}.log").write_text(f"exitCode={code}\n" + output)
-        if code == 0:
-            return
-        if code not in {68, None}:
-            break
-    # stapler receives no credentials. Preserve a bounded diagnostic in CI;
-    # complete attempt logs remain outside the release artifact directory.
-    print(output[-4000:], file=sys.stderr)
-    raise ValueError(f"Apple ticket stapling failed ({label}); inspect the notarization logs. No package was published.")
-
+    apple_tickets.run("staple", path, label, logs)
 
 def notarize_dmg(dmg: Path, auth: list[str], timeout: int, logs: Path) -> None:
     # Stapling changes the DMG bytes. An accepted, stapled image needs no new upload.
@@ -188,7 +161,7 @@ def main() -> None:
         run(str(project / "scripts/package-release.sh"), args.tag, cwd=project, env=env)
     dmg = output / (prefix + ".dmg")
     notarize_dmg(dmg, auth, args.timeout, logs)
-    run("xcrun", "stapler", "validate", "-q", str(dmg))
+    apple_tickets.run("validate", dmg, "dmg", logs)
     run("spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "--verbose=4", str(dmg))
     hashes = []
     for name in [prefix + ".dmg", prefix + ".zip", "build-info.json"]:

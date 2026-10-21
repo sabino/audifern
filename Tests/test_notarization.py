@@ -135,6 +135,21 @@ class NotarizationTests(unittest.TestCase):
                     notary.main()
                 verify.assert_called_once_with((project / 'build/Audifern.app').resolve(), 'universal')
 
+    def test_independent_verifier_binds_provenance_to_product_checkout(self):
+        with tempfile.TemporaryDirectory() as folder:
+            project = Path(folder); (project / 'Resources').mkdir()
+            (project / 'Resources/Info.plist').write_bytes(plistlib.dumps({'CFBundleShortVersionString': '1.2.3'}))
+            arguments = ['verify_release.py', '/synthetic/downloads', '--project', str(project),
+                         '--tag', 'v1.2.3', '--team', 'A1B2C3D4E5']
+            def verify(directory, tag, team):
+                self.assertEqual(verification.metadata.ROOT, project.resolve())
+                self.assertEqual(verification.metadata.version(), '1.2.3')
+                self.assertEqual((directory, tag, team), (Path('/synthetic/downloads'), 'v1.2.3', 'A1B2C3D4E5'))
+            with patch.object(sys, 'argv', arguments), patch.object(verification.metadata, 'ROOT', notary.ROOT), \
+                    patch.object(verification, 'verify_release', side_effect=verify) as check:
+                verification.main()
+                check.assert_called_once()
+
     def fixture(self, directory):
         prefix = 'Audifern-0.6.1-macos-universal'
         data = {'application': 'Audifern', 'version': '0.6.1', 'releaseVersion': '0.6.1',

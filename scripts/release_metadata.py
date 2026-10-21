@@ -12,6 +12,8 @@ import plistlib
 import re
 import subprocess
 
+import apple_tickets
+
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
 TAG = re.compile(r"v(?P<version>" + VERSION + r")(?:-(?P<pre>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?")
@@ -126,7 +128,7 @@ def verify_notarization(app: Path, team: str = "") -> None:
         raise ValueError("Notarized downloads require Developer ID Application, hardened runtime and a secure timestamp.")
     if team and details["teamID"] != team:
         raise ValueError("The app was signed by a different Apple developer team.")
-    subprocess.run(["xcrun", "stapler", "validate", "-q", str(app)], check=True)
+    apple_tickets.run("validate", app, "app")
     assessed = subprocess.run(["spctl", "--assess", "--type", "execute", "--verbose=4", str(app)], capture_output=True, text=True, check=True)
     if "source=Notarized Developer ID" not in assessed.stderr:
         raise ValueError("Gatekeeper did not identify the app as notarized Developer ID software.")

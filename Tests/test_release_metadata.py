@@ -2,11 +2,13 @@
 import importlib.util
 from pathlib import Path
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
 import subprocess
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/release_metadata.py'
+sys.path.insert(0, str(SCRIPT.parent))
 spec = importlib.util.spec_from_file_location('release_metadata', SCRIPT)
 release = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(release)
@@ -103,6 +105,31 @@ class ReleaseMetadataTests(unittest.TestCase):
             with patch.object(release, 'signing_details', return_value=details), patch.object(release.subprocess, 'run') as run:
                 with self.assertRaises(ValueError): release.verify_notarization(Path('/synthetic.app'))
                 run.assert_not_called()
+
+    def test_ticket_validation_retries_service_failure_then_still_requires_gatekeeper(self):
+        details = {'signing': 'developer-id', 'hardenedRuntime': True,
+                   'secureTimestamp': True, 'teamID': 'A1B2C3D4E5'}
+        with patch.object(release, 'signing_details', return_value=details), \
+                patch.object(release.subprocess, 'run') as run, patch.object(release.apple_tickets.time, 'sleep') as sleep:
+            run.side_effect = [subprocess.CompletedProcess([], 68, 'service unavailable', ''),
+                               subprocess.CompletedProcess([], 0, '', ''),
+                               subprocess.CompletedProcess([], 0, '', 'source=Notarized Developer ID\n')]
+            release.verify_notarization(Path('/synthetic.app'), 'A1B2C3D4E5')
+            self.assertEqual([call.args[0][:3] for call in run.call_args_list],
+                             [['xcrun', 'stapler', 'validate']] * 2 + [['spctl', '--assess', '--type']])
+            sleep.assert_called_once_with(15)
+
+    def test_invalid_or_revoked_ticket_stops_before_gatekeeper(self):
+        details = {'signing': 'developer-id', 'hardenedRuntime': True,
+                   'secureTimestamp': True, 'teamID': 'A1B2C3D4E5'}
+        for code in [65, 77]:
+            with self.subTest(code=code), patch.object(release, 'signing_details', return_value=details), \
+                    patch.object(release.subprocess, 'run') as run, patch.object(release.apple_tickets.time, 'sleep') as sleep:
+                run.return_value = subprocess.CompletedProcess([], code, 'synthetic invalid ticket', '')
+                with self.assertRaisesRegex(ValueError, 'validation failed'):
+                    release.verify_notarization(Path('/synthetic.app'), 'A1B2C3D4E5')
+                self.assertEqual(run.call_count, 1)
+                sleep.assert_not_called()
 
     def test_stapled_ticket_is_allowed_but_extra_credentials_are_not(self):
         with tempfile.TemporaryDirectory() as folder:
