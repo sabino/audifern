@@ -17,6 +17,59 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = "sabino/audifern"
 ENVIRONMENT = "apple-notarization"
+CHECKS = {"Workflow and packaging checks", "Tests (Apple Silicon)", "Tests (Intel)", "Universal DMG and ZIP"}
+ACTIONS = {
+    "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+}
+
+
+def validate_repository_policy(permissions: dict, allowed: dict, rulesets: list[dict]) -> None:
+    if not (permissions.get("enabled") is True and permissions.get("allowed_actions") == "selected"
+            and permissions.get("sha_pinning_required") is True
+            and allowed.get("github_owned_allowed") is False and allowed.get("verified_allowed") is False
+            and set(allowed.get("patterns_allowed", [])) == ACTIONS):
+        raise ValueError("The repository must enforce the reviewed SHA-pinned Actions allowlist.")
+
+    def matching(target: str, ref: str) -> list[dict]:
+        return [item for item in rulesets if item.get("enforcement") == "active" and item.get("target") == target
+                and item.get("conditions") == {"ref_name": {"include": [ref], "exclude": []}}]
+
+    def owner_only(items: list[dict], rule_type: str) -> bool:
+        return any(item.get("bypass_actors") == [{"actor_id": 982190, "actor_type": "User", "bypass_mode": "always"}]
+                   and any(rule.get("type") == rule_type for rule in item.get("rules", [])) for item in items)
+
+    main = matching("branch", "refs/heads/main")
+    tags = matching("tag", "refs/tags/v*")
+    if not owner_only(main, "update") or not owner_only(tags, "creation"):
+        raise ValueError("Only sabino may update main or create version tags.")
+    quality = False
+    for item in main:
+        rules = {rule["type"]: rule for rule in item.get("rules", [])}
+        if item.get("bypass_actors") != [] or not {"required_signatures", "required_status_checks", "non_fast_forward", "deletion"} <= rules.keys():
+            continue
+        parameters = rules["required_status_checks"].get("parameters", {})
+        checks = parameters.get("required_status_checks", [])
+        quality |= (parameters.get("strict_required_status_checks_policy") is True
+                    and {check.get("context") for check in checks} == CHECKS
+                    and all(check.get("integration_id") == 15368 for check in checks))
+    if not quality:
+        raise ValueError("Main must require signed commits and the four GitHub Actions checks, with no bypass or force-push/deletion access.")
+    if not any(item.get("bypass_actors") == [] and {"update", "deletion"} <= {rule["type"] for rule in item.get("rules", [])}
+               for item in tags):
+        raise ValueError("Version tags must be immutable, with no update or deletion bypass.")
+
+
+def verify_repository_policy() -> None:
+    def read(endpoint: str):
+        return json.loads(run("Reading the repository signing policy", ["gh", "api", endpoint]))
+    if read("user").get("login") != "sabino":
+        raise ValueError("Use the sabino GitHub account to configure signing.")
+    permissions = read(f"repos/{REPOSITORY}/actions/permissions")
+    allowed = read(f"repos/{REPOSITORY}/actions/permissions/selected-actions")
+    rulesets = [read(f"repos/{REPOSITORY}/rulesets/{item['id']}") for item in read(f"repos/{REPOSITORY}/rulesets")]
+    validate_repository_policy(permissions, allowed, rulesets)
 
 
 def run(label: str, args: list[str], *, input: bytes | None = None, env: dict | None = None) -> bytes:
@@ -62,6 +115,7 @@ def main() -> None:
         raise ValueError("Provide a regular local Team API key file.")
     key = args.key.resolve()
     verify_environment()
+    verify_repository_policy()
     # Validate this dedicated Team key before exporting any signing identity.
     run("Validating the notarization API key", ["xcrun", "notarytool", "history", "--key", str(key),
         "--key-id", args.key_id, "--issuer", issuer, "--output-format", "json"])

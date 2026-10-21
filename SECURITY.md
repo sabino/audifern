@@ -36,3 +36,23 @@ writes are outside the implemented companion scope. A contract found in static
 research does not by itself establish a safe or supported runtime operation.
 
 Use [GitHub private vulnerability reporting](https://github.com/sabino/audifern/security/advisories/new) for a private report.
+
+## Public release automation
+
+The source and build logs are public; Apple private keys are not. Apple signing
+credentials belong only in the main-only `apple-notarization` GitHub environment.
+Forks and pull-request CI builds must never receive them. Do not introduce
+privileged `pull_request_target` or `workflow_run` jobs that execute PR code.
+
+Only the maintainer may update main or create version tags. Main requires signed
+commits and all four GitHub Actions checks; published version tags cannot be
+moved or deleted. Actions are SHA-pinned and allowlisted. The credential setup
+tool checks these server-side policies before exporting any signing identity.
+See [distribution](docs/distribution.md#ci-and-release-trust) for the release
+flow and one-time credential setup.
+
+Trusted main code, the GitHub administrator account and signing runners remain
+inside the security boundary. A compromise there can expose or misuse signing
+credentials even when secret storage is encrypted. Review code before merging,
+keep account authentication secure, use dedicated revocable Apple API keys,
+and revoke or rotate affected credentials if a leak is suspected.

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-only
 import base64
+import copy
 import hashlib
 import importlib.util
 import json
@@ -31,6 +32,58 @@ def secret_fixture():
 
 
 class CISigningTests(unittest.TestCase):
+    def policy_fixture(self):
+        permissions = {'enabled': True, 'allowed_actions': 'selected', 'sha_pinning_required': True}
+        allowed = {'github_owned_allowed': False, 'verified_allowed': False, 'patterns_allowed': sorted(configure.ACTIONS)}
+        owner = [{'actor_id': 982190, 'actor_type': 'User', 'bypass_mode': 'always'}]
+        def policy(target, ref, rules, bypass):
+            return {'enforcement': 'active', 'target': target, 'bypass_actors': bypass,
+                    'conditions': {'ref_name': {'include': [ref], 'exclude': []}}, 'rules': rules}
+        rulesets = [
+            policy('branch', 'refs/heads/main', [
+                {'type': 'deletion'}, {'type': 'non_fast_forward'}, {'type': 'required_signatures'},
+                {'type': 'required_status_checks', 'parameters': {
+                    'strict_required_status_checks_policy': True,
+                    'required_status_checks': [{'context': name, 'integration_id': 15368} for name in configure.CHECKS]}}
+            ], []),
+            policy('branch', 'refs/heads/main', [{'type': 'update', 'parameters': {'update_allows_fetch_and_merge': False}}], owner),
+            policy('tag', 'refs/tags/v*', [
+                {'type': 'update', 'parameters': {'update_allows_fetch_and_merge': False}}, {'type': 'deletion'}
+            ], []),
+            policy('tag', 'refs/tags/v*', [{'type': 'creation'}], owner),
+        ]
+        return permissions, allowed, rulesets
+
+    def test_credential_upload_rejects_weakened_repository_policy(self):
+        fixture = self.policy_fixture()
+        configure.validate_repository_policy(*fixture)
+        def mutate_missing_check(items): items[2][0]['rules'][-1]['parameters']['required_status_checks'].pop()
+        def mutate_check_origin(items): items[2][0]['rules'][-1]['parameters']['required_status_checks'][0]['integration_id'] = 1
+        def mutate_owner(items): items[2][1]['bypass_actors'].append({'actor_id': 1, 'actor_type': 'User', 'bypass_mode': 'always'})
+        changes = {
+            'unpinned actions': lambda x: x[0].update(sha_pinning_required=False),
+            'unreviewed action': lambda x: x[1]['patterns_allowed'].append('other/action@' + 'a' * 40),
+            'all first-party actions': lambda x: x[1].update(github_owned_allowed=True),
+            'quality bypass': lambda x: x[2][0].update(bypass_actors=x[2][1]['bypass_actors']),
+            'missing signatures': lambda x: x[2][0]['rules'].pop(2),
+            'missing check': mutate_missing_check,
+            'spoofed check source': mutate_check_origin,
+            'another main updater': mutate_owner,
+            'disabled main policy': lambda x: x[2][1].update(enforcement='disabled'),
+            'wrong branch': lambda x: x[2][1]['conditions']['ref_name'].update(include=['refs/heads/feature']),
+            'mutable tags': lambda x: x[2][2].update(bypass_actors=x[2][1]['bypass_actors']),
+            'no tag creation restriction': lambda x: x[2].pop(3),
+        }
+        for name, change in changes.items():
+            with self.subTest(name=name):
+                invalid = copy.deepcopy(fixture); change(invalid)
+                with self.assertRaises(ValueError): configure.validate_repository_policy(*invalid)
+
+    def test_repository_audit_checks_the_github_account_before_other_calls(self):
+        with patch.object(configure, 'run', return_value=b'{"login":"another-account"}') as run:
+            with self.assertRaisesRegex(ValueError, 'sabino GitHub account'): configure.verify_repository_policy()
+            self.assertEqual(run.call_count, 1)
+
     def artifact_fixture(self, directory):
         prefix = 'Audifern-1.2.3-macos-universal'
         with zipfile.ZipFile(directory / (prefix + '.zip'), 'w') as archive:

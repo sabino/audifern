@@ -62,6 +62,21 @@ gets contents: write. Tag dispatch has actions: write solely to dispatch main.
 Published releases are never replaced. Tag changes detected during a run fail
 the release; never move a published tag.
 
+The repository stays public. Reading, cloning or forking it does not reveal
+GitHub environment secrets. Fork PRs run only the checks and ad hoc packaging;
+approving such a CI run does not grant it Apple credentials.
+
+GitHub rulesets restrict main updates and version-tag creation to **sabino**.
+Separate rulesets, with no bypass, require signed main commits, all four checks
+from GitHub Actions, and prevent main force-pushes/deletion and version-tag
+updates/deletion. This permits fast-forward merges that preserve the
+maintainer's original GPG signatures. Changes should still be reviewed in PRs.
+Repository settings also enforce full commit SHA pinning and an allowlist of
+the exact checkout, download-artifact and upload-artifact Actions in use.
+Updating an Action requires reviewing its new commit and updating this
+allowlist and the credential-setup validator together. Secret scanning and
+push protection are enabled. Release runs require no separate manual approval.
+
 This is a standard hosted CI signing model, with a real trust cost: a compromised
 trusted main workflow or runner could misuse or expose the Developer ID private
 key. Encryption and cleanup reduce exposure; they do not make such code harmless.
@@ -98,7 +113,8 @@ python3 scripts/configure-ci-signing.py \
   --issuer YOUR_ISSUER_UUID --upload-credentials
 ```
 
-The tool refuses a broad environment policy, validates the API login, and
+The tool refuses a broad environment policy or weakened repository rules,
+checks the signed-in GitHub account, validates the API login, and
 exports **only the selected Developer ID identity**, with a random PKCS#12
 password. macOS may ask for Keychain export authorization. It uploads values
 through stdin to gh, which encrypts environment secrets, and removes temporary
