@@ -1,6 +1,6 @@
 # Quick-access validation — 2026-10-21
 
-Local development build: **0.8.0 (14)**. This records the extent of verification;
+Local development build: **0.8.0 (15)**. This records the extent of verification;
 it is not a claim that a new public release has been published.
 
 - Swift: 170 app tests and 131 core tests passed; the XCTest suite ran 68 cases
@@ -98,3 +98,21 @@ GPG signatures are retained as requested.
   two for Separate, while the sixteen detailed EQ faders remained vertical.
   Folding and reopening EQ preserved the eight-band choice. No scrollbar was
   present in the Sound workspace; protected focus was restored after capture.
+
+## Fixed outer devices and aligned actions
+
+- Device summaries and device/program buttons use fixed outer columns in both
+  grouping modes. The central volume controls now use all remaining width.
+  Their mute controls reuse the same middle columns and action-row center as
+  the Details/program buttons. SpeechBooster is available from the header.
+- The 170 app tests, 131 core tests and 68 XCTest cases (one optional skip)
+  passed. The strict localization audit passed with 1,985 keys in each language.
+  Compact and expanded workspaces were reviewed in all three languages, along
+  with the short Portuguese viewport; no Sound scrolling was introduced.
+- Native accessibility measurements confirmed that all eight device-summary,
+  action-group, Details and program frames were identical before and after
+  switching Together/Separate. Mute and Details shared the action-row center
+  within two points. The shared horizontal slider used 1,306 points at the
+  tested full-width window size. Both grouping modes exposed zero scrollbars.
+- The isolated preview uses synthetic devices and issued no hearing-aid sound
+  change. These checks establish layout and navigation, not a new audio test.

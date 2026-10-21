@@ -70,3 +70,9 @@ The two Sound overview captures were subsequently refreshed for **0.8.0 (14)**,
 using the horizontal daily-volume layout. The device-information capture
 continues to show the same tabbed panel introduced in build 13. EQ controls
 remain vertical and both source grouping modes are shown in the overview shots.
+
+The Sound overview captures now show **0.8.0 (15)**. Device images and summaries
+stay in fixed outer columns, with a wider horizontal control between them.
+Mute, Details and program buttons share one aligned action row, and SpeechBooster
+is in the header. Both images are native captures of the isolated demo app at
+the same window size. Device/action frames were measured unchanged across modes.

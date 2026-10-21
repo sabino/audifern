@@ -17,8 +17,9 @@ struct PairedSoundCard: View {
             VStack(spacing: compact ? 6 : 8) {
                 ZStack {
                     HStack {
-                        Text(masterMixed ? L("Custom grouping") : L("Hearing aids")).font(AppType.callout.weight(.semibold))
+                        Text(masterMixed ? L("Custom grouping") : L("Hearing aids")).font(AppType.callout.weight(.semibold)).lineLimit(1)
                         Spacer(minLength: 0)
+                        SpeechBoosterQuickButton(store: store, aids: pair)
                         Button { expanded.toggle() } label: {
                             Label(compact ? L("Expand volume controls") : L("Compact volume controls"),
                                   systemImage: compact ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
@@ -32,11 +33,21 @@ struct PairedSoundCard: View {
                                          scope: L("All sound controls"), identifier: "ear-control-mode")
                 }.frame(height: 38)
                 volumeControls
-                HStack(spacing: 8) {
-                    DeviceSoundButtons(aid: left).frame(maxWidth: .infinity)
-                    SpeechBoosterQuickButton(store: store, aids: pair)
-                    DeviceSoundButtons(aid: right).frame(maxWidth: .infinity)
-                }.frame(maxWidth: 820).frame(height: 28)
+                SoundDeviceColumns {
+                    DeviceSoundButtons(aid: left)
+                } center: {
+                    HStack(spacing: 12) {
+                        if together {
+                            StableMuteToggle(store: store, targets: pair).frame(maxWidth: .infinity)
+                        } else {
+                            ForEach(pair) { aid in
+                                StableMuteToggle(store: store, targets: [aid]).frame(maxWidth: .infinity)
+                            }
+                        }
+                    }.controlSize(.regular)
+                } right: {
+                    DeviceSoundButtons(aid: right)
+                }.frame(height: 32)
                 if !compact {
                     Text(store.linkedActionStatus.map(M) ?? (masterMixed ? L("Custom grouping") : L("All sound controls")))
                         .font(AppType.caption).foregroundStyle(store.linkedActionFailed ? Color.orange : .secondary)
@@ -48,45 +59,65 @@ struct PairedSoundCard: View {
     }
 
     private var volumeControls: some View {
-        Group {
-            if together {
-                HStack(spacing: compact ? 16 : 24) {
-                    overview(left)
-                    DailyVolumeControl(store: store, aid: left, targets: pair).frame(maxWidth: compact ? 240 : 300)
-                    overview(right)
-                }.frame(maxWidth: compact ? 690 : 820)
-            } else if compact {
-                HStack(spacing: 14) {
-                    DailyVolumeControl(store: store, aid: left, targets: [left]).frame(maxWidth: 230)
-                    overview(left)
-                    overview(right)
-                    DailyVolumeControl(store: store, aid: right, targets: [right]).frame(maxWidth: 230)
-                }.frame(maxWidth: 860)
-            } else {
-                HStack(spacing: 32) {
+        SoundDeviceColumns {
+            overview(left)
+        } center: {
+            HStack(spacing: 12) {
+                if together {
+                    DailyVolumeControl(store: store, aid: left, targets: pair, showsMute: false)
+                } else {
                     ForEach(pair) { aid in
-                        VStack(spacing: 10) {
-                            overview(aid)
-                            DailyVolumeControl(store: store, aid: aid, targets: [aid])
-                        }.frame(maxWidth: 350)
+                        DailyVolumeControl(store: store, aid: aid, targets: [aid], showsMute: false)
                     }
-                }.frame(maxWidth: 740)
+                }
             }
-        }.frame(maxWidth: .infinity).frame(height: compact ? 90 : 220)
+        } right: {
+            overview(right)
+        }.frame(height: compact ? 86 : 220)
     }
     private func overview(_ aid: AidConnection) -> some View {
-        HStack(spacing: 8) {
-            if aid.sideLabel == "Right" { illustration(aid) }
-            VStack(alignment: aid.sideLabel == "Left" ? .trailing : .leading, spacing: 3) {
-                Text(L(aid.sideLabel)).font(AppType.callout.weight(.semibold))
-                Text(aid.model ?? L("Hearing aid")).font(AppType.small).foregroundStyle(.secondary).lineLimit(1)
-                AidBatteryView(store: store, aid: aid, compact: true, compactWidth: compact ? 110 : 142)
+        Group {
+            if compact {
+                HStack(spacing: 8) {
+                    if aid.sideLabel == "Left" { illustration(aid) }
+                    deviceSummary(aid)
+                    if aid.sideLabel == "Right" { illustration(aid) }
+                }
+            } else {
+                VStack(spacing: 10) {
+                    illustration(aid)
+                    deviceSummary(aid)
+                }
             }
-            if aid.sideLabel == "Left" { illustration(aid) }
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("device-overview-\(aid.sideLabel.lowercased())")
+    }
+    private func deviceSummary(_ aid: AidConnection) -> some View {
+        VStack(alignment: aid.sideLabel == "Left" ? .leading : .trailing, spacing: 3) {
+            Text(L(aid.sideLabel)).font(AppType.callout.weight(.semibold))
+            Text(aid.model ?? L("Hearing aid")).font(AppType.small).foregroundStyle(.secondary).lineLimit(1)
+            AidBatteryView(store: store, aid: aid, compact: true, compactWidth: 110)
         }
     }
     private func illustration(_ aid: AidConnection) -> some View {
         HearingAidArtwork(right: aid.sideLabel == "Right", size: compact ? 0.32 : 0.65)
+    }
+}
+
+/// The two outer lanes never participate in a grouping change. Volume expands
+/// into the remaining width, and its mute controls reuse the same middle lane.
+private struct SoundDeviceColumns<Left: View, Center: View, Right: View>: View {
+    @ViewBuilder var left: () -> Left
+    @ViewBuilder var center: () -> Center
+    @ViewBuilder var right: () -> Right
+    var body: some View {
+        HStack(spacing: 12) {
+            left().frame(width: 160)
+            center().frame(maxWidth: .infinity)
+            right().frame(width: 160)
+        }.frame(maxWidth: .infinity)
     }
 }
 

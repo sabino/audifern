@@ -7,6 +7,7 @@ struct DailyVolumeControl: View {
     @ObservedObject var store: BluetoothStore
     let aid: AidConnection
     let targets: [AidConnection]
+    var showsMute = true
     @State private var preview: Int?
     private var selection: MainVolumeSelection? { .init(aids: targets, anchorID: aid.id) }
     private var subject: String { targets.count == 2 ? L("Both ears") : L(aid.sideLabel) }
@@ -34,9 +35,10 @@ struct DailyVolumeControl: View {
                     .accessibilityIdentifier("volume-fader-\(targets.count == 2 ? "together" : aid.sideLabel.lowercased())")
                 step(1, symbol: "plus")
             }.frame(height: 26).buttonStyle(.bordered).controlSize(.regular)
-            StableMuteToggle(store: store, targets: targets).controlSize(.regular)
-        }.frame(minWidth: 160, maxWidth: .infinity).frame(height: 86)
+            if showsMute { StableMuteToggle(store: store, targets: targets).controlSize(.regular) }
+        }.frame(minWidth: 160, maxWidth: .infinity).frame(height: showsMute ? 86 : 52)
             .accessibilityElement(children: .contain).accessibilityLabel(L("%@ volume", subject))
+            .accessibilityIdentifier("daily-volume-\(targets.count == 2 ? "together" : aid.sideLabel.lowercased())")
             .onChange(of: aid.volume?.level) { _, _ in preview = nil }
             .onChange(of: aid.actionFailed) { _, failed in if failed { preview = nil } }
             .transaction { $0.animation = nil }

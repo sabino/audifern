@@ -43,13 +43,18 @@ Sound includes connection actions and per-ear device details; Find hearing aids
 opens nearby discovery in the existing attached sheet. The separate Devices
 sidebar destination is no longer needed. Legacy feature links still open discovery.
 
-The main sound card keeps the device images close together. Daily volume runs
-horizontally: its level is above the slider, minus/plus buttons sit at the two
-ends and mute is below. Together shows one shared control between the devices;
-Separate shows an individually labeled control for each ear. Sliders preview
-while dragging and send only the final value on release. Battery/runtime,
-feedback and level text have reserved space so readback does not move adjacent
-controls. EQ bands remain vertical. Reduced Motion disables layout animation.
+The main sound card anchors each device image, name and battery information in
+a fixed outer column. Grouping only changes the middle lane: Together has one
+wide horizontal volume control, while Separate splits it into equal left/right
+controls. Each has its level above and minus/plus buttons at the ends. The mute
+switches sit directly beneath their controls, on the same action row as Details
+and the current program buttons. SpeechBooster lives in the card header. The
+device and action columns do not move when switching grouping.
+
+Sliders preview while dragging and send only the final value on release.
+Battery/runtime, feedback and level text have reserved space so readback does
+not move adjacent controls. EQ bands remain vertical. Reduced Motion disables
+layout animation.
 
 ## Desktop widgets and system controls
 
