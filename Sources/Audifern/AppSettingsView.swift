@@ -15,6 +15,7 @@ struct AppSettingsView: View {
         case "diagnostics": L("Diagnostics")
         case "about": L("About Audifern")
         case "connections": L("Connections")
+        case "quickAccess": L("Quick access")
         default: L("General")
         }
     }
@@ -24,6 +25,7 @@ struct AppSettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 category("general", title: L("General"), symbol: "gearshape")
                 category("connections", title: L("Connections"), symbol: "antenna.radiowaves.left.and.right")
+                category("quickAccess", title: L("Quick access"), symbol: "menubar.rectangle")
                 category("battery", title: L("Battery alerts"), symbol: "battery.75percent")
                 category("privacy", title: L("Privacy"), symbol: "lock.shield")
                 category("diagnostics", title: L("Diagnostics"), symbol: "waveform.path.ecg")
@@ -50,6 +52,7 @@ struct AppSettingsView: View {
                         BatteryNotificationSettingsView(manager: notifications).disabled(isDemo)
                     case "privacy": privacy
                     case "diagnostics": diagnostics
+                    case "quickAccess": QuickAccessSettingsView()
                     default: general
                     }
                 }.frame(maxWidth: .infinity, alignment: .topLeading).padding(28)

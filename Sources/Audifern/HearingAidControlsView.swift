@@ -7,11 +7,7 @@ struct HearingAidControlsView: View {
     @ObservedObject var store: BluetoothStore
     var mode: Mode = .sound
     @EnvironmentObject private var preferences: AppPreferences
-    @AppStorage("linkedHearingAidPrograms") private var linkedPrograms = false
-    @AppStorage("linkedHearingAidMicrophoneEQ") private var linkedMicrophone = false
-    @AppStorage("linkedHearingAidStreamingEQ") private var linkedStreaming = false
-    @AppStorage("linkedHearingAidStreamingVolume") private var linkedStreamingVolume = false
-    @AppStorage("linkedHearingAidTinnitusVolume") private var linkedTinnitusVolume = false
+    @AppStorage("groupedHearingAidControls") private var grouped = true
     enum SoundSection: String, CaseIterable, Identifiable {
         case microphone, streaming, tinnitus
         var id: String { rawValue }
@@ -23,7 +19,7 @@ struct HearingAidControlsView: View {
             }
         }
     }
-    @State private var soundSection: SoundSection = .microphone
+    @AppStorage("equalizerSoundSection") private var soundSection: SoundSection = .microphone
     @State private var restoreRequest: RestoreRequest?
     private struct RestoreRequest: Identifiable {
         let id = UUID()
@@ -52,11 +48,11 @@ struct HearingAidControlsView: View {
                     if mode == .programs {
                         if aids.count == 2 {
                             EarSettingsRow {
-                                ProgramSelectionView(store: store, aid: aids[0], targetIDs: linkedPrograms && canLink ? aids.map(\.id) : [aids[0].id])
+                                ProgramSelectionView(store: store, aid: aids[0], targetIDs: grouped && canLink ? aids.map(\.id) : [aids[0].id])
                             } center: {
-                                EarLinkButton(title: "Program", linked: $linkedPrograms, available: canLink && !commonPrograms(aids).isEmpty, identifier: "link-program", accent: Brand.accent)
+                                EarLinkButton(title: "Program", linked: $grouped, available: canLink && !commonPrograms(aids).isEmpty, identifier: "link-program", accent: Brand.accent)
                             } right: {
-                                ProgramSelectionView(store: store, aid: aids[1], targetIDs: linkedPrograms && canLink ? aids.map(\.id) : [aids[1].id])
+                                ProgramSelectionView(store: store, aid: aids[1], targetIDs: grouped && canLink ? aids.map(\.id) : [aids[1].id])
                             }
                         } else if let aid = aids.first {
                             ProgramSelectionView(store: store, aid: aid, targetIDs: [aid.id])
@@ -64,17 +60,17 @@ struct HearingAidControlsView: View {
                     } else {
                         switch soundSection {
                         case .microphone:
-                            PairedEqualizerView(store: store, aids: aids, microphone: true, linked: $linkedMicrophone, canLink: canLink)
+                            PairedEqualizerView(store: store, aids: aids, microphone: true, linked: $grouped, canLink: canLink)
                         case .streaming:
-                            PairedEqualizerView(store: store, aids: aids, microphone: false, linked: $linkedStreaming, canLink: canLink)
+                            PairedEqualizerView(store: store, aids: aids, microphone: false, linked: $grouped, canLink: canLink)
                             Divider()
-                            AuxiliaryVolumeSectionView(store: store, aids: aids, source: .streaming, linked: $linkedStreamingVolume)
+                            AuxiliaryVolumeSectionView(store: store, aids: aids, source: .streaming, linked: $grouped)
                         case .tinnitus:
                             VStack(alignment: .leading, spacing: 16) {
                                 Label(L("Tinnitus relief"), systemImage: "waveform.path").font(AppType.headline).foregroundStyle(.orange)
                                 Text(L("Tinnitus controls require a program already fitted for you. Reported ranges alone do not enable therapy."))
                                     .font(AppType.callout).foregroundStyle(.secondary)
-                                AuxiliaryVolumeSectionView(store: store, aids: aids, source: .tinnitus, linked: $linkedTinnitusVolume)
+                                AuxiliaryVolumeSectionView(store: store, aids: aids, source: .tinnitus, linked: $grouped)
                             }.padding(18).background(Color.orange.opacity(0.055), in: RoundedRectangle(cornerRadius: 14))
                         }
                     }
@@ -169,14 +165,13 @@ struct EarLinkButton: View {
                 Image(systemName: linked ? "link" : "link.badge.plus")
                     .font(.system(size: 16, weight: .semibold)).frame(width: 38, height: 30)
                     .background(linked ? accent.opacity(0.14) : Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
-                Text(linked ? L("Linked") : L("Separate")).font(.system(size: 13, weight: .medium))
+                Text(linked ? L("Together") : L("Separate")).font(.system(size: 13, weight: .medium))
             }.foregroundStyle(linked ? accent : Color.secondary)
         }.buttonStyle(.plain).disabled(!available)
-            .accessibilityLabel(L("Link %@ between ears", String(describing: title.lowercased())))
-            .accessibilityValue(linked ? L("Linked") : L("Separate"))
+            .accessibilityLabel(L("Control mode: %@", linked ? L("Together") : L("Separate")))
+            .accessibilityValue(linked ? L("Together") : L("Separate"))
             .accessibilityIdentifier(identifier)
-            .help(available ? L("%@ %@. Current sound stays unchanged until you use a control.", String(describing: linked ? L("Unlink") : L("Link")), String(describing: title.lowercased()))
-                  : L("Connect both matching aids to link this setting"))
+            .help(L("Together groups all supported sound controls. Switching mode does not change current settings."))
     }
 }
 
@@ -226,6 +221,6 @@ struct SpeechBoosterCell: View {
             } else if aid.activeProgram.flatMap({ aid.programBoostable[$0] }) == false {
                 Text(L("Unavailable in this program")).foregroundStyle(.secondary)
             } else if let status = aid.consumerStatus { Text(M(status)).foregroundStyle(.secondary) }
-        }.font(AppType.caption).frame(maxWidth: .infinity, alignment: .leading)
+        }.font(AppType.caption).frame(maxWidth: .infinity, minHeight: 94, maxHeight: 94, alignment: .topLeading)
     }
 }

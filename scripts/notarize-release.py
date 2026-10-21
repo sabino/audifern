@@ -13,6 +13,7 @@ import time
 import uuid
 
 import apple_tickets
+import sign_app
 import release_metadata as metadata
 import verify_release as verification
 
@@ -139,7 +140,7 @@ def main() -> None:
                                           '-R=certificate leaf = H"' + args.identity + '"', str(app)],
                                          capture_output=True).returncode == 0
     if not identity_matches or current["signing"] != "developer-id" or not current["hardenedRuntime"] or not current["secureTimestamp"]:
-        run("codesign", "--force", "--options", "runtime", "--timestamp", "--sign", args.identity, "--identifier", "org.audifern.app", str(app))
+        sign_app.sign(app, args.identity, hardened=True)
     details = metadata.signing_details(app)
     if details["signing"] != "developer-id" or not all(details[key] for key in ["hardenedRuntime", "secureTimestamp", "teamID"]):
         raise ValueError("The supplied identity did not produce a timestamped, hardened Developer ID signature.")

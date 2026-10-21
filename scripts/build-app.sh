@@ -6,10 +6,11 @@ configuration="${1:-debug}"
 case "$configuration" in debug|release) ;; *) echo "Usage: $0 [debug|release]" >&2; exit 2;; esac
 architecture="${AUDIFERN_BUILD_ARCH:-native}"
 architecture_args=()
+widget_arch="$(uname -m)"
 case "$architecture" in
     native) ;;
-    arm64|x86_64) architecture_args=(--arch "$architecture");;
-    universal) architecture_args=(--arch arm64 --arch x86_64);;
+    arm64|x86_64) architecture_args=(--arch "$architecture"); widget_arch="$architecture";;
+    universal) architecture_args=(--arch arm64 --arch x86_64); widget_arch="arm64 x86_64";;
     *) echo "AUDIFERN_BUILD_ARCH must be native, arm64, x86_64 or universal." >&2; exit 2;;
 esac
 
@@ -34,12 +35,26 @@ done
 cp "$project_dir/LICENSE" "$app_dir/Contents/Resources/LICENSE.txt"
 cp "$project_dir/THIRD_PARTY_NOTICES.md" "$app_dir/Contents/Resources/THIRD_PARTY_NOTICES.md"
 python3 scripts/release_metadata.py source-notice > "$app_dir/Contents/Resources/SOURCE.txt"
+widget_configuration=Debug
+if [[ "$configuration" == release ]]; then widget_configuration=Release; fi
+app_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)
+app_build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Resources/Info.plist)
+# Remove only this generated product so a previous Xcode preview build cannot
+# leave its debug/preview dylibs in the downloadable extension.
+rm -rf "build/widget-derived/Build/Products/$widget_configuration/AudifernWidgets.appex"
+xcodebuild -quiet -project WidgetExtension/AudifernWidgets.xcodeproj -scheme AudifernWidgets \
+    -configuration "$widget_configuration" -derivedDataPath build/widget-derived \
+    -jobs "${AUDIFERN_BUILD_JOBS:-2}" CODE_SIGNING_ALLOWED=NO ENABLE_DEBUG_DYLIB=NO \
+    ONLY_ACTIVE_ARCH=NO "ARCHS=$widget_arch" "MARKETING_VERSION=$app_version" "CURRENT_PROJECT_VERSION=$app_build" build
+mkdir -p "$app_dir/Contents/PlugIns"
+ditto "build/widget-derived/Build/Products/$widget_configuration/AudifernWidgets.appex" \
+    "$app_dir/Contents/PlugIns/AudifernWidgets.appex"
 signing_identity="${AUDIFERN_SIGN_IDENTITY:-${OPEN_COMPANION_SIGN_IDENTITY:--}}"
 signing_options=()
 if [[ "$configuration" == release && "$signing_identity" != - ]]; then
-    signing_options=(--options runtime --timestamp)
+    signing_options=(--hardened)
 fi
-codesign --force --sign "$signing_identity" ${signing_options[@]+"${signing_options[@]}"} --identifier org.audifern.app "$app_dir"
+python3 scripts/sign_app.py "$app_dir" --identity "$signing_identity" ${signing_options[@]+"${signing_options[@]}"}
 codesign --verify --strict "$app_dir"
 python3 scripts/release_metadata.py verify-app "$app_dir" --architecture "$architecture"
 rm -rf "$project_dir/build/Audifern.app"

@@ -64,9 +64,10 @@ struct ConnectionBadge: View {
 struct HearingAidArtwork: View {
     var right = false
     var size: CGFloat = 1
+    @Environment(\.displayScale) private var displayScale
     var body: some View {
-        Image(nsImage: AppResources.hearingAid).resizable().scaledToFit()
-            .scaleEffect(x: right ? -1.4 : 1.4, y: 1.4)
+        Image(nsImage: HearingAidImage.image(size: CGSize(width: 168 * size, height: 245 * size), scale: displayScale, mirrored: right))
+            .resizable().interpolation(.high).frame(width: 168 * size, height: 245 * size)
             .frame(width: 120 * size, height: 175 * size).accessibilityHidden(true)
     }
 }

@@ -1,5 +1,6 @@
 import Foundation
 import CompanionCore
+import QuickAccessKit
 
 struct NearbyDevice: Identifiable, Equatable {
     let id: UUID
@@ -30,10 +31,19 @@ struct AidConnection: Identifiable {
     var battery: Int?
     var batteryTelemetry: OticonBattery.State?
     var batteryTelemetryUpdatedAt: Date?
+    var cachedBatteryReading: BatteryRuntimeReading?
+    func batteryReading(at now: Date) -> BatteryRuntimeReading? {
+        if let telemetry = batteryTelemetry, !telemetry.hasCorruptZeroTelemetry, let measuredAt = batteryTelemetryUpdatedAt {
+            let reading = BatteryRuntimeReading(percentage: telemetry.percentage, measuredAt: measuredAt,
+                secondsAtMeasurement: telemetry.estimatedTimeLeftSeconds,
+                isCharging: telemetry.isCharging == true, isCharged: telemetry.chargingDone == true)
+            if reading.isValid(at: now) { return reading }
+        }
+        return cachedBatteryReading.flatMap { $0.isValid(at: now) ? $0 : nil }
+    }
     var estimatedTimeLeftSeconds: TimeInterval? {
-        guard isConnected, let updated = batteryTelemetryUpdatedAt,
-              (0...(2 * OticonBattery.pollingIntervalSeconds)).contains(Date().timeIntervalSince(updated)) else { return nil }
-        return batteryTelemetry?.estimatedTimeLeftSeconds
+        guard isConnected else { return nil }
+        return batteryReading(at: Date())?.remainingSeconds(at: Date())
     }
     var manufacturer: String?
     var model: String?

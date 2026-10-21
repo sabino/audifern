@@ -70,7 +70,7 @@ final class AppNavigation: ObservableObject {
 }
 
 enum AppSheet: Hashable, Identifiable {
-    case equalizers, savePreset, settings, about, diagnostics, backups, audiograms, savedFitting, fittingPlan, fittingReference, programDetails
+    case equalizers, savePreset, settings, about, help, diagnostics, backups, audiograms, savedFitting, fittingPlan, fittingReference, programDetails
     case device(UUID)
     case savedSnapshot(UUID), fittingReport(UUID)
     case backupComparison, backupInformation
@@ -81,6 +81,7 @@ enum AppSheet: Hashable, Identifiable {
         case .savePreset: L("Save current sound")
         case .settings: L("Settings")
         case .about: L("About Audifern")
+        case .help: L("Audifern Help")
         case .diagnostics: L("Diagnostics")
         case .backups: L("Backups")
         case .audiograms: L("Audiograms")

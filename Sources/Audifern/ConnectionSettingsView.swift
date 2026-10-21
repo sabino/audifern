@@ -3,7 +3,7 @@ import SwiftUI
 struct ConnectionSettingsView: View {
     @ObservedObject var automation: ConnectionAutomation
     @EnvironmentObject private var navigation: AppNavigation
-    @State private var section = 0
+    @AppStorage("connectionSettingsSection") private var section = 0
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Toggle(L("Automatically reconnect app controls"), isOn: $automation.enabled)
@@ -83,6 +83,13 @@ struct ConnectionSettingsView: View {
                         if !automation.preferredOutputUID.isEmpty,
                            !automation.availableOutputs.contains(where: { $0.id == automation.preferredOutputUID }) {
                             Text(L("Saved output · unavailable")).tag(automation.preferredOutputUID)
+                        }
+                        ForEach(automation.availableOutputs) { Text($0.name).tag($0.id) }
+                    }
+                    Picker(L("Other output"), selection: $automation.fallbackOutputUID) {
+                        Text(L("Choose an output")).tag("")
+                        if !automation.fallbackOutputUID.isEmpty, !automation.availableOutputs.contains(where: { $0.id == automation.fallbackOutputUID }) {
+                            Text(L("Saved output · unavailable")).tag(automation.fallbackOutputUID)
                         }
                         ForEach(automation.availableOutputs) { Text($0.name).tag($0.id) }
                     }

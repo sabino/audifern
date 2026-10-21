@@ -31,3 +31,16 @@ are isolated SwiftUI/AppKit view renders with synthetic revision history.
 Original branding and the generic hearing-aid illustration are described in
 [the design provenance](../design/prompts.md). Preview screenshots demonstrate
 the interface, not physical interoperability or complete clinical fitting.
+
+The 0.8.0 quick-access captures also use the isolated `--demo` application:
+
+- `audifern-sound-together.png` and `audifern-sound-separate.png`: the shared
+  control mode, original device illustrations and stable level/runtime fields.
+- `audifern-menu-bar.png`: the native AppKit popover with SwiftUI sound controls.
+- `audifern-help.png`: searching Battery in the attached Help sheet.
+
+The native Help menu search was also checked through AppKit accessibility: it
+returned Settings → Battery alerts and Devices → Battery time remaining. Opening
+Battery alerts from Help reached that exact settings pane. The desktop gallery
+listed three battery sizes and two sound-control sizes. These gallery checks do
+not establish physical hearing-aid behavior for every widget/control action.

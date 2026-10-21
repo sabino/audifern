@@ -26,7 +26,8 @@ class ReleaseMetadataTests(unittest.TestCase):
         for name in ['Contents/Info.plist', 'Contents/MacOS/Audifern', 'Contents/Resources/Audifern.icns',
                      'Contents/Resources/LICENSE.txt', 'Contents/Resources/SOURCE.txt', 'Contents/Resources/THIRD_PARTY_NOTICES.md',
                      'Contents/Resources/Audifern_Audifern.bundle/Contents/Info.plist',
-                     *['Contents/Resources/Audifern_Audifern.bundle/Contents/Resources/' + resource for resource in release.RESOURCES]]:
+                     *['Contents/Resources/Audifern_Audifern.bundle/Contents/Resources/' + resource for resource in release.RESOURCES],
+                     *[release.WIDGET + name for name in release.WIDGET_FILES]]:
             path = app / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(b'synthetic')
 
     def test_required_public_payload_and_missing_localization(self):
@@ -39,6 +40,16 @@ class ReleaseMetadataTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             app = Path(folder) / 'Audifern.app'; self.fixture(app)
             (app / 'Contents/Resources/utl-auth.json').write_text('{}')
+            with self.assertRaises(ValueError): release.vet_payload(app)
+
+    def test_widget_payload_has_the_same_strict_privacy_boundary(self):
+        with tempfile.TemporaryDirectory() as folder:
+            app = Path(folder) / 'Audifern.app'; self.fixture(app); release.vet_payload(app)
+            secret = app / release.WIDGET / 'Contents/Resources/authentication.json'
+            secret.write_text('{}')
+            with self.assertRaises(ValueError): release.vet_payload(app)
+            secret.unlink()
+            (app / release.WIDGET / 'Contents/MacOS/AudifernWidgets').unlink()
             with self.assertRaises(ValueError): release.vet_payload(app)
 
     def test_native_swiftpm_flat_resource_bundle(self):

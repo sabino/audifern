@@ -23,6 +23,7 @@ func nativeSheetsKeepTheirFrameWhenChangingSettingsAndOpeningAnAudiogram() async
         connectionAutomation: services.connectionAutomation)
         .environmentObject(services.preferences).environmentObject(services.navigation)
         .environmentObject(services.presets).environmentObject(services.equalizerDrafts)
+        .environmentObject(services.help)
         .defaultAppStorage(services.defaults)
     let window = NSWindow(contentRect: NSRect(origin: CGPoint(x: 80, y: 80), size: size),
                           styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)

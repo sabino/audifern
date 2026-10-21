@@ -43,16 +43,13 @@ struct AudifernApp: App {
                 .environmentObject(services.navigation)
                 .environmentObject(services.preferences)
                 .environmentObject(services.equalizerDrafts)
+                .environmentObject(services.help)
+                .modifier(HelpPresentationAccess(help: services.help))
                 .defaultAppStorage(services.defaults)
+                .onAppear { services.installMenuBar() }
         }
             .defaultSize(width: 1240, height: 920)
-            .commands { CompanionCommands(navigation: services.navigation, preferences: services.preferences) }
-        MenuBarExtra {
-            CompanionMenuBarView(store: services.bluetooth, navigation: services.navigation, connectionAutomation: services.connectionAutomation)
-                .environmentObject(services.preferences)
-        } label: {
-            CompanionMenuBarLabel(store: services.bluetooth, preferences: services.preferences)
-        }.menuBarExtraStyle(.menu)
+            .commands { CompanionCommands(navigation: services.navigation, preferences: services.preferences, help: services.help) }
     }
 }
 
@@ -62,57 +59,10 @@ final class CompanionAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
 
-private struct CompanionMenuBarLabel: View {
-    @ObservedObject var store: BluetoothStore
-    @ObservedObject var preferences: AppPreferences
-    var body: some View {
-        Image(nsImage: AppResources.brandMark).renderingMode(.template).resizable().frame(width: 18, height: 18)
-            .accessibilityLabel(L("Audifern, %d hearing aids connected", store.connectedCount))
-    }
-}
-
-private struct CompanionMenuBarView: View {
-    @ObservedObject var store: BluetoothStore
-    @ObservedObject var navigation: AppNavigation
-    let connectionAutomation: ConnectionAutomation
-    @EnvironmentObject private var preferences: AppPreferences
-    @Environment(\.openWindow) private var openWindow
-
-    var body: some View {
-        Text(store.connectedCount > 0 ? LP("%ld hearing aid connected", "%ld hearing aids connected", count: store.connectedCount) : L("Hearing aids disconnected"))
-        ForEach(store.orderedConnections.filter(\.isConnected)) { aid in
-            Text("\(L(aid.sideLabel)) · \(aid.battery.map { "\($0)%" } ?? L("Battery unknown"))\(aid.activeProgramName.map { " · \($0)" } ?? "")")
-        }
-        Divider()
-        Button(L("Open Audifern")) { showMain() }
-        Button(L("Sound…")) { navigation.show(.hearingAids); showMain() }
-        Button(L("Equalizers…")) { navigation.show(.sound); showMain() }
-        Button(L("Presets…")) { navigation.show(.presets); showMain() }
-        Button(L("Programs…")) { navigation.show(.programs); showMain() }
-        Button(L("Device information…")) { navigation.show(.devices); showMain() }
-        Button(L("Audiogram…")) { navigation.show(.audiogram); showMain() }
-        Button(L("Settings…")) { navigation.show(.settings); showMain() }
-        Button(L("About Audifern")) { navigation.present(.about); showMain() }
-        if store.connectedCount < 2 && store.pairCandidateIDs.count == 2 {
-            Divider()
-            Button(L("Connect both hearing aids")) { store.connectPair() }.disabled(!store.isPoweredOn)
-        }
-        Divider()
-        ConnectionQuickActions(automation: connectionAutomation)
-        Text(L("Closing the window keeps Bluetooth and alerts running."))
-        Button(L("Quit Audifern")) { NSApplication.shared.terminate(nil) }
-            .keyboardShortcut("q", modifiers: .command)
-    }
-
-    private func showMain() {
-        openWindow(id: "main")
-        NSApplication.shared.activate(ignoringOtherApps: true)
-    }
-}
-
 private struct CompanionCommands: Commands {
     @ObservedObject var navigation: AppNavigation
     @ObservedObject var preferences: AppPreferences
+    let help: AppHelpController
     @Environment(\.openWindow) private var openWindow
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
@@ -123,6 +73,10 @@ private struct CompanionCommands: Commands {
         }
         CommandGroup(after: .appInfo) {
             Button(L("Settings…")) { show(.settings) }.keyboardShortcut(",", modifiers: .command)
+        }
+        CommandGroup(replacing: .help) {
+            Button(L("Audifern Help")) { help.openHelp() }.keyboardShortcut("?", modifiers: .command)
+            Button(L("Search features…")) { help.openHelp() }
         }
     }
     private func show(_ page: AppPage) {
@@ -147,13 +101,26 @@ final class AudifernServices: ObservableObject {
     let fittingWorkspace: FittingWorkspaceStore
     let backups: DeviceBackupStore
     let connectionAutomation: ConnectionAutomation
+    let help: AppHelpController
     let equalizerDrafts = EqualizerDraftStore()
+    private var quickAccess: QuickAccessHost?
+    private var menuBar: MenuBarController?
     let defaults: UserDefaults
     private var batteryObservation: AnyCancellable?
+    private var preferenceObservation: AnyCancellable?
+    private var connectionObservation: AnyCancellable?
+
+    func installMenuBar() {
+        guard menuBar == nil else { return }
+        menuBar = MenuBarController(store: bluetooth, automation: connectionAutomation, help: help, preferences: preferences, defaults: defaults)
+    }
 
     init(demo: Bool = CommandLine.arguments.contains("--demo")) {
         let defaults = demo ? UserDefaults(suiteName: "org.audifern.preview")! : .standard
         self.defaults = defaults
+        if defaults.object(forKey: "groupedHearingAidControls") == nil {
+            defaults.set(defaults.object(forKey: "linkedHearingAidControls") as? Bool ?? true, forKey: "groupedHearingAidControls")
+        }
         let preferences = AppPreferences(defaults: defaults)
         self.preferences = preferences
         if demo {
@@ -165,7 +132,7 @@ final class AudifernServices: ObservableObject {
             if let value = option("--appearance"), let appearance = AppAppearance(rawValue: value) { preferences.appearance = appearance }
             preferences.showIdentifiers = false
         }
-        bluetooth = BluetoothStore(demo: demo)
+        bluetooth = BluetoothStore(demo: demo, batteryCache: BatteryRuntimeCache(defaults: defaults))
         let audio: any MacAudioOutputClient = demo ? PreviewMacAudioOutput() : SystemMacAudioOutput()
         connectionAutomation = ConnectionAutomation(defaults: defaults, transport: bluetooth, audio: audio,
             runTimer: !demo, observeSession: !demo)
@@ -177,6 +144,7 @@ final class AudifernServices: ObservableObject {
         backups = DeviceBackupStore(folder: demo ? previewFolder.appendingPathComponent("backups", isDirectory: true) : nil)
         presets = SoundPresetStore(file: demo ? previewFolder.appendingPathComponent("presets.json") : nil)
         navigation = AppNavigation()
+        help = AppHelpController(navigation: navigation, defaults: defaults)
         if demo, let index = CommandLine.arguments.firstIndex(of: "--page"), index + 1 < CommandLine.arguments.count,
            let page = AppPage(rawValue: CommandLine.arguments[index + 1]) { navigation.page = page }
         audiograms = AudiogramEditorStore(preview: demo)
@@ -184,6 +152,8 @@ final class AudifernServices: ObservableObject {
             persistence: BatteryNotificationFile(file: previewFolder.appendingPathComponent("alerts.json"))) : BatteryNotificationManager()
         batteryNotifications = notifications
         let drafts = equalizerDrafts
+        preferenceObservation = preferences.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+        connectionObservation = bluetooth.$connections.debounce(for: .milliseconds(120), scheduler: RunLoop.main).sink { [weak automation] _ in automation?.connectionStateChanged() }
         batteryObservation = bluetooth.$connections.sink { [weak notifications, weak drafts] connections in
             drafts?.reconcile(connections)
             notifications?.retainConnectedDevices(Set(connections.values.filter(\.isConnected).map(\.id)))
@@ -196,5 +166,6 @@ final class AudifernServices: ObservableObject {
                 }
             }
         }
+        quickAccess = QuickAccessHost(store: bluetooth, automation: connectionAutomation, preferences: preferences)
     }
 }

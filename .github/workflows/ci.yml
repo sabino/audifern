@@ -46,6 +46,8 @@ jobs:
           python3 -m unittest discover -s Tests -p 'test_*.py'
           python3 scripts/test-audit-localization.py
           python3 scripts/audit-localization.py --strict
+          python3 scripts/generate-widget-project.py
+          git diff --exit-code -- WidgetExtension
           bash -n scripts/build-app.sh scripts/package-release.sh
 
   test:
@@ -65,6 +67,8 @@ jobs:
         with:
           ref: ${{ inputs.release_commit || inputs.release_tag || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Select an SDK with WidgetKit controls
+        run: python3 scripts/select-xcode.py
       - name: Toolchain
         run: |
           swift --version
@@ -93,6 +97,8 @@ jobs:
           ref: ${{ inputs.release_commit || inputs.release_tag || github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Select an SDK with WidgetKit controls
+        run: python3 scripts/select-xcode.py
       - name: Validate release source
         if: env.RELEASE_TAG != ''
         run: |

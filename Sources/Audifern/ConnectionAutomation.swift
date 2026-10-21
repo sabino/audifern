@@ -45,6 +45,7 @@ struct ConnectionSignal {
     @Published var preferMacAudio: Bool { didSet { defaults.set(preferMacAudio, forKey: "autoConnectionPreferAudio"); audioContext = nil; settingsChanged() } }
     @Published var restoreAudioOnLock: Bool { didSet { defaults.set(restoreAudioOnLock, forKey: "autoConnectionRestoreAudio") } }
     @Published var preferredOutputUID: String { didSet { defaults.set(preferredOutputUID, forKey: "autoConnectionOutputUID"); audioContext = nil; settingsChanged() } }
+    @Published var fallbackOutputUID: String { didSet { defaults.set(fallbackOutputUID, forKey: "autoConnectionFallbackOutputUID"); refreshAudio() } }
     @Published private(set) var remembered: [RememberedHearingAid]
     @Published private(set) var paused: Bool
     @Published private(set) var status = "Automatic connection is off."
@@ -69,6 +70,7 @@ struct ConnectionSignal {
     private var previousOutput: String?
     private var calibrationDeadline: Date?
     private var calibrationTask: Task<Void, Never>?
+    private var pendingManualTargets: Set<UUID> = []
 
     init(defaults: UserDefaults, transport: any AutomaticConnectionTransport,
          audio: any MacAudioOutputClient, now: @escaping () -> Date = Date.init,
@@ -84,6 +86,7 @@ struct ConnectionSignal {
         preferMacAudio = defaults.bool(forKey: "autoConnectionPreferAudio")
         restoreAudioOnLock = defaults.bool(forKey: "autoConnectionRestoreAudio")
         preferredOutputUID = defaults.string(forKey: "autoConnectionOutputUID") ?? ""
+        fallbackOutputUID = defaults.string(forKey: "autoConnectionFallbackOutputUID") ?? ""
         paused = defaults.bool(forKey: "autoConnectionPaused")
         let saved = defaults.data(forKey: "autoConnectionKnownAids").flatMap { try? JSONDecoder().decode([RememberedHearingAid].self, from: $0) } ?? []
         remembered = Self.validTargets(saved) ? saved : []
@@ -108,6 +111,7 @@ struct ConnectionSignal {
     }
     var canUseConnectedAids: Bool { Self.validTargets(transport.automationCurrentAids) }
     func forgetAids() {
+        pendingManualTargets = []
         remembered = []; defaults.removeObject(forKey: "autoConnectionKnownAids")
         retryAt = [:]; attempts = [:]; transport.stopAutomaticScan(); tick()
     }
@@ -121,7 +125,25 @@ struct ConnectionSignal {
         paused = false; defaults.set(false, forKey: "autoConnectionPaused")
         retryAt = [:]; attempts = [:]; nextScan = .distantPast; unlockWindow = now().addingTimeInterval(45); audioContext = nil; tick()
     }
-    func manualConnectionRequested() { resume() }
+    func manualConnectionRequested() {
+        pendingManualTargets.formUnion(transport.automationPhases.filter { [.connecting, .connected].contains($0.value) }.map(\.key))
+        resume()
+    }
+    func connectionStateChanged() {
+        guard !pendingManualTargets.isEmpty else { return }
+        let ids = Set(transport.automationCurrentAids.map(\.id))
+        guard pendingManualTargets.isSubset(of: ids), Self.validTargets(transport.automationCurrentAids) else { return }
+        pendingManualTargets = []; _ = useConnectedAids()
+    }
+    /// Explicit quick reconnect works independently of the automatic preference.
+    func connectNow() {
+        resume()
+        guard unlocked, transport.automationPoweredOn, !remembered.isEmpty else { return }
+        transport.retrieveRemembered(remembered.map(\.id))
+        for aid in remembered where ![ConnectionPhase.connected, .connecting, .disconnecting].contains(transport.automationPhases[aid.id] ?? .disconnected) {
+            _ = transport.connectRemembered(aid.id)
+        }
+    }
     func sessionChanged(unlocked value: Bool) {
         let wasUnlocked = unlocked; unlocked = value
         if !value {
@@ -159,6 +181,25 @@ struct ConnectionSignal {
         guard audio.selectOutput(preferredOutputUID) else { audioError = true; return }
         if ownedOutput == nil || previous != ownedOutput { previousOutput = previous }
         ownedOutput = preferredOutputUID; audioError = false; refreshAudio()
+    }
+    var macAudioSelected: Bool { !preferredOutputUID.isEmpty && currentOutputUID == preferredOutputUID }
+    var canSwitchAudio: Bool {
+        preferredOutputUID != fallbackOutputUID && !preferredOutputUID.isEmpty && !fallbackOutputUID.isEmpty
+            && [preferredOutputUID, fallbackOutputUID].allSatisfy { id in availableOutputs.contains { $0.id == id } }
+    }
+    func selectAudioOutput(_ uid: String) {
+        if uid == preferredOutputUID { usePreferredAudio(); return }
+        refreshAudio()
+        guard availableOutputs.contains(where: { $0.id == uid }), audio.selectOutput(uid) else { audioError = true; return }
+        ownedOutput = nil; previousOutput = nil; audioError = false
+        // A deliberate output change must not be immediately undone by retry.
+        audioContext = remembered.map(\.id.uuidString).joined() + preferredOutputUID
+        refreshAudio()
+    }
+    func setMacAudio(_ enabled: Bool) {
+        refreshAudio()
+        guard canSwitchAudio else { audioError = true; return }
+        selectAudioOutput(enabled ? preferredOutputUID : fallbackOutputUID)
     }
     private func restoreOwnedAudio() {
         defer { ownedOutput = nil; previousOutput = nil; audioContext = nil }

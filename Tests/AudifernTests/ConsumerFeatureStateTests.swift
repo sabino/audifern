@@ -42,7 +42,7 @@ import Testing
     #expect(state.estimatedTimeLeftSeconds == nil)
     state.batteryTelemetryUpdatedAt = Date()
     #expect(state.estimatedTimeLeftSeconds == 43_200)
-    state.batteryTelemetryUpdatedAt = Date().addingTimeInterval(-601)
+    state.batteryTelemetryUpdatedAt = Date().addingTimeInterval(-7_201)
     #expect(state.estimatedTimeLeftSeconds == nil)
     state.batteryTelemetryUpdatedAt = Date()
     state.phase = .disconnected

@@ -31,6 +31,15 @@ preview controls cannot change hearing aids. See [capture details](docs/images/R
 
 ## Around the app
 
+The current development version also adds a configurable graphical menu-bar
+panel, desktop widgets, macOS 26 Control Center controls and searchable native
+Help. Sound controls share a Together/Separate mode, and timestamped battery
+runtime counts down locally between hourly device reads.
+[Together](docs/images/audifern-sound-together.png) · [Separate](docs/images/audifern-sound-separate.png) ·
+[Menu-bar panel](docs/images/audifern-menu-bar.png) · [Help](docs/images/audifern-help.png).
+See [quick access, setup and platform limits](docs/quick-access.md) and
+[the selected visual concepts](docs/design/quick-access-prompts.md).
+
 Four destinations keep related tasks together. Focused editors and advanced
 settings open as native sheets attached to the app window, with Back and Done.
 
@@ -97,8 +106,8 @@ Advanced credentials are provisioned locally and are excluded from downloads.
 
 ## Build and try it
 
-Requires **macOS 14 or later**, a **Swift 6** toolchain from Xcode or its command
-line tools, and Python 3 for the optional audits/extractor tests. The Swift
+Requires **macOS 14 or later**, a **Swift 6** toolchain, Xcode with a macOS 26 SDK
+or newer for the packaged widget extension, and Python 3 for audits/extractor tests. The Swift
 package has no external package dependencies.
 
 ```sh

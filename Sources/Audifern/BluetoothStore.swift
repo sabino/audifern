@@ -3,6 +3,7 @@ import Combine
 import CompanionCore
 @preconcurrency import CoreBluetooth
 import Foundation
+import QuickAccessKit
 
 @MainActor private final class PendingSetting {
     enum Stage { case acknowledgement, readback }
@@ -37,6 +38,7 @@ import Foundation
     var batteryPollTask: Task<Void, Never>?
     var batteryPollGeneration: UUID?
     var batteryZeroRetryCount = 0
+    var automaticConsumerReadRequested = false
     init(_ peripheral: CBPeripheral) { self.peripheral = peripheral }
 }
 
@@ -85,6 +87,7 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
     private var pendingScan = false
     private var automaticScan = false
     private var measuredSignals: [UUID: ConnectionSignal] = [:]
+    private let batteryCache: BatteryRuntimeCache?
     var onManualConnect: (() -> Void)?
     var onManualDisconnect: (() -> Void)?
     private var probeConfiguration: LaunchConfiguration?
@@ -122,8 +125,9 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
     }
 
     override convenience init() { self.init(demo: false) }
-    init(demo: Bool) {
+    init(demo: Bool, batteryCache: BatteryRuntimeCache? = nil) {
         isDemo = demo
+        self.batteryCache = batteryCache
         super.init()
         if demo {
             connections = DemoData.connections
@@ -191,6 +195,7 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
         let link = AidLink(target)
         links[id] = link
         connections[id] = AidConnection(id: id, name: target.name ?? devices.first(where: { $0.id == id })?.name ?? "Hearing aid", phase: .connecting)
+        connections[id]?.cachedBatteryReading = batteryCache?.reading(for: id)
         if manual { onManualConnect?() }
         selectedPeripheralID = id
         target.delegate = self
@@ -1178,8 +1183,6 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
                 link.batteryZeroRetryCount = telemetry.hasCorruptZeroTelemetry ? link.batteryZeroRetryCount + 1 : 0
                 startBatteryPolling(id, link: link)
             } catch {
-                connections[id]?.batteryTelemetry = nil
-                connections[id]?.batteryTelemetryUpdatedAt = nil
                 failures.append("Battery telemetry: \(UTLSession.describe(error))")
             }
         }
@@ -1225,8 +1228,60 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
     private func updateBatteryTelemetry(_ id: UUID, telemetry: OticonBattery.State) {
         connections[id]?.batteryTelemetry = telemetry
         connections[id]?.batteryTelemetryUpdatedAt = Date()
-        if let percentage = telemetry.percentage { connections[id]?.battery = percentage }
+        if let sample = batteryCache?.record(telemetry, for: id) { connections[id]?.cachedBatteryReading = sample }
+        if !telemetry.hasCorruptZeroTelemetry, let percentage = telemetry.percentage { connections[id]?.battery = percentage }
         record("battery_telemetry", "Battery telemetry read from hearing aid", details: ["uuid": id.uuidString])
+    }
+    /// Battery refresh authenticates only the existing consumer channel when a
+    /// local credential is present. It does not load EQ or write a sound setting.
+    func refreshBattery(_ id: UUID) {
+        guard probeConfiguration == nil, let link = liveLink(id), link.pending == nil,
+              connections[id]?.advancedBusy == false, connections[id]?.actionPending == false,
+              connections[id]?.groupActionPending == false else { return }
+        connections[id]?.advancedBusy = true
+        Task { [weak self, weak link] in
+            guard let self, let link else { return }
+            defer { if self.liveLink(id) === link { self.connections[id]?.advancedBusy = false } }
+            do {
+                let session = try await self.readyAdvancedSession(id, link: link)
+                guard self.liveLink(id) === link, session.supportsBatteryTelemetry else { return }
+                let telemetry = try await session.batteryTelemetry()
+                guard self.liveLink(id) === link else { return }
+                self.updateBatteryTelemetry(id, telemetry: telemetry)
+                self.startBatteryPolling(id, link: link)
+            } catch {
+                guard self.liveLink(id) === link else { return }
+                self.record("battery_refresh_unavailable", "Battery reading was not refreshed; retaining the previous timestamp", details: ["uuid": id.uuidString])
+            }
+        }
+    }
+    private func startAutomaticConsumerRead(_ id: UUID, link: AidLink) {
+        guard probeConfiguration == nil, !link.automaticConsumerReadRequested,
+              link.utlCharacteristics[UTLProtocol.information] != nil,
+              link.utlCharacteristics[UTLProtocol.control] != nil,
+              FileManager.default.fileExists(atPath: UTLSession.defaultKeyURL.path) else { return }
+        link.automaticConsumerReadRequested = true
+        Task { [weak self, weak link] in
+            guard let self, let link else { return }
+            let deadline = Date().addingTimeInterval(30)
+            // Let discovery and the initial native reads finish first.
+            do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            while self.liveLink(id) === link && Date() < deadline {
+                if self.connections[id]?.canChangeVolume == true && link.pending == nil {
+                    self.connections[id]?.advancedBusy = true
+                    defer { if self.liveLink(id) === link { self.connections[id]?.advancedBusy = false } }
+                    do {
+                        let session = try await self.readyAdvancedSession(id, link: link)
+                        guard self.liveLink(id) === link else { return }
+                        await self.readConsumerFeatures(id, link: link, session: session)
+                    } catch {
+                        self.record("consumer_auto_read_unavailable", "Automatic device feature reading is unavailable; cached battery age is preserved", details: ["uuid": id.uuidString])
+                    }
+                    return
+                }
+                do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+            }
+        }
     }
     private func startBatteryPolling(_ id: UUID, link: AidLink) {
         guard link.batteryPollTask == nil else { return }
@@ -1238,18 +1293,29 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
                     link.batteryPollTask = nil; link.batteryPollGeneration = nil
                 }
             }
+            var retryDelay: TimeInterval? = self.connections[id]?.batteryTelemetryUpdatedAt == nil ? 300 : nil
             while !Task.isCancelled {
-                guard self.liveLink(id) === link, link.utlSession?.isReady == true else { return }
+                guard self.liveLink(id) === link else { return }
                 let retryingZero = self.connections[id]?.batteryTelemetry?.hasCorruptZeroTelemetry == true && link.batteryZeroRetryCount < 12
-                do { try await Task.sleep(for: .seconds(retryingZero ? 5 : OticonBattery.pollingIntervalSeconds)) }
+                let age = self.connections[id]?.batteryTelemetryUpdatedAt.map { Date().timeIntervalSince($0) } ?? 0
+                let delay = retryDelay ?? (retryingZero ? 5 : max(5, BatteryRuntimeReading.refreshInterval - age))
+                do { try await Task.sleep(for: .seconds(delay)) }
                 catch { return }
-                guard self.liveLink(id) === link, link.utlSession?.isReady == true else { return }
-                if self.connections[id]?.advancedBusy == false && self.connections[id]?.actionPending == false && self.connections[id]?.groupActionPending == false {
-                    guard let session = link.utlSession else { return }
+                guard self.liveLink(id) === link else { return }
+                if !self.deviceBackupBusy && link.pending == nil && self.connections[id]?.advancedBusy == false && self.connections[id]?.actionPending == false && self.connections[id]?.groupActionPending == false {
                     self.connections[id]?.advancedBusy = true
-                    await self.readConsumerFeatures(id, link: link, session: session)
+                    defer { if self.liveLink(id) === link { self.connections[id]?.advancedBusy = false } }
+                    do {
+                        let session = try await self.readyAdvancedSession(id, link: link)
+                        guard session.supportsBatteryTelemetry else { return }
+                        let telemetry = try await session.batteryTelemetry()
+                        guard self.liveLink(id) === link else { return }
+                        self.updateBatteryTelemetry(id, telemetry: telemetry)
+                        link.batteryZeroRetryCount = telemetry.hasCorruptZeroTelemetry ? link.batteryZeroRetryCount + 1 : 0
+                        retryDelay = nil
+                    } catch { retryDelay = 300 }
                     if self.liveLink(id) === link { self.connections[id]?.advancedBusy = false }
-                }
+                } else { retryDelay = 60 }
             }
         }
     }
@@ -1465,7 +1531,6 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
         connections[id]?.batteryHealth = nil
         connections[id]?.coreDumpInfo = nil
         link.legacySpeechBoosterData = nil
-        link.batteryPollTask?.cancel(); link.batteryPollTask = nil; link.batteryPollGeneration = nil
         connections[id]?.consumerStatus = "Load device features to refresh their current state."
     }
     private func awaitSetting(_ id: UUID, characteristicUUID: String, data: Data, label: String, allowWithoutResponse: Bool = false) async throws {
@@ -1745,6 +1810,7 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
                characteristic.properties.contains(.notify) || characteristic.properties.contains(.indicate) { peripheral.setNotifyValue(true, for: characteristic) }
         }
         maybeReadProgramNames(id, link: link)
+        startAutomaticConsumerRead(id, link: link)
     }
     private func readIfAllowed(_ characteristic: CBCharacteristic, service: CBService, link: AidLink) {
         guard ReadOnlyInspection.name(service: service.uuid.uuidString, characteristic: characteristic.uuid.uuidString) != nil, characteristic.properties.contains(.read) else { return }

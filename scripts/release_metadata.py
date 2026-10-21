@@ -21,6 +21,11 @@ REPOSITORY = "https://github.com/sabino/audifern"
 SIGNATURE_FILES = {"CodeResources", "CodeDirectory", "CodeRequirements", "CodeSignature"}
 RESOURCES = {"BrandMark.png", "HearingAid.png", "en.lproj/Localizable.strings",
              "pt-BR.lproj/Localizable.strings", "es.lproj/Localizable.strings"}
+WIDGET = "Contents/PlugIns/AudifernWidgets.appex/"
+WIDGET_FILES = {"Contents/Info.plist", "Contents/MacOS/AudifernWidgets",
+                *{"Contents/Resources/" + name for name in RESOURCES},
+                "Contents/Resources/Metadata.appintents/extract.actionsdata",
+                "Contents/Resources/Metadata.appintents/version.json"}
 
 
 def version() -> str:
@@ -75,11 +80,11 @@ def vet_payload(app: Path) -> None:
     if "pt-BR.lproj" not in {path.name for path in (app / resources).glob("*.lproj")}:
         names.remove("pt-BR.lproj/Localizable.strings")
         names.add("pt-br.lproj/Localizable.strings")
-    required = fixed | {bundle + "Info.plist"} | {resources + name for name in names}
+    required = fixed | {bundle + "Info.plist"} | {resources + name for name in names} | {WIDGET + name for name in WIDGET_FILES}
     allowed = set(required)
     # Apple's stapler places the app's notarization ticket here.
     allowed.add("Contents/CodeResources")
-    for prefix in ["Contents/_CodeSignature/", bundle + "_CodeSignature/"]:
+    for prefix in ["Contents/_CodeSignature/", bundle + "_CodeSignature/", WIDGET + "Contents/_CodeSignature/"]:
         allowed.update(prefix + name for name in SIGNATURE_FILES)
     if app.is_symlink() or not app.is_dir(): raise ValueError("Expected a regular app bundle.")
     present = set()
@@ -101,6 +106,33 @@ def verify_app(app: Path, architecture: str) -> dict:
     executable = app / "Contents/MacOS/Audifern"
     architectures = set(subprocess.check_output(["lipo", "-archs", str(executable)], text=True).split())
     if architectures != expected_architectures(architecture): raise ValueError("The executable does not contain the requested architecture slices.")
+    widget = app / WIDGET
+    widget_info = plistlib.loads((widget / "Contents/Info.plist").read_bytes())
+    if (widget_info.get("CFBundleIdentifier") != "org.audifern.app.widgets"
+            or widget_info.get("CFBundleExecutable") != "AudifernWidgets"
+            or widget_info.get("CFBundleShortVersionString") != info["CFBundleShortVersionString"]
+            or widget_info.get("CFBundleVersion") != info["CFBundleVersion"]
+            or widget_info.get("LSMinimumSystemVersion") != "14.0"
+            or widget_info.get("NSExtension", {}).get("NSExtensionPointIdentifier") != "com.apple.widgetkit-extension"):
+        raise ValueError("The widget identity, version or deployment target does not match its host.")
+    widget_architectures = set(subprocess.check_output(["lipo", "-archs", str(widget / "Contents/MacOS/AudifernWidgets")], text=True).split())
+    if widget_architectures != architectures: raise ValueError("The widget and host architecture slices must match.")
+    for bundle, is_widget in [(widget, True), (app, False)]:
+        subprocess.run(["codesign", "--verify", "--strict", "--all-architectures", str(bundle)], check=True)
+        details = signing_details(bundle)
+        if details["teamID"] != signing_details(app)["teamID"]:
+            raise ValueError("The host and widget must share their signing team.")
+        team = details["teamID"]
+        expected_group = team + ".org.audifern.shared" if team else ""
+        bundle_info = widget_info if is_widget else info
+        if bundle_info.get("AudifernAppGroupIdentifier", "") != expected_group:
+            raise ValueError("The widget shared-container identity does not match the signing team.")
+        signed = subprocess.run(["codesign", "-d", "--entitlements", ":-", str(bundle)], capture_output=True, check=True)
+        entitlement = plistlib.loads(signed.stdout) if signed.stdout else {}
+        if entitlement.get("com.apple.security.application-groups", []) != ([expected_group] if team else []):
+            raise ValueError("Unexpected shared-container entitlement.")
+        if is_widget and entitlement.get("com.apple.security.app-sandbox") is not True:
+            raise ValueError("The widget extension must run in App Sandbox.")
     subprocess.run(["codesign", "--verify", "--strict", "--all-architectures", str(app)], check=True)
     return {"version": version(), "architectures": sorted(architectures), "minimumMacOS": "14.0"}
 
@@ -128,6 +160,10 @@ def verify_notarization(app: Path, team: str = "") -> None:
         raise ValueError("Notarized downloads require Developer ID Application, hardened runtime and a secure timestamp.")
     if team and details["teamID"] != team:
         raise ValueError("The app was signed by a different Apple developer team.")
+    widget_details = signing_details(app / WIDGET)
+    if (widget_details["signing"] != "developer-id" or widget_details["teamID"] != details["teamID"]
+            or not widget_details["hardenedRuntime"] or not widget_details["secureTimestamp"]):
+        raise ValueError("The embedded widget must have a matching, timestamped Developer ID signature.")
     apple_tickets.run("validate", app, "app")
     assessed = subprocess.run(["spctl", "--assess", "--type", "execute", "--verbose=4", str(app)], capture_output=True, text=True, check=True)
     if "source=Notarized Developer ID" not in assessed.stderr:

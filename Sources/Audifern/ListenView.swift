@@ -6,8 +6,7 @@ struct ListenView: View {
     @ObservedObject var store: BluetoothStore
     @EnvironmentObject private var navigation: AppNavigation
     @EnvironmentObject private var preferences: AppPreferences
-    @AppStorage("linkedHearingAidControls") private var linked = true
-    @AppStorage("linkedHearingAidSpeechBooster") private var linkedSpeech = false
+    @AppStorage("groupedHearingAidControls") private var together = true
 
     private var aids: [AidConnection] {
         store.orderedConnections.sorted { $0.sideLabel == "Left" && $1.sideLabel != "Left" }
@@ -32,29 +31,7 @@ struct ListenView: View {
                 }
                 if !aids.isEmpty { soundActions }
                 if let pair {
-                    Surface {
-                        VStack(spacing: 14) {
-                            HStack(alignment: .center, spacing: 18) {
-                                DailyEarControls(store: store, aid: pair[0], targets: linked && canLink ? pair : [pair[0]])
-                                VStack(spacing: 10) {
-                                    Button { linked.toggle() } label: {
-                                        VStack(spacing: 8) {
-                                            Image(systemName: linked ? "link" : "link.badge.plus").font(.title2)
-                                            Text(linked ? L("Linked ears") : L("Link ears")).font(AppType.caption.weight(.medium))
-                                                .multilineTextAlignment(.center).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                                        }.frame(width: 112, height: 80)
-                                    }.buttonStyle(.bordered).font(AppType.body).tint(linked ? Brand.accent : .secondary)
-                                        .disabled(!canLink).accessibilityIdentifier("link-volume")
-                                        .accessibilityValue(linked ? L("Linked") : L("Separate"))
-                                    Text(linked ? L("Adjust together") : L("Adjust separately"))
-                                        .font(AppType.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                                }.frame(width: 130)
-                                DailyEarControls(store: store, aid: pair[1], targets: linked && canLink ? pair : [pair[1]])
-                            }
-                            if linked { Text(L("Volume steps preserve your left/right balance.")).font(AppType.caption).foregroundStyle(.secondary) }
-                            actionFeedback
-                        }
-                    }
+                    PairedSoundCard(store: store, left: pair[0], right: pair[1], together: $together)
                     speechCard(pair)
                     programCard(pair)
                 } else if let aid = aids.first {
@@ -98,13 +75,19 @@ struct ListenView: View {
                 featureHeading(L("SpeechBooster"), subtitle: L("Bring conversations into focus."), symbol: "mic", color: .purple)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(alignment: .top, spacing: 20) {
-                    ForEach(targets) { aid in
-                        SpeechBoosterCell(store: store, aid: aid, targetIDs: linkedSpeech && canLink ? targets.map(\.id) : [aid.id])
-                            .frame(width: 160)
+                    if together && targets.count == 2 {
+                        Toggle(L("Both ears"), isOn: Binding(get: { targets.allSatisfy { $0.speechBoosterEnabled == true } }, set: { store.setSpeechBoosters(targets.map(\.id), enabled: $0) }))
+                            .toggleStyle(.switch).font(AppType.callout).frame(width: 180, height: 52)
+                            .disabled(!targets.allSatisfy(\.canChangeSpeechBooster) || store.linkedActionPending)
+                            .accessibilityLabel(L("SpeechBooster"))
+                    } else {
+                        ForEach(targets) { aid in
+                            SpeechBoosterCell(store: store, aid: aid, targetIDs: [aid.id]).frame(width: 160)
+                        }
                     }
                 }.disabled(store.isDemo)
                 if targets.count == 2 {
-                    EarLinkButton(title: "SpeechBooster", linked: $linkedSpeech, available: canLink,
+                    EarLinkButton(title: "SpeechBooster", linked: $together, available: canLink,
                                   identifier: "link-speech-booster", accent: Brand.accent)
                 }
             }
@@ -121,7 +104,7 @@ struct ListenView: View {
                 }
                 HStack(alignment: .top, spacing: 24) {
                     ForEach(targets) { aid in
-                        ProgramSelectionView(store: store, aid: aid, targetIDs: [aid.id], compact: true)
+                        ProgramSelectionView(store: store, aid: aid, targetIDs: together && canLink ? targets.map(\.id) : [aid.id], compact: true)
                     }
                 }.disabled(store.isDemo)
             }
@@ -195,8 +178,8 @@ private struct DailyEarControls: View {
                     Text(previewLevel.map(String.init) ?? aid.volume.map { String($0.level) } ?? "—")
                         .font(.system(size: 32, weight: .semibold, design: .rounded)).monospacedDigit()
                         .accessibilityIdentifier("volume-value-\(aid.sideLabel.lowercased())")
-                    Text(aid.volume?.muted == true ? L("Muted") : L("Level")).font(AppType.small).foregroundStyle(.secondary)
-                }.frame(minWidth: 44)
+                    Text(L("Level")).font(AppType.small).foregroundStyle(.secondary)
+                }.frame(width: 60, height: 55)
                 Button { setLevel((aid.volume?.level ?? 0) + 1) } label: {
                     Image(systemName: "plus").font(.system(size: 17, weight: .medium)).frame(width: 24, height: 26)
                 }
@@ -205,19 +188,10 @@ private struct DailyEarControls: View {
             HStack(spacing: 12) {
                 AidBatteryView(store: store, aid: aid, compact: true)
                 Spacer(minLength: 0)
-                Button {
-                    if targets.count == 2 { store.setLinkedMuted(!muted) }
-                    else { store.setMuted(aid.id, muted: !muted) }
-                } label: {
-                    Label(muted ? L("Unmute") : L("Mute"), systemImage: muted ? "speaker.slash.fill" : "speaker.wave.2")
-                }.buttonStyle(.borderless).disabled(!canChange)
-                    .accessibilityLabel(targets.count == 2 ? (muted ? L("Unmute both ears") : L("Mute both ears"))
-                        : L("%@ %@ ear", muted ? L("Unmute") : L("Mute"), L(aid.sideLabel)))
+                StableMuteToggle(store: store, targets: targets)
             }.font(AppType.caption)
-            if let status = aid.actionStatus {
-                Text(M(status)).font(AppType.caption).foregroundStyle(aid.actionFailed ? Color.orange : .secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(aid.actionStatus.map(M) ?? " ").font(AppType.caption).foregroundStyle(aid.actionFailed ? Color.orange : .secondary)
+                .lineLimit(2).frame(maxWidth: .infinity, minHeight: 34, maxHeight: 34)
         }.frame(maxWidth: .infinity)
     }
     private func allows(_ delta: Int) -> Bool { selection.map { $0.range.contains($0.level + delta) } ?? false }

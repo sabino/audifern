@@ -201,3 +201,42 @@ import Testing
     f.transport.automationSignals = Dictionary(uniqueKeysWithValues: f.aids.map { ($0.id, .init(rssi: -40, measuredAt: f.clock.date)) })
     f.automation.tick(); #expect(f.automation.minimumRSSI == -63)
 }
+
+@MainActor @Test func explicitQuickReconnectWorksWithAutomationDisabledAndRespectsTheLockedSession() throws {
+    let f = try AutomationFixture(); defer { f.clean() }
+    f.transport.automationPoweredOn = true
+    f.automation.connectNow()
+    #expect(!f.automation.enabled && Set(f.transport.requested) == Set(f.aids.map(\.id)))
+    f.failed(); f.transport.requested = []
+    f.automation.sessionChanged(unlocked: false)
+    f.automation.connectNow()
+    #expect(f.transport.requested.isEmpty)
+}
+
+@MainActor @Test func deliberateFallbackAudioSelectionIsNotImmediatelyUndoneByAutomaticRouting() throws {
+    let f = try AutomationFixture(); defer { f.clean() }
+    f.connected(); f.transport.automationPoweredOn = true
+    f.automation.preferredOutputUID = "aids"; f.automation.fallbackOutputUID = "speakers"
+    f.automation.preferMacAudio = true; f.automation.enabled = true
+    #expect(f.audio.current == "aids" && f.automation.canSwitchAudio)
+    f.automation.setMacAudio(false)
+    #expect(f.audio.current == "speakers" && !f.automation.macAudioSelected)
+    f.automation.tick()
+    #expect(f.audio.current == "speakers")
+    f.audio.routes.removeAll { $0.id == "aids" }
+    f.automation.refreshAudio()
+    #expect(!f.automation.canSwitchAudio)
+    f.automation.setMacAudio(true)
+    #expect(f.audio.current == "speakers" && f.automation.audioError)
+}
+
+@MainActor @Test func manualPairCanBeRememberedWithoutEnablingAutomaticReconnectAndForgetStaysForgotten() throws {
+    let f = try AutomationFixture(); defer { f.clean() }
+    f.automation.forgetAids(); f.connected()
+    f.automation.manualConnectionRequested()
+    f.transport.automationCurrentAids = f.aids
+    f.automation.connectionStateChanged()
+    #expect(f.automation.remembered == f.aids && !f.automation.enabled)
+    f.automation.forgetAids(); f.automation.connectionStateChanged()
+    #expect(f.automation.remembered.isEmpty)
+}

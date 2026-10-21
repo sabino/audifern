@@ -66,6 +66,7 @@ struct AppTaskSheet: View {
         case .savePreset: SaveSoundPresetView(store: store)
         case .settings: AppSettingsView(notifications: notifications, isDemo: store.isDemo, connectionAutomation: connectionAutomation)
         case .about: AboutView()
+        case .help: HelpView()
         case .diagnostics: DeveloperView(store: store)
         case .backups: DeviceBackupsView(store: store, backups: backups)
         case .backupComparison:

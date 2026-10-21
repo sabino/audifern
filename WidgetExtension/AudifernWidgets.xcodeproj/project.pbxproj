@@ -1,0 +1,42 @@
+// !$*UTF8*$!
+{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+9FCB1D14D1D9ABA6BD3A0986 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Sources/QuickAccessKit/BatteryRuntimeReading.swift"; sourceTree = SOURCE_ROOT; };
+0B0B9E43502E0E05D2302FB8 = {isa = PBXBuildFile; fileRef = 9FCB1D14D1D9ABA6BD3A0986; };
+956BE7609CA3C64CE2854048 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Sources/QuickAccessKit/QuickAccessState.swift"; sourceTree = SOURCE_ROOT; };
+2EB730259B6A9A9917A832E5 = {isa = PBXBuildFile; fileRef = 956BE7609CA3C64CE2854048; };
+5372BFA8AFE1491336CC10E8 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Sources/QuickAccessKit/QuickAccessStorage.swift"; sourceTree = SOURCE_ROOT; };
+C90F549CB86D93790B5EB4B6 = {isa = PBXBuildFile; fileRef = 5372BFA8AFE1491336CC10E8; };
+02ADD4E4A21C4DE9F32EF8E2 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Sources/QuickAccessUI/ArtworkRasterizer.swift"; sourceTree = SOURCE_ROOT; };
+7EDD9796A537D87A08623CA6 = {isa = PBXBuildFile; fileRef = 02ADD4E4A21C4DE9F32EF8E2; };
+0A881DA586E967AD78619634 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Sources/QuickAccessUI/QuickWidgetView.swift"; sourceTree = SOURCE_ROOT; };
+CBDBDC5787C930A2120B5153 = {isa = PBXBuildFile; fileRef = 0A881DA586E967AD78619634; };
+843A0C63F10EA8AA0FCFD512 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../WidgetExtension/Sources/AudifernWidgets.swift"; sourceTree = SOURCE_ROOT; };
+9BF7EFFEA066C89A8B114E1F = {isa = PBXBuildFile; fileRef = 843A0C63F10EA8AA0FCFD512; };
+0735D4ACB1340F74A27E382E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../WidgetExtension/Sources/ControlWidgets.swift"; sourceTree = SOURCE_ROOT; };
+6E37D5ABEC1B287134946DB0 = {isa = PBXBuildFile; fileRef = 0735D4ACB1340F74A27E382E; };
+E2737B5D85FF7040157D3FAC = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../WidgetExtension/Sources/WidgetIntents.swift"; sourceTree = SOURCE_ROOT; };
+DE4FCB25CD14B20E25A89985 = {isa = PBXBuildFile; fileRef = E2737B5D85FF7040157D3FAC; };
+C0F2A39FFCCD6282CB26E027 = {isa = PBXFileReference; lastKnownFileType = image.png; path = "../Sources/Audifern/Resources/HearingAid.png"; sourceTree = SOURCE_ROOT; };
+0C5D535CD0A4FF508DF3619B = {isa = PBXBuildFile; fileRef = C0F2A39FFCCD6282CB26E027; };
+222BD76A3E89CEFE2C8559AA = {isa = PBXFileReference; lastKnownFileType = image.png; path = "../Sources/Audifern/Resources/BrandMark.png"; sourceTree = SOURCE_ROOT; };
+E91270B2025A72F138C6066A = {isa = PBXBuildFile; fileRef = 222BD76A3E89CEFE2C8559AA; };
+E8FE8C768A4E7C653C2A5390 = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "en"; path = "../Sources/Audifern/Resources/en.lproj/Localizable.strings"; sourceTree = SOURCE_ROOT; };
+01BC69CAF23D61B3499384BD = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "../Sources/Audifern/Resources/pt-BR.lproj/Localizable.strings"; sourceTree = SOURCE_ROOT; };
+F59DB82D6ECA3F2CE366E139 = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "es"; path = "../Sources/Audifern/Resources/es.lproj/Localizable.strings"; sourceTree = SOURCE_ROOT; };
+47DC8F08E578F1946642D952 = {isa = PBXVariantGroup; children = (E8FE8C768A4E7C653C2A5390,01BC69CAF23D61B3499384BD,F59DB82D6ECA3F2CE366E139); name = Localizable.strings; sourceTree = "<group>"; };
+20076BA8C01EF9928C44B963 = {isa = PBXBuildFile; fileRef = 47DC8F08E578F1946642D952; };
+B41D11960B4CF369CB1206B4 = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AudifernWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+AD80091A817EB8B94A4CE70A = {isa = PBXGroup; children = (B41D11960B4CF369CB1206B4); name = Products; sourceTree = "<group>"; };
+D2BAB0D2546DBC7246FE291D = {isa = PBXGroup; children = (9FCB1D14D1D9ABA6BD3A0986,956BE7609CA3C64CE2854048,5372BFA8AFE1491336CC10E8,02ADD4E4A21C4DE9F32EF8E2,0A881DA586E967AD78619634,843A0C63F10EA8AA0FCFD512,0735D4ACB1340F74A27E382E,E2737B5D85FF7040157D3FAC,C0F2A39FFCCD6282CB26E027,222BD76A3E89CEFE2C8559AA,47DC8F08E578F1946642D952,AD80091A817EB8B94A4CE70A); sourceTree = "<group>"; };
+AE7175AA2A1A8DF1A72FEF24 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (0B0B9E43502E0E05D2302FB8,2EB730259B6A9A9917A832E5,C90F549CB86D93790B5EB4B6,7EDD9796A537D87A08623CA6,CBDBDC5787C930A2120B5153,9BF7EFFEA066C89A8B114E1F,6E37D5ABEC1B287134946DB0,DE4FCB25CD14B20E25A89985); runOnlyForDeploymentPostprocessing = 0; };
+C8206C2F341902CFF12791FC = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (0C5D535CD0A4FF508DF3619B,E91270B2025A72F138C6066A,20076BA8C01EF9928C44B963); runOnlyForDeploymentPostprocessing = 0; };
+EE3BA8733B39B2CFC699C8F8 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+7BA6029C73FB9B5617C8B56E = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = macosx; MACOSX_DEPLOYMENT_TARGET = 14.0; SWIFT_VERSION = 6.0; CLANG_ENABLE_MODULES = YES; }; name = Debug; };
+52171841E8BE852C0E9924AF = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_NAME = "AudifernWidgets"; PRODUCT_BUNDLE_IDENTIFIER = "org.audifern.app.widgets"; ENABLE_DEBUG_DYLIB = "NO"; INFOPLIST_FILE = "Info.plist"; GENERATE_INFOPLIST_FILE = "NO"; SKIP_INSTALL = "YES"; APPLICATION_EXTENSION_API_ONLY = "YES"; ENABLE_APP_SANDBOX = "YES"; SWIFT_VERSION = "6.0"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WIDGET_EXTENSION"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; MACOSX_DEPLOYMENT_TARGET = "14.0"; SUPPORTED_PLATFORMS = "macosx"; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"; MARKETING_VERSION = "0.8.0"; CURRENT_PROJECT_VERSION = "11"; AUDIFERN_APP_GROUP_ID = ""; SWIFT_EMIT_LOC_STRINGS = "NO"; ENABLE_USER_SCRIPT_SANDBOXING = "YES"; CODE_SIGNING_ALLOWED = "NO"; DEBUG_INFORMATION_FORMAT = "dwarf";}; name = Debug; };
+A01E73D640D9E0AA064399CE = {isa = XCBuildConfiguration; buildSettings = {SDKROOT = macosx; MACOSX_DEPLOYMENT_TARGET = 14.0; SWIFT_VERSION = 6.0; CLANG_ENABLE_MODULES = YES; }; name = Release; };
+D3A2DA5B28B9C1E5334BC0FA = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_NAME = "AudifernWidgets"; PRODUCT_BUNDLE_IDENTIFIER = "org.audifern.app.widgets"; ENABLE_DEBUG_DYLIB = "NO"; INFOPLIST_FILE = "Info.plist"; GENERATE_INFOPLIST_FILE = "NO"; SKIP_INSTALL = "YES"; APPLICATION_EXTENSION_API_ONLY = "YES"; ENABLE_APP_SANDBOX = "YES"; SWIFT_VERSION = "6.0"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WIDGET_EXTENSION"; SWIFT_OPTIMIZATION_LEVEL = "-O"; MACOSX_DEPLOYMENT_TARGET = "14.0"; SUPPORTED_PLATFORMS = "macosx"; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"; MARKETING_VERSION = "0.8.0"; CURRENT_PROJECT_VERSION = "11"; AUDIFERN_APP_GROUP_ID = ""; SWIFT_EMIT_LOC_STRINGS = "NO"; ENABLE_USER_SCRIPT_SANDBOXING = "YES"; CODE_SIGNING_ALLOWED = "NO"; DEBUG_INFORMATION_FORMAT = "dwarf";}; name = Release; };
+3146AAD2A2EFBAC04611DA49 = {isa = XCConfigurationList; buildConfigurations = (7BA6029C73FB9B5617C8B56E,A01E73D640D9E0AA064399CE); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+51D827E4710AF5E8D85DA11A = {isa = XCConfigurationList; buildConfigurations = (52171841E8BE852C0E9924AF,D3A2DA5B28B9C1E5334BC0FA); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+77AE7C1DD583056FED8F6CEA = {isa = PBXNativeTarget; buildConfigurationList = 51D827E4710AF5E8D85DA11A; buildPhases = (AE7175AA2A1A8DF1A72FEF24,EE3BA8733B39B2CFC699C8F8,C8206C2F341902CFF12791FC); buildRules = (); dependencies = (); name = AudifernWidgets; productName = AudifernWidgets; productReference = B41D11960B4CF369CB1206B4; productType = "com.apple.product-type.app-extension"; };
+1724767F6CF0B594AADEE632 = {isa = PBXProject; attributes = {LastUpgradeCheck = 2700; }; buildConfigurationList = 3146AAD2A2EFBAC04611DA49; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, "pt-BR", es, Base); mainGroup = D2BAB0D2546DBC7246FE291D; productRefGroup = AD80091A817EB8B94A4CE70A; projectDirPath = ""; projectRoot = ""; targets = (77AE7C1DD583056FED8F6CEA); };
+}; rootObject = 1724767F6CF0B594AADEE632; }
