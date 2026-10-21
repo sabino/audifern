@@ -21,24 +21,25 @@ Audifern is not affiliated with or endorsed by Oticon or Demant.
 
 [Dark mode in Português (Brasil)](docs/images/audifern-dark.png) ·
 [Settings in Español](docs/images/audifern-settings-es.png) ·
-[Eight-band EQ](docs/images/consumer-eq-eight-bands.png) ·
+[Eight-band EQ](docs/images/audifern-eq-eight-bands.png) ·
 [Hearing profile](docs/images/hearing-profile-light.png) ·
 [About and contributions](docs/images/audifern-about.png) ·
 [Design concept, artwork and prompts](docs/design/prompts.md)
 
-These screenshots show the native 0.7.0 app with synthetic preview devices;
+These screenshots show the native 0.8.0 app with synthetic preview devices;
 preview controls cannot change hearing aids. See [capture details](docs/images/README.md).
 
 ## Around the app
 
-The current development version also adds a configurable graphical menu-bar
+Audifern 0.8.0 adds a configurable graphical menu-bar
 panel, desktop widgets, macOS 26 Control Center controls and searchable native
 Help. The top Together/Separate selector sets every sound section; individual sections
-can override it and show Custom grouping. EQ lives directly in Sound, with vertical
+can override it and show **Mixed modes**, with an explanation on hover. EQ lives directly in Sound, with vertical
 faders for both ears side by side or one shared set. Timestamped battery runtime
 counts down locally between hourly device reads.
 [Together](docs/images/audifern-sound-together.png) · [Separate](docs/images/audifern-sound-separate.png) ·
-[Menu-bar panel](docs/images/audifern-menu-bar.png) · [Help](docs/images/audifern-help.png).
+[Menu-bar panel](docs/images/audifern-menu-bar.png) · [Quick access settings](docs/images/audifern-quick-access.png) ·
+[Device details](docs/images/audifern-device-details.png) · [Help](docs/images/audifern-help.png).
 See [quick access, setup and platform limits](docs/quick-access.md) and
 [the selected visual concepts](docs/design/quick-access-prompts.md).
 
@@ -62,7 +63,7 @@ testing. See [connections and the handoff research](docs/connections.md).
 
 | Destination | What you can do |
 | --- | --- |
-| **Sound** | Connect or disconnect, see both device images, batteries and active programs, and open each aid’s details. Adjust volume, mute and SpeechBooster, open equalizers or save a sound. Identifiers are hidden by default. |
+| **Sound** | Connect or disconnect, see both device images, batteries and active programs, and open each aid’s details. Adjust volume, mute and SpeechBooster, edit equalizers inline or save a sound. Identifiers are hidden by default. |
 | **Library** | Switch between fitted programs and local presets. Apply a saved sound or inspect a program’s consumer metadata. |
 | **Hearing profile** | Review saved fitting data, manage audiograms, prepare a fitting plan one step at a time, and open backups or comparisons. |
 | **Settings** | Choose appearance and language, configure battery alerts, manage identifier visibility and open diagnostics. |

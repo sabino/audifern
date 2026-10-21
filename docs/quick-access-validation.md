@@ -135,3 +135,19 @@ GPG signatures are retained as requested.
   completed because another app reclaimed focus; the protected focus was
   restored. The updated menu screenshot is explicitly a direct AppKit render.
   No hearing-aid sound command or new physical audio check was performed.
+
+## Release candidate screenshots
+
+- Refreshed the README's native 0.8.0 (16) window captures: English light Sound,
+  Portuguese dark Sound, Spanish Settings, both grouping modes, inline eight-
+  band EQ, device information, About, connection/quick-access settings and Help.
+- A fresh native menu-bar capture confirms the centered green and purple mode
+  selectors. This supersedes the earlier direct-render screenshot and the
+  foreground-capture limitation recorded above.
+- All captures use the isolated demo app. No Bluetooth central or real-device
+  data was used. Export strips nonessential PNG metadata. The temporary app was
+  closed, and preview preferences, layout and protected focus were restored.
+- Re-ran the 64 Python packaging/signing tests, five localization-audit fixtures
+  and strict 1,986-key audit. Known-private-pattern scanning found no new source
+  or device-data findings; historical signatures remain intentional public
+  metadata and dangling historical identities remain private.
