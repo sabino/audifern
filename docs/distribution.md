@@ -127,8 +127,11 @@ pending. Dispatch Release after staging the assets. The workflow reruns the
 tests from the tag, confirms it belongs to main, downloads the draft on a fresh
 Mac runner and independently checks Developer ID, the expected signing team,
 both architecture slices, source provenance, checksums, stapled tickets and
-Gatekeeper acceptance. Only then can the publish job write release assets.
-It rechecks uploaded digests using the release ID before publishing.
+Gatekeeper acceptance. Only then does the publish job write release assets.
+It rechecks uploaded digests using the release ID before publishing. GitHub
+requires push-level token access to read draft releases, so draft discovery
+and verification also receive contents: write. Those jobs run only in the
+tag/manual Release workflow; PR builds keep read-only permissions.
 
 This design keeps the Apple private key and notarization login in the local
 Keychain. GitHub runs verification and publication; creating a new notarized

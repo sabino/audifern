@@ -48,6 +48,9 @@ jobs:
     name: Find locally notarized draft
     needs: resolve
     runs-on: ubuntu-24.04
+    # GitHub hides draft releases from read-only installation tokens.
+    permissions:
+      contents: write
     outputs:
       ready: ${{ steps.draft.outputs.ready }}
     env:
@@ -84,6 +87,9 @@ jobs:
     if: needs.prepared.outputs.ready == 'true'
     runs-on: macos-15
     timeout-minutes: 15
+    # Access to a private draft requires push access, even when only downloading.
+    permissions:
+      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
