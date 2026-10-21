@@ -89,7 +89,9 @@ jobs:
             gh release create "$RELEASE_TAG" --verify-tag --draft --title "Audifern ${RELEASE_TAG#v}" --notes-file "$notes"
           fi
           gh release upload "$RELEASE_TAG" downloads/*.dmg downloads/*.zip downloads/SHA256SUMS downloads/build-info.json --clobber
-          gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > release-assets.json
+          # Address the release by ID while its assets are still in a draft.
+          release_api_url="$(gh release view "$RELEASE_TAG" --json apiUrl --jq .apiUrl)"
+          gh api "$release_api_url" > release-assets.json
           python3 - <<'PY'
           import hashlib, json
           from pathlib import Path

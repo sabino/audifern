@@ -70,6 +70,9 @@ or signing secret. Actions are pinned to exact commits.
 Prerelease tags such as `v0.7.0-beta.1` must use an application version of
 `0.7.0`; they create a GitHub prerelease. A stable tag becomes the latest release.
 To retry a failed run, rerun it or dispatch **Release** with its existing tag.
+If the workflow itself was fixed after tagging, dispatch it from `main` with the
+original tag: application sources come from that tag, while the publishing
+automation uses the reviewed workflow on `main`.
 A published release is never replaced by this workflow. Use a new version tag
 for changes, and never move a published version tag.
 
