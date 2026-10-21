@@ -50,12 +50,16 @@ Published release downloads do not have that sign-in requirement.
    `Resources/Info.plist`. Add `docs/releases/VERSION.md` for release-specific
    notes; the generic template is used when that file is absent.
 2. Open a pull request and wait for all CI checks, including universal packaging.
-3. Merge the tested commit to `main`, then tag that commit. For example:
+3. Merge the tested commit to `main`, preserving verified commit signatures.
+   Sign the version tag with the maintainer's GitHub-registered GPG key:
 
    ```sh
-   git tag v0.6.0
+   git tag -s v0.6.0 -m "Audifern 0.6.0"
    git push origin v0.6.0
    ```
+
+Git commits and tags use the maintainer's public GitHub identity. The application
+download's ad hoc code signature is separate from these GPG signatures.
 
 The Release workflow repeats the shared CI pipeline from the tag, verifies that
 the tag matches the application version and belongs to `main`, and uploads its
