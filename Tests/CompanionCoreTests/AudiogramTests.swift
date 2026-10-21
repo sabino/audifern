@@ -88,6 +88,17 @@ final class AudiogramTests: XCTestCase {
         XCTAssertNil(Audiogram.chartPosition(frequencyHz: 0, levelDBHL: 0))
     }
 
+    func testIntermediateFrequenciesPreserveStoredExamValuesAndTheirLogPosition() throws {
+        let exam = Audiogram(name: "Synthetic fitting record", thresholds: [750, 1500].map {
+            AudiogramThreshold(key: .init(ear: .left, conduction: .air, frequencyHz: $0), levelDBHL: 25)
+        })
+        XCTAssertEqual(try AudiogramLibrary.decode(AudiogramLibrary(exams: [exam]).encoded()).exams, [exam])
+        let low = try XCTUnwrap(Audiogram.chartPosition(frequencyHz: 750, levelDBHL: 25))
+        let high = try XCTUnwrap(Audiogram.chartPosition(frequencyHz: 1500, levelDBHL: 25))
+        XCTAssertEqual(high.x - low.x, 1.0 / 6, accuracy: 0.00001)
+        XCTAssertEqual(high.y, low.y)
+    }
+
     func testImportRejectsUnknownSchemaDuplicateRecordsAndOversizedFiles() throws {
         let exam = Audiogram()
         XCTAssertThrowsError(try AudiogramLibrary(exams: [exam, exam]).encoded())

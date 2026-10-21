@@ -113,6 +113,7 @@ enum LocalizedMessage {
         Template("EQ not confirmed: %@", [.error]),
         Template("SpeechBooster not confirmed: %@", [.error]),
         Template("Snapshot unavailable: %@", [.error]),
+        Template("Fitting record unavailable: %@", [.error]),
         Template("Fresh consumer controls read. Clinical fitting data is not included.%@", [.error]),
         Template("Preset apply stopped; earlier confirmed settings may already be applied. %@", [.error]),
         Template("Could not read your saved sound presets: %@. The existing file has been preserved.", [.error]),

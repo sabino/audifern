@@ -134,12 +134,24 @@ final class AudiogramEditorStore: ObservableObject {
                 error = "Choose a single exam exported by Audifern."
                 return
             }
-            draft = AudiogramDraft(exam)
-            baseline = library.exams.first(where: { $0.id == exam.id }).map(AudiogramDraft.init) ?? AudiogramDraft(Audiogram(id: exam.id))
-            error = nil; status = "Imported for review. Save to keep it on this Mac."
+            _ = reviewImportedExam(exam)
         } catch {
             self.error = (error as? AudiogramError)?.localizedDescription ?? "This file is not a valid Audifern audiogram."
         }
+    }
+
+    /// A validated draft only; the caller protects any unsaved editor changes.
+    /// The library and repository are unchanged until the user explicitly saves.
+    @discardableResult
+    func reviewImportedExam(_ exam: Audiogram) -> Bool {
+        do {
+            let exam = try exam.validated()
+            draft = AudiogramDraft(exam)
+            baseline = library.exams.first(where: { $0.id == exam.id }).map(AudiogramDraft.init)
+                ?? AudiogramDraft(Audiogram(id: exam.id))
+            error = nil; status = "Imported for review. Save to keep it on this Mac."
+            return true
+        } catch { self.error = error.localizedDescription; return false }
     }
 
     func reportExport(_ result: Result<URL, Error>) {

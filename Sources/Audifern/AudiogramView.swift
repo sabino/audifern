@@ -44,9 +44,15 @@ struct AudiogramEditorView: View {
                             .font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(6)
                     } label: { Label(L("What this is used for"), systemImage: "info.circle") }
                     metadata
-                    HStack(alignment: .top, spacing: 24) {
-                        graphPanel.frame(minWidth: 350, maxWidth: .infinity)
-                        entryPanel.frame(width: 400)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .top, spacing: 24) {
+                            graphPanel.frame(minWidth: 350, maxWidth: .infinity)
+                            entryPanel.frame(width: 400)
+                        }
+                        VStack(spacing: 22) {
+                            graphPanel
+                            entryPanel.frame(maxWidth: .infinity)
+                        }
                     }
                     notes
                     footer
@@ -59,7 +65,7 @@ struct AudiogramEditorView: View {
                 }
             }
         }
-        .frame(minWidth: 900, minHeight: 700)
+        .frame(minHeight: 700)
         .background(Color(nsColor: .windowBackgroundColor))
         .tint(.teal)
         .confirmationDialog(L("Discard unsaved changes?"), isPresented: $confirmDiscard, titleVisibility: .visible) {
@@ -336,10 +342,12 @@ private struct AudiogramPlot: View {
             }
             for frequency in Audiogram.frequenciesHz {
                 let x = plot.minX + (Audiogram.chartPosition(frequencyHz: frequency, levelDBHL: 0)?.x ?? 0) * plot.width
-                let interoctave = frequency == 3000 || frequency == 6000
+                let interoctave = [750, 1500, 3000, 6000].contains(frequency)
                 var path = Path(); path.move(to: CGPoint(x: x, y: plot.minY)); path.addLine(to: CGPoint(x: x, y: plot.maxY))
                 context.stroke(path, with: .color(grid), style: StrokeStyle(lineWidth: 0.7, dash: interoctave ? [2, 3] : []))
-                let label = frequency >= 1000 ? "\(frequency / 1000)k" : "\(frequency)"
+                let label = frequency >= 1000
+                    ? (Double(frequency) / 1000).formatted(.number.locale(Localization.shared.formattingLocale).precision(.fractionLength(0...1))) + "k"
+                    : String(frequency)
                 context.draw(Text(label).font(.system(size: 9)).foregroundStyle(.secondary),
                              at: CGPoint(x: x, y: plot.maxY + (interoctave ? 20 : 10)))
             }

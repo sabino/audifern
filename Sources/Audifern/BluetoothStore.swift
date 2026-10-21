@@ -74,6 +74,8 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
     @Published private(set) var programSnapshot: ConsumerProgramSnapshot?
     @Published private(set) var programSnapshotStatus: String?
     @Published private(set) var programSnapshotBusy = false
+    @Published private(set) var deviceBackupBusy = false
+    @Published private(set) var deviceBackupStatus: String?
     private var central: CBCentralManager!
     private var peripherals: [UUID: CBPeripheral] = [:]
     private var links: [UUID: AidLink] = [:]
@@ -410,6 +412,180 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         invalidateConsumerFeatures(id, link: link)
     }
 
+    /// Save a verified consumer checkpoint before attempting the separately
+    /// scoped fitting-record read. The required checkpoint closure must persist
+    /// successfully; a UI-only snapshot is never used as a backup prerequisite.
+    func captureDeviceBackup(deadline: Date = Date().addingTimeInterval(90),
+                             checkpoint: @MainActor (DeviceBackup) throws -> Void) async throws -> DeviceBackup {
+        guard !isDemo, probeConfiguration == nil, !deviceBackupBusy, !programSnapshotBusy else {
+            throw UTLSession.SessionError.unavailable("A read-only backup cannot start in the current mode.")
+        }
+        deviceBackupBusy = true
+        deviceBackupStatus = "Reading a fresh consumer-state checkpoint…"
+        var completed = false
+        var checkpointSaved = false
+        defer {
+            deviceBackupBusy = false
+            if !completed {
+                deviceBackupStatus = checkpointSaved
+                    ? "Backup stopped. The verified checkpoint has been preserved."
+                    : "Backup stopped before a verified checkpoint could be saved."
+            }
+        }
+        readProgramSnapshot()
+        guard programSnapshotBusy else { throw UTLSession.SessionError.unavailable(programSnapshotStatus ?? "Current controls are not ready.") }
+        while programSnapshotBusy {
+            try Task.checkCancellation()
+            guard Date() < deadline else { throw UTLSession.SessionError.timeout }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        guard let consumer = programSnapshot else {
+            throw UTLSession.SessionError.unavailable(programSnapshotStatus ?? "The consumer checkpoint could not be read.")
+        }
+        let targets = consumer.aids.compactMap { aid -> (UUID, AidLink, ConsumerProgramSnapshot.Side)? in
+            guard let connection = orderedConnections.first(where: { $0.isConnected && $0.sideLabel.lowercased() == aid.side.rawValue }),
+                  let link = liveLink(connection.id) else { return nil }
+            return (connection.id, link, aid.side)
+        }
+        guard targets.count == consumer.aids.count else { throw UTLSession.SessionError.disconnected }
+        for (id, _, _) in targets { connections[id]?.advancedBusy = true; connections[id]?.groupActionPending = true }
+        defer {
+            for (id, link, _) in targets where liveLink(id) === link {
+                connections[id]?.advancedBusy = false; connections[id]?.groupActionPending = false
+            }
+        }
+        var programs: [UUID: [ConsumerProgramSnapshot.Program]] = [:]
+        var capturedServices: [UUID: [DeviceBackup.Service]] = [:]
+        var notes: [UUID: [String]] = [:]
+        var records: [UUID: [DeviceBackup.Record]] = [:]
+        var endUserSettings: [UUID: DeviceBackup.EndUserSettings] = [:]
+        for (id, link, side) in targets {
+            try checkSnapshotLink(id, link: link, side: side)
+            do {
+                let session = try await readyAdvancedSession(id, link: link)
+                capturedServices[id] = session.services.map(DeviceBackup.Service.init)
+                await readDeviceMetadata(id, link: link, session: session)
+                if session.isReady && session.supportsProgramInformation { programs[id] = try await session.programInformation() }
+            } catch {
+                notes[id, default: []].append("Some extended device or program metadata was unavailable.")
+                await cleanFailedSnapshotSession(id, link: link)
+            }
+        }
+        // Freeze identity before fitting reads. A later disconnect must not
+        // prevent archiving bytes already received from this owned connection.
+        let identities = try Dictionary(uniqueKeysWithValues: targets.map { id, link, side in
+            try checkSnapshotLink(id, link: link, side: side)
+            guard let aid = connections[id] else { throw UTLSession.SessionError.disconnected }
+            let metadata = aid.deviceMetadata
+            return (id, DeviceBackup.Identity(peripheralID: id, serialNumber: aid.serialNumber,
+                    model: metadata?.model ?? aid.model, firmware: aid.firmware ?? metadata?.firmwareRevision,
+                    software: aid.softwareRevision, hiidVersion: metadata?.hiidVersion,
+                    releasePackageVersion: metadata?.releasePackageVersion,
+                    runtimeMemoryMapVersion: metadata?.runtimeMemoryMapVersion))
+        })
+        func makeBackup(stage: DeviceBackup.AcquisitionStage) throws -> DeviceBackup {
+            let aids = try targets.map { id, _, side -> DeviceBackup.Aid in
+                guard let identity = identities[id] else { throw UTLSession.SessionError.disconnected }
+                return .init(side: side, identity: identity,
+                    services: capturedServices[id] ?? [],
+                    programs: programs[id] ?? consumer.aids.filter { $0.side == side }.map(\.program),
+                    programInventoryComplete: programs[id] != nil,
+                    records: records[id] ?? [], endUserSettings: endUserSettings[id], notes: notes[id] ?? [])
+            }
+            return try DeviceBackup(consumerControls: consumer, aids: aids, acquisitionStage: stage)
+        }
+        let baseline = try makeBackup(stage: .consumerCheckpoint)
+        try checkpoint(baseline)
+        checkpointSaved = true
+        deviceBackupStatus = "Checkpoint saved. Reading the supported fitting record…"
+        do {
+            for (id, link, side) in targets {
+                try Task.checkCancellation()
+                guard Date() < deadline else { throw UTLSession.SessionError.timeout }
+                try checkSnapshotLink(id, link: link, side: side)
+                guard let identity = identities[id], SavedFitting.supports(identity),
+                      let hiidVersion = identity.hiidVersion else {
+                    notes[id, default: []].append("Fitting record not requested: this identification and memory-map combination has not been verified.")
+                    continue
+                }
+                var readSession: UTLSession?
+                do {
+                    let session = try await readyAdvancedSession(id, link: link, purpose: .readOnlyBackup)
+                    readSession = session
+                    capturedServices[id] = session.services.map(DeviceBackup.Service.init)
+                    let bytes = try await session.readFittingSystemRecord(hiidVersion: hiidVersion, deadline: deadline)
+                    records[id] = [try .init(key: 1009, bytes: bytes)]
+                    notes[id, default: []].append("HIID1009 fitting-system record read and checksum verified. Clinical restore is not supported.")
+                } catch {
+                    notes[id, default: []].append("Fitting record unavailable: \(UTLSession.describe(error))")
+                }
+                // The closure creates a NEW verified archive each time. A save
+                // failure stops acquisition; it cannot be mistaken for a
+                // benign unavailable getter and then discarded.
+                if records[id] != nil {
+                    try checkpoint(makeBackup(stage: .partialRead))
+                }
+                if records[id] != nil, let session = readSession {
+                    do {
+                        let result = try await session.readEndUserSettings(deadline: deadline)
+                        endUserSettings[id] = result.data
+                        notes[id, default: []].append(result.partial
+                            ? "End-user settings were partially captured. Unread scopes remain outside this backup."
+                            : "All advertised persisted end-user-setting scopes were captured. Live RAM, calibration and firmware are not included.")
+                    } catch {
+                        notes[id, default: []].append("End-user settings could not be read through the current read-only session.")
+                    }
+                    try checkpoint(makeBackup(stage: .partialRead))
+                }
+                guard Date() < deadline else { throw UTLSession.SessionError.timeout }
+                await closeBackupReadSession(id, link: link)
+                // Verify the ordinary consumer state after releasing the owned
+                // backup channel. Do not infer unchanged sound from an ATT ACK
+                // or from the checkpoint's copied values.
+                try checkSnapshotLink(id, link: link, side: side)
+                let programAfter = try await readSnapshotProgram(id, link: link)
+                let volumeAfter = try await readSnapshotValue(id, link: link, uuid: OticonRemoteProtocol.mainVolume)
+                guard let actual = OticonRemoteProtocol.Volume(data: volumeAfter),
+                      let before = consumer.aids.first(where: { $0.side == side }),
+                      programAfter == before.program.programID,
+                      actual.level == before.volume?.level, actual.muted == before.volume?.muted else {
+                    throw UTLSession.SessionError.unavailable("The active program or volume changed during backup. The original checkpoint has been preserved.")
+                }
+                guard Date() < deadline else { throw UTLSession.SessionError.timeout }
+            }
+            let result = try makeBackup(stage: .readCompleted)
+            deviceBackupStatus = "Readable state captured. Clinical restore is not supported."
+            completed = true
+            record("device_backup_read", "Read-only device backup captured", details: ["aid_count": String(result.aids.count),
+                "fitting_record_count": String(result.aids.reduce(0) { $0 + $1.records.count })])
+            return result
+        } catch {
+            for (id, link, _) in targets { await closeBackupReadSession(id, link: link) }
+            deviceBackupStatus = "Backup stopped. The verified checkpoint has been preserved."
+            throw error
+        }
+    }
+
+    private func closeBackupReadSession(_ id: UUID, link: AidLink) async {
+        guard liveLink(id) === link, let session = link.utlSession, session.purpose == .readOnlyBackup else { return }
+        await session.stop()
+        guard liveLink(id) === link, link.utlSession === session else { return }
+        link.utlSession = nil
+        invalidateEqualizer(id, microphone: true); invalidateEqualizer(id, microphone: false)
+        invalidateConsumerFeatures(id, link: link)
+    }
+
+    func finishBackupConnections() async {
+        for (id, link) in links {
+            if let session = link.utlSession { await session.stop(); link.utlSession = nil }
+            disconnect(id)
+        }
+        // Let CoreBluetooth deliver owned cancellation callbacks before a
+        // headless acquisition process exits. Existing system links stay owned
+        // by the other apps that opened them.
+        try? await Task.sleep(for: .milliseconds(350))
+    }
+
     func refresh(_ id: UUID) {
         guard let link = liveLink(id), connections[id]?.actionPending == false,
               connections[id]?.advancedBusy == false, connections[id]?.groupActionPending == false else { return }
@@ -638,9 +814,10 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         }
     }
 
-    private func readyAdvancedSession(_ id: UUID, link: AidLink, keyURL: URL? = nil) async throws -> UTLSession {
+    private func readyAdvancedSession(_ id: UUID, link: AidLink, keyURL: URL? = nil,
+                                      purpose: UTLSession.Purpose = .consumer) async throws -> UTLSession {
         guard liveLink(id) === link else { throw UTLSession.SessionError.disconnected }
-        if let existing = link.utlSession, existing.isReady {
+        if let existing = link.utlSession, existing.isReady, existing.purpose == purpose {
             connections[id]?.advancedServices = existing.services
             return existing
         }
@@ -687,7 +864,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         link.utlSession = session
         try await subscribeUtility(id, characteristic: control)
         try await subscribeUtility(id, characteristic: output)
-        try await session.start(key: key)
+        try await session.start(key: key, purpose: purpose)
         guard liveLink(id) === link else { throw UTLSession.SessionError.disconnected }
         connections[id]?.advancedServices = session.services
         record("advanced_authenticated", "Advanced channel authenticated; service registry read",

@@ -10,6 +10,16 @@ decoded configuration resources. It did not send Bluetooth commands, activate a
 different session, change hearing settings, execute a target assembly, or attempt
 to create a fitted program.
 
+## Later Genie readback, 2026-10-21
+
+The supplied Genie 2 artifact has now led to a working read-only fitting path.
+Both Intent 3 aids returned validated fitting-system records and all advertised
+persisted end-user-setting scopes. The saved fitting inspector decodes program
+structure, adaptation, processing and gain/MPO parameter coordinates. This is
+separate from the consumer snapshot below; fitted program creation and clinical
+restore remain unimplemented. See [fitting backups](fitting-backups.md) and the
+[Genie feature map](genie-feature-map.md).
+
 ## Findings
 
 | Question | Finding | Boundary |

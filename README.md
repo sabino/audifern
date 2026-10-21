@@ -32,6 +32,8 @@ One window keeps the essentials separate from the details:
 | **Listen** | Check both connections and batteries; adjust volume and mute, separately or together. |
 | **Sound** | Edit microphone and streaming EQ, load supported SpeechBooster and source controls. |
 | **Programs** | Inspect fitted programs and save local sound presets. |
+| **Fitting** | Explore supported saved fitting data or prepare a local plan with acoustics, an audiogram, rationale preferences and program ideas. |
+| **Backups** | Save verified private copies of readable consumer, fitting-system and persisted end-user data, with explicit coverage. Clinical restore is not implemented. |
 | **Devices** | Read model, software, firmware and available device diagnostics. Identifiers are hidden by default. |
 | **Audiogram** | Record an existing exam, plot it, and import or export it. |
 | **Settings** | Choose System, Light or Dark appearance; language; battery alerts; privacy preferences. |
@@ -41,6 +43,9 @@ The initial languages are **English, Português (Brasil) and Español**, with
 system-language selection. Appearance follows macOS unless you choose an
 override. Closing the window leaves connections and battery monitoring in the
 menu bar; **Quit Audifern** ends them.
+
+See the [fitting workspace preview and backup guide](docs/fitting-backups.md)
+for the new local planning tools and the limits of saved fitting data.
 
 ## Download and install
 
@@ -111,7 +116,7 @@ not create a fitted program inside the hearing aids. The consumer protocol
 research has not established an add/create/clone-program operation. See
 [program data and fitting boundaries](docs/program-data.md).
 
-Audio streaming remains with macOS. Clinical fitting, audiogram-to-gain
+Audio streaming remains with macOS. Clinical fitting writes, audiogram-to-gain
 conversion and firmware updates are not implemented. A complete readout of
 installed firmware has not been established. Tinnitus controls cannot enable
 an unfitted therapy; use the program's fitted level and daily-use limits.
@@ -185,5 +190,6 @@ separate from implemented controls.
 - [Direct BLE controls](docs/legacy-protocol.md) and [UTL transport/authentication](docs/managed-protocol.md)
 - [Consumer EQ and presets](docs/advanced-controls.md), [SpeechBooster](docs/speech-booster.md), [source controls](docs/tinnitus-controls.md)
 - [Program data](docs/program-data.md), [audiograms](docs/audiogram.md), [Noah/fitting research](docs/noah-investigation.md)
+- [Fitting backups and workspace](docs/fitting-backups.md), [Genie feature map](docs/genie-feature-map.md)
 - [Battery telemetry](docs/battery-telemetry.md), [identification](docs/device-identification.md), [device metadata](docs/device-metadata.md)
 - [Firmware investigation and unresolved readout](docs/device-research.md), [hardware evidence](docs/hardware-verification.md)

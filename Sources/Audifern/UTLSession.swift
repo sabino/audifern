@@ -2,10 +2,13 @@ import CompanionCore
 import CryptoKit
 import Foundation
 
-/// A deliberately narrow application channel: discovery and consumer EQ only.
-/// It uses nonexclusive consumer sessions and COMMAND transactions only.
+/// An owned nonexclusive channel. Consumer mode exposes the established sound
+/// controls; explicit backup mode only exposes getters and the bounded HIID1009
+/// read. Neither mode enters controlled fitting or a memory-write transaction.
 @MainActor
 final class UTLSession {
+    enum Purpose { case consumer, readOnlyBackup }
+    private(set) var purpose = Purpose.consumer
     enum SessionError: LocalizedError {
         case unavailable(String), timeout, disconnected, authentication
         var errorDescription: String? {
@@ -106,8 +109,9 @@ final class UTLSession {
         return data
     }
 
-    func start(key: Data) async throws {
+    func start(key: Data, purpose: Purpose = .consumer) async throws {
         guard key.count == 16 else { throw SessionError.authentication }
+        self.purpose = purpose
         progress("Opening advanced channel")
         let open = try UTLProtocol.openChannel(clientID: clientID, channel: channel, initialSequence: 0)
         // A lost ATT acknowledgement does not prove that the peer missed open.
@@ -211,6 +215,7 @@ final class UTLSession {
         catch { throw UTLAdvanced.ParseError("EQ info \(service.major).\(service.minor): \(error.localizedDescription)") }
     }
     func setEqualizer(microphone: Bool, steps: [Int], expected: OticonEqualizer.State) async throws -> OticonEqualizer.State {
+        guard purpose == .consumer else { throw SessionError.unavailable("Sound writes are unavailable in a read-only backup session.") }
         try expected.validate(steps)
         let service = try equalizerService(microphone: microphone)
         _ = try await consumerRequest(handle: service.handle, opcode: microphone ? 4 : 1, payload: UTLCBOR.unsignedVector(steps))
@@ -292,6 +297,7 @@ final class UTLSession {
                                             directionality: responses[1].payload, targetLoss: responses[2].payload)
     }
     func setSpeechBooster(enabled: Bool) async throws -> OticonSpeechBooster.State {
+        guard purpose == .consumer else { throw SessionError.unavailable("Sound writes are unavailable in a read-only backup session.") }
         guard supportsSpeechBooster, let service = services.first(where: OticonSpeechBooster.supports) else {
             throw SessionError.unavailable("Speech Booster must be loaded for this aid first.")
         }
@@ -306,6 +312,76 @@ final class UTLSession {
         let confirmed = try await speechBooster()
         guard confirmed.isEnabled == enabled else { throw SessionError.unavailable("Speech Booster request accepted, but current adjustments do not match.") }
         return confirmed
+    }
+
+    /// Reads only the verified HIID4.5 fitting-system record. No caller can
+    /// supply a memory address, write opcode or arbitrary record key here.
+    /// Independent read transactions plus a repeated header and CRC guard
+    /// against a changed or torn record; rejection is never retried in a more
+    /// privileged mode. An optional absolute deadline covers acquisition waits;
+    /// owned cancellation and session closure retain their cleanup budget.
+    func readFittingSystemRecord(hiidVersion: String, deadline: Date? = nil) async throws -> Data {
+        guard purpose == .readOnlyBackup, isReady,
+              let service = services.first(where: { OticonFittingRead.supports(service: $0, hiidVersion: hiidVersion) }) else {
+            throw SessionError.unavailable("A supported read-only fitting-record contract is unavailable.")
+        }
+        func read(offset: Int, length: Int) async throws -> Data {
+            let response = try await consumerRequests([(service.handle, OticonFittingRead.readOpcode,
+                OticonFittingRead.readRequest(offset: offset, length: length))],
+                transactionType: UTLReadOnlySession.readNVRAMTransaction, deadline: deadline)[0]
+            return try OticonFittingRead.decodeReadResponse(response.payload, expectedLength: length)
+        }
+        let originalHeader = try await read(offset: 0, length: OticonFittingRead.headerSize)
+        let header = try OticonFittingRead.Header(data: originalHeader)
+        var payload = Data()
+        for chunk in try OticonFittingRead.payloadChunks(size: header.size) {
+            payload.append(try await read(offset: chunk.offset, length: chunk.length))
+        }
+        let repeatedHeader = try await read(offset: 0, length: OticonFittingRead.headerSize)
+        try checkDeadline(deadline)
+        let record = try OticonFittingRead.validateRecord(header: originalHeader, payload: payload, repeatedHeader: repeatedHeader)
+        try checkDeadline(deadline)
+        return record
+    }
+
+    struct EndUserSettingsRead {
+        let data: DeviceBackup.EndUserSettings
+        let partial: Bool
+    }
+    /// Scope IDs come only from the validated device inventory. Completed
+    /// getters are retained if a later scope rejects the read; no fallback
+    /// session or RAM/write operation is attempted. Deadline expiry after the
+    /// inventory was captured returns the completed data with partial coverage.
+    func readEndUserSettings(deadline: Date? = nil) async throws -> EndUserSettingsRead {
+        guard purpose == .readOnlyBackup, isReady,
+              let service = services.first(where: OticonEndUserSettings.supports) else {
+            throw SessionError.unavailable("A supported read-only end-user-settings contract is unavailable.")
+        }
+        let inventoryResponse = try await consumerRequest(handle: service.handle,
+            opcode: OticonEndUserSettings.inventoryOpcode, deadline: deadline)
+        let rawInventory = try OticonEndUserSettings.validateResponse(inventoryResponse.payload)
+        guard let inventory = try? OticonEndUserSettings.decodeInventory(rawInventory) else {
+            return try .init(data: .init(inventory: rawInventory, records: []), partial: true)
+        }
+        var metadata: Data?, records: [DeviceBackup.EndUserSettings.ScopeRecord] = [], partial = !inventory.isComplete
+        do {
+            metadata = try OticonEndUserSettings.validateResponse(
+                try await consumerRequest(handle: service.handle,
+                    opcode: OticonEndUserSettings.metadataOpcode, deadline: deadline).payload)
+        } catch { partial = true }
+        var total = 0
+        for read in inventory.reads {
+            do {
+                try Task.checkCancellation()
+                let response = try await consumerRequests([(service.handle, OticonEndUserSettings.readOpcode,
+                    OticonEndUserSettings.readRequest(read))],
+                    transactionType: UTLReadOnlySession.readNVRAMTransaction, deadline: deadline)[0]
+                guard response.payload.count <= 196_608 - total else { partial = true; break }
+                records.append(try .init(scope: read.scope, id: read.id, bytes: response.payload))
+                total += response.payload.count
+            } catch { partial = true; break }
+        }
+        return try .init(data: .init(inventory: inventory.raw, metadata: metadata, records: records), partial: partial)
     }
 
     private func equalizerService(microphone: Bool) throws -> UTLProtocol.Service {
@@ -324,23 +400,33 @@ final class UTLSession {
         guard seconds >= 0, seconds <= Double(UInt32.max) else { throw SessionError.unavailable("System date cannot be represented in a consumer session.") }
         let components = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.0").split(separator: ".").compactMap { UInt16($0) }
         let version: (UInt16, UInt16, UInt16) = (components.first ?? 0, components.count > 1 ? components[1] : 2, components.count > 2 ? components[2] : 0)
-        let payload = try UTLConsumerSession.openPayload(service: service,
-            privateToken: UInt32.random(in: 1...UInt32.max), timeSince2020: UInt32(seconds), version: version)
-        progress("Opening nonexclusive consumer session")
+        let token = UInt32.random(in: 1...UInt32.max)
+        let payload = try purpose == .readOnlyBackup
+            ? UTLReadOnlySession.openPayload(service: service, privateToken: token, timeSince2020: UInt32(seconds), version: version)
+            : UTLConsumerSession.openPayload(service: service, privateToken: token, timeSince2020: UInt32(seconds), version: version)
+        progress(purpose == .readOnlyBackup ? "Opening read-only backup session" : "Opening nonexclusive consumer session")
         consumerOpenAttempted = true
         _ = try await request(handle: service.handle, opcode: 0, payload: payload)
         _ = try await request(handle: service.handle, opcode: 4)
         progress("Consumer transaction pipeline opened")
     }
-    private func consumerRequest(handle: UInt8, opcode: UInt8, payload: Data = Data()) async throws -> UTLProtocol.ServiceMessage {
-        try await consumerRequests([(handle, opcode, payload)])[0]
+    private func consumerRequest(handle: UInt8, opcode: UInt8, payload: Data = Data(),
+                                 deadline: Date? = nil) async throws -> UTLProtocol.ServiceMessage {
+        try await consumerRequests([(handle, opcode, payload)], deadline: deadline)[0]
     }
-    private func consumerRequests(_ operations: [(handle: UInt8, opcode: UInt8, payload: Data)]) async throws -> [UTLProtocol.ServiceMessage] {
+    private func consumerRequests(_ operations: [(handle: UInt8, opcode: UInt8, payload: Data)],
+                                  transactionType: UInt8 = UTLConsumerSession.commandTransactionType,
+                                  deadline: Date? = nil) async throws -> [UTLProtocol.ServiceMessage] {
+        try checkDeadline(deadline)
         guard let sessionService, consumerOpenAttempted, !commandBusy, !commandPoisoned else {
             throw SessionError.unavailable("Consumer command session is unavailable or busy.")
         }
         commandBusy = true
         defer { commandBusy = false }
+        guard transactionType == UTLConsumerSession.commandTransactionType
+                || (purpose == .readOnlyBackup && transactionType == UTLReadOnlySession.readNVRAMTransaction) else {
+            throw SessionError.unavailable("This channel does not allow the requested transaction type.")
+        }
         transactionID = transactionID &+ 1
         if transactionID == 0 { transactionID = 1 }
         let id = transactionID
@@ -348,18 +434,22 @@ final class UTLSession {
         activeTransaction = id
         do {
             _ = try await request(handle: sessionService.handle, opcode: 7,
-                                  payload: UTLConsumerSession.transactionPayload(id: id, starting: true))
+                                  payload: Data([transactionType, UInt8(truncatingIfNeeded: id >> 8), UInt8(truncatingIfNeeded: id)]),
+                                  deadline: deadline)
             var responses: [UTLProtocol.ServiceMessage] = []
             for operation in operations {
                 progress(String(format: "Consumer command %02X on service handle %u", operation.opcode, operation.handle))
-                responses.append(try await request(handle: operation.handle, opcode: operation.opcode, payload: operation.payload))
+                responses.append(try await request(handle: operation.handle, opcode: operation.opcode,
+                    payload: operation.payload, deadline: deadline))
             }
             _ = try await request(handle: sessionService.handle, opcode: 8,
-                                  payload: UTLConsumerSession.transactionPayload(id: id, starting: false))
+                                  payload: UTLConsumerSession.transactionPayload(id: id, starting: false), deadline: deadline)
             activeTransaction = nil
             return responses
         } catch {
             do {
+                // Expiry stops acquisition, not the owned cancellation. Its
+                // ordinary bounded waits must still be available after expiry.
                 _ = try await request(handle: sessionService.handle, opcode: 9,
                                       payload: UTLConsumerSession.transactionPayload(id: id, starting: false))
                 activeTransaction = nil
@@ -372,26 +462,28 @@ final class UTLSession {
             throw error
         }
     }
-    private func request(handle: UInt8, opcode: UInt8, payload: Data = Data()) async throws -> UTLProtocol.ServiceMessage {
+    private func request(handle: UInt8, opcode: UInt8, payload: Data = Data(),
+                         deadline: Date? = nil) async throws -> UTLProtocol.ServiceMessage {
+        try checkDeadline(deadline)
         let identifier = requestIdentifier
         requestIdentifier = requestIdentifier &+ 2
         if requestIdentifier == 0 { requestIdentifier = 1 }
         let body = Data([0x0C, identifier, handle, opcode]) + payload
         guard body.count + 3 <= transportMTU else { throw SessionError.unavailable("Request exceeds negotiated transport MTU.") }
-        try await send(UTLProtocol.TransportFrame(kind: .data, final: true, payload: body).data)
-        try await waitUntil { self.messages.contains { $0.identifier == identifier && $0.serviceHandle == handle } }
+        try await send(UTLProtocol.TransportFrame(kind: .data, final: true, payload: body).data, deadline: deadline)
+        try await waitUntil(deadline: deadline) { self.messages.contains { $0.identifier == identifier && $0.serviceHandle == handle } }
         guard let index = messages.firstIndex(where: { $0.identifier == identifier && $0.serviceHandle == handle }) else { throw SessionError.timeout }
         let response = messages.remove(at: index)
         guard response.status?.isSuccess == true else { throw UTLProtocol.CodecError.responseStatus(response.code) }
         return response
     }
-    private func send(_ data: Data) async throws {
+    private func send(_ data: Data, deadline: Date? = nil) async throws {
         for offset in stride(from: 0, to: data.count, by: payloadMTU) {
-            try await waitUntil { self.credits.serverCredits > 0 }
+            try await waitUntil(deadline: deadline) { self.credits.serverCredits > 0 }
             let chunk = Data(data[offset..<min(data.count, offset + payloadMTU)])
             let packet = try credits.send(chunk)
             let ticket = enqueue(packet)
-            try await waitUntil { ticket.result != nil }
+            try await waitUntil(deadline: deadline) { ticket.result != nil }
             try ticket.result!.get()
         }
     }
@@ -418,14 +510,20 @@ final class UTLSession {
             }
         }
     }
-    private func waitUntil(_ condition: () -> Bool) async throws {
-        let deadline = Date().addingTimeInterval(8)
-        while !condition() {
+    private func checkDeadline(_ deadline: Date?) throws {
+        if let deadline, !(Date() < deadline) { throw SessionError.timeout }
+    }
+    private func waitUntil(deadline: Date? = nil, _ condition: () -> Bool) async throws {
+        let waitDeadline = min(deadline ?? .distantFuture, Date().addingTimeInterval(8))
+        while true {
             if let failure { throw failure }
+            // Check before the condition: a response or ACK buffered after the
+            // acquisition deadline must not turn an expired read into success.
+            try checkDeadline(deadline)
+            guard Date() < waitDeadline else { throw SessionError.timeout }
+            if condition() { return }
             try Task.checkCancellation()
-            guard Date() < deadline else { throw SessionError.timeout }
             try await Task.sleep(for: .milliseconds(20))
         }
-        if let failure { throw failure }
     }
 }

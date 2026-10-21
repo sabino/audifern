@@ -309,3 +309,25 @@ program checks passed. The final Listen page showed both aids connected. This
 bounds the earlier timeout observation: recovery and a paired read were verified,
 while longer-term connection reliability remains untested. Private final evidence
 is `gui-060-two-ear-snapshot-final-ax.txt` and `gui-060-handoff-listen-ax.txt`.
+
+## Read-only fitting acquisition, 2026-10-21
+
+Both aids accepted owned ReadOnly type-4 sessions and READ_NVRAM type-2
+transactions directly through CoreBluetooth. Each returned a CRC-valid HIID 4.5
+entry 1009 of 2,056 bytes and all 25 advertised persisted EUS 2.1 scopes. The active
+program and volume matched actual reads before and after. Fitting records were
+byte-for-byte unchanged across three acquisitions. Checkpoints and final archives
+were verified from disk and remain private. No controlled fitting, parameter
+write, reset or firmware operation was used.
+
+The public Swift fitting reader also decodes the actual private archive;
+independent decoding/re-encoding of the production-register sections matches
+every byte. Light/dark native view renders use an in-memory hosting view without
+activating a Mac window. They verify content/layout; live window interaction is
+a separate check. See [fitting backups and limits](fitting-backups.md).
+
+The final development build also wrote four immutable intermediate archives
+before completing the pair read. Their integrity and acquisition-stage labels
+were checked from disk; all completed fitting/EUS reads survived as separate
+files. The final result and the earlier verified capture are in the private
+local backup library. No original fitting bytes were replaced.

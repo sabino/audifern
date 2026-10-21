@@ -12,7 +12,13 @@ enum AudifernEntryPoint {
             fputs("\(error)\n", stderr)
             exit(2)
         }
-        if configuration.isProbe {
+        if configuration.isBackup {
+            let application = NSApplication.shared
+            application.setActivationPolicy(.prohibited)
+            let runner = DeviceBackupRunner(configuration: configuration)
+            runner.start()
+            withExtendedLifetime(runner) { application.run() }
+        } else if configuration.isProbe {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)
             let store = BluetoothStore()
@@ -31,7 +37,8 @@ struct AudifernApp: App {
     var body: some Scene {
         Window(services.bluetooth.isDemo ? L("Audifern Preview") : Brand.name, id: "main") {
             ContentView(store: services.bluetooth, audiogramStore: services.audiograms,
-                        notifications: services.batteryNotifications)
+                        notifications: services.batteryNotifications,
+                        fittingWorkspace: services.fittingWorkspace, backups: services.backups)
                 .environmentObject(services.presets)
                 .environmentObject(services.navigation)
                 .environmentObject(services.preferences)
@@ -126,12 +133,13 @@ final class AudifernServices: ObservableObject {
     let navigation: AppNavigation
     let audiograms: AudiogramEditorStore
     let preferences: AppPreferences
+    let fittingWorkspace: FittingWorkspaceStore
+    let backups: DeviceBackupStore
     let equalizerDrafts = EqualizerDraftStore()
     let defaults: UserDefaults
     private var batteryObservation: AnyCancellable?
 
-    init() {
-        let demo = CommandLine.arguments.contains("--demo")
+    init(demo: Bool = CommandLine.arguments.contains("--demo")) {
         let defaults = demo ? UserDefaults(suiteName: "org.audifern.preview")! : .standard
         self.defaults = defaults
         let preferences = AppPreferences(defaults: defaults)
@@ -147,6 +155,8 @@ final class AudifernServices: ObservableObject {
         }
         bluetooth = BluetoothStore(demo: demo)
         let previewFolder = FileManager.default.temporaryDirectory.appendingPathComponent("audifern-preview-\(ProcessInfo.processInfo.processIdentifier)")
+        fittingWorkspace = FittingWorkspaceStore(preview: demo)
+        backups = DeviceBackupStore(folder: demo ? previewFolder.appendingPathComponent("backups", isDirectory: true) : nil)
         presets = SoundPresetStore(file: demo ? previewFolder.appendingPathComponent("presets.json") : nil)
         navigation = AppNavigation()
         if demo, let index = CommandLine.arguments.firstIndex(of: "--page"), index + 1 < CommandLine.arguments.count,

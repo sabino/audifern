@@ -190,3 +190,15 @@ particular Intent 3 firmware. That exact build/device check remains open.
 Public page snapshots, redirect evidence and the manual's provenance are
 retained under ignored `private/genie/`. A user-provided official installer or
 an authorized MyOticon download is the next artifact for static analysis.
+
+## Genie continuation, 2026-10-21
+
+The subsequently supplied Genie 2 2026.2 installer was inspected and its matching
+official packages extracted privately. The direct UTL HIID/EUS read path now
+works on both connected Intent 3 aids without Noahlink: saved fitting records and
+advertised persisted end-user scopes were captured with owned ReadOnly sessions.
+Model-aware register decoding and independent byte reconstruction also succeed.
+This supersedes the earlier lack of a supplied fitting module as an investigation
+blocker; it does not establish a complete fitting writer or clinical restore.
+[The feature map](genie-feature-map.md) and [backup guide](fitting-backups.md)
+describe current coverage and remaining calculation/measurement requirements.

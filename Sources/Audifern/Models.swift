@@ -239,8 +239,11 @@ struct LaunchConfiguration: Sendable {
     var probeSeconds: Double?
     var probeOutput: String?
     var probeConnect: UUID?
+    var backupOutput: String?
+    var backupSeconds: Double = 90
     var error: String?
     var isProbe: Bool { probeSeconds != nil || probeOutput != nil || error != nil }
+    var isBackup: Bool { backupOutput != nil }
 
     init(arguments: [String] = CommandLine.arguments) {
         var index = 1
@@ -248,14 +251,22 @@ struct LaunchConfiguration: Sendable {
             let argument = arguments[index]
             switch argument {
             case "--demo": isDemo = true
-            case "--probe-seconds", "--probe-output", "--probe-connect":
+            case "--probe-seconds", "--probe-output", "--probe-connect", "--backup-output", "--backup-seconds":
                 index += 1
                 guard index < arguments.count else {
                     error = "Missing value for \(argument)."
                     return
                 }
                 let value = arguments[index]
-                if argument == "--probe-seconds" {
+                if argument == "--backup-output" {
+                    guard !value.isEmpty else { error = "Backup output must be a new local file."; return }
+                    backupOutput = value
+                } else if argument == "--backup-seconds" {
+                    guard let seconds = Double(value), seconds.isFinite, (10...300).contains(seconds) else {
+                        error = "Backup timeout must be between 10 and 300 seconds."; return
+                    }
+                    backupSeconds = seconds
+                } else if argument == "--probe-seconds" {
                     guard let seconds = Double(value), seconds.isFinite, seconds >= 1, seconds <= 300 else {
                         error = "Probe duration must be between 1 and 300 seconds."
                         return
@@ -272,12 +283,19 @@ struct LaunchConfiguration: Sendable {
                 }
             default:
                 // LaunchServices may add its own arguments to a GUI launch.
-                if argument.hasPrefix("--probe-") {
+                if argument.hasPrefix("--probe-") || argument.hasPrefix("--backup-") {
                     error = "Unknown probe option: \(argument)."
                     return
                 }
             }
             index += 1
+        }
+        if backupOutput != nil {
+            guard !isDemo, probeSeconds == nil, probeOutput == nil, probeConnect == nil else {
+                error = "Backup, preview and discovery-probe modes cannot be combined."; return
+            }
+        } else if arguments.contains("--backup-seconds") {
+            error = "Backup mode requires --backup-output PATH."; return
         }
         if probeSeconds != nil || probeOutput != nil || probeConnect != nil {
             guard !isDemo else { error = "Preview and Bluetooth probe modes cannot be combined."; return }

@@ -8,9 +8,19 @@ reopening the main window preserves edits. Quitting still requires saving an
 exam to retain it. HIMSA export options expand inline; choosing an actual file
 uses the normal attached macOS file picker.
 
-The editor records both ears at 125, 250, 500, 1000, 2000, 3000, 4000, 6000 and 8000 Hz. Air and bone conduction, masked and unmasked conditions, and no-response flags remain distinct. Empty cells mean unrecorded, including an unknown exam date. A no-response entry stores the presentation level from the exam rather than claiming a threshold was measured. Values are not extrapolated or filled from the opposite ear.
+The editor records both ears at 125, 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000 and 8000 Hz. Air and bone conduction, masked and unmasked conditions, and no-response flags remain distinct. Empty cells mean unrecorded, including an unknown exam date. A no-response entry stores the presentation level from the exam rather than claiming a threshold was measured. Values are not extrapolated or filled from the opposite ear.
 
 The plot uses a logarithmic frequency axis and a linear dB HL axis increasing downward. One octave spans the same distance as 20 dB. The supported input and display range is −20 through 130 dB HL; this is a data-entry boundary, not a device gain or output range. Only entered points are drawn. The table is the authoritative numeric representation; no-response arrows and the legend distinguish those entries from measured thresholds.
+
+The saved-fitting inspector has a separate table for values recovered from an
+aid backup. That format omits the original exam date and measurement units, and
+may contain interpolated/rounded or uncorrected ABR/nHL values. They are not
+automatically converted into an exam. After explicitly confirming dB HL units
+against the source exam, the user can copy ordinary AC/BC response points into
+a new unsaved editor draft. NR, uncertain, UCL and in-situ entries remain in the
+private backup; masked ordinary responses retain their condition. Saved exams
+remain unchanged until an explicit save, and replacing an unsaved draft requires
+a separate confirmation. This does not calculate or program a fitting.
 
 Exam names, optional dates and notes are kept in `~/Library/Application Support/Audifern/audiograms.json`. The directory has 0700 permissions and the file is atomically replaced with 0600 permissions from its first written byte. No values are logged, included in the repository, uploaded, or sent through BLE. Invalid, unsupported or oversized imports fail without replacing the saved file. New-exam/discard, clear and deletion actions ask for confirmation when data would be removed. JSON import first opens a draft for review; **Save exam** explicitly persists it.
 

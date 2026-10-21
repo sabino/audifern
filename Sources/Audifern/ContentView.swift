@@ -5,6 +5,8 @@ struct ContentView: View {
     @ObservedObject var store: BluetoothStore
     let audiogramStore: AudiogramEditorStore
     let notifications: BatteryNotificationManager
+    @ObservedObject var fittingWorkspace: FittingWorkspaceStore
+    let backups: DeviceBackupStore
     @EnvironmentObject private var navigation: AppNavigation
     @EnvironmentObject private var preferences: AppPreferences
     @EnvironmentObject private var presets: SoundPresetStore
@@ -14,7 +16,10 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 9) { BrandMark(); Text(Brand.name).font(.title3.weight(.semibold)) }
                     .padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 24)
-                List { ForEach(AppPage.mainPages) { page in navigationRow(page) } }.listStyle(.sidebar)
+                List {
+                    Section(L("Everyday")) { ForEach(AppPage.everydayPages) { navigationRow($0) } }
+                    Section(L("Workspace")) { ForEach(AppPage.workspacePages) { navigationRow($0) } }
+                }.listStyle(.sidebar)
                 Spacer(minLength: 0)
                 List { navigationRow(.settings); navigationRow(.developer) }
                     .listStyle(.sidebar).frame(height: 110)
@@ -74,6 +79,9 @@ struct ContentView: View {
                 }.padding(30).frame(maxWidth: 1100)
             }
         case .programs: ProgramsView(store: store)
+        case .fitting:
+            FittingPageView(store: store, workspace: fittingWorkspace, backups: backups, audiograms: audiogramStore)
+        case .backups: DeviceBackupsView(store: store, backups: backups)
         case .devices: DevicesPageView(store: store)
         case .audiogram:
             AudiogramEditorView(store: audiogramStore, onSaved: { exam in

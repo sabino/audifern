@@ -51,7 +51,7 @@ public struct AudiogramThreshold: Codable, Equatable, Sendable {
 }
 
 public struct Audiogram: Identifiable, Codable, Equatable, Sendable {
-    public static let frequenciesHz = [125, 250, 500, 1000, 2000, 3000, 4000, 6000, 8000]
+    public static let frequenciesHz = [125, 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000]
     public static let levelRangeDBHL: ClosedRange<Double> = -20...130
 
     public var id: UUID
