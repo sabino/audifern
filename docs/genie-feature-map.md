@@ -34,9 +34,19 @@ each captured hardware profile. An original managed acoustic interpolation kerne
 passed nine synthetic checks on .NET 10 / Apple Silicon. Its vent-reference path
 then passed six checks using the original packaged constants, explicit synthetic
 geometry and independent numerical expectations. Both ran in processes denied
-network and hearing-device access. These private experiments ship no vendor
-component or calculation table. They establish bounded acoustic stages: complete
-gain/MPO calculation, legalization and clinical equivalence remain unverified.
+network and hearing-device access. The complete original VAC rationale branch
+also ran for two synthetic ears on Apple Silicon, including audiogram
+preprocessing, predicted real-ear corrections and the XML acoustic model. All
+four target properties were retained and checked for finite, aligned values.
+That stage returns 24 input-level rows over 20 frequencies, distinct from the
+later four-row, 24-band platform target and the 18 visible fitting controls.
+
+These private experiments ship no vendor component or calculation table. The
+rationale run used a finite configuration table; agreement with the original
+configuration services is a separate check. Personal/platform conversion,
+final gain/MPO legalization, complete parameter coverage and clinical
+equivalence remain unverified. The app does not calculate or apply a fitting
+from these research results.
 
 ## Workflow and interface
 

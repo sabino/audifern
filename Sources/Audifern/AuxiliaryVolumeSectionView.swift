@@ -50,7 +50,7 @@ struct AuxiliaryVolumeSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label(L(source.title), systemImage: source.symbol).font(.headline).foregroundStyle(source.tint)
+            Label(L(source.title), systemImage: source.symbol).font(AppType.headline).foregroundStyle(source.tint)
             if aids.count == 2 {
                 EarSettingsRow {
                     cell(aids[0], showButtons: !linked)
@@ -66,12 +66,12 @@ struct AuxiliaryVolumeSectionView: View {
             }
             if source == .tinnitus {
                 Label(L("This adjusts the tinnitus relief sound, separately from microphone and streaming volume. Use only a program fitted for you and follow your hearing care professional’s level and daily-use limits. A reported range does not enable tinnitus therapy."), systemImage: "info.circle")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Link("Oticon’s Tinnitus SoundSupport guidance", destination: URL(string: "https://www.oticon.com/support/oticon-app/help-with-the-oticon-app/how-to-use-tinnitus-soundsupport-program")!)
-                    .font(.caption)
+                    .font(AppType.caption)
             } else {
                 Text(L("The dedicated streaming-source gain is available in TV or generic-streamer programs. It is separate from streamed-audio EQ and your Mac’s media volume."))
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }.padding(16).tint(source.tint)
             .background(source.tint.opacity(source == .tinnitus ? 0.08 : 0.04), in: RoundedRectangle(cornerRadius: 14))
@@ -83,34 +83,34 @@ struct AuxiliaryVolumeSectionView: View {
     private func cell(_ aid: AidConnection, showButtons: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L(aid.sideLabel)).font(.callout.weight(.medium))
+                Text(L(aid.sideLabel)).font(AppType.callout.weight(.medium))
                 Spacer()
                 Text(volume(aid).map { "\($0.level > 0 ? "+" : "")\($0.level) · \($0.muted ? "Muted" : "Unmuted")" } ?? "Not read")
-                    .font(.callout.monospacedDigit())
+                    .font(AppType.callout.monospacedDigit())
                     .accessibilityIdentifier("\(source == .tinnitus ? "tinnitus" : "streaming")-\(aid.sideLabel.lowercased())-volume")
             }
             if let bounds = range(aid) {
                 Text(L("Reported range: %@…%@ device steps", String(describing: bounds.lowerBound), String(describing: bounds.upperBound)))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(AppType.caption).foregroundStyle(.secondary)
             }
             if showButtons { buttons(aid) }
             if !aid.isConnected {
-                Text(L("Connect this aid to read its controls.")).font(.caption).foregroundStyle(.secondary)
+                Text(L("Connect this aid to read its controls.")).font(AppType.caption).foregroundStyle(.secondary)
             } else if eligibility(aid) == false {
                 Text(source == .tinnitus
                      ? L("%@ does not report tinnitus support.", String(describing: aid.activeProgramName ?? L("This program")))
                      : L("%@ is not a supported streaming-source program.", String(describing: aid.activeProgramName ?? L("This program"))))
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             } else if eligibility(aid) == nil {
                 Button(L("Read program details")) { store.refreshProgramInfo(aid.id) }
-                    .buttonStyle(.borderless).font(.caption).disabled(!canRead(aid))
+                    .buttonStyle(.borderless).font(AppType.caption).disabled(!canRead(aid))
                     .accessibilityLabel(L("Read %@ %@ eligibility", L(aid.sideLabel), String(describing: source == .tinnitus ? "tinnitus" : "streaming")))
             } else if volume(aid) == nil {
-                Button(L("Read current volume")) { store.refresh(aid.id) }.font(.caption).disabled(!canRead(aid))
+                Button(L("Read current volume")) { store.refresh(aid.id) }.font(AppType.caption).disabled(!canRead(aid))
             }
             let status = source == .tinnitus ? aid.tinnitusStatus : aid.streamingVolumeStatus
             let failed = source == .tinnitus ? aid.tinnitusStatusFailed : aid.streamingVolumeStatusFailed
-            if let status { Text(M(status)).font(.caption).foregroundStyle(failed ? Color.orange : Color.secondary).textSelection(.enabled) }
+            if let status { Text(M(status)).font(AppType.caption).foregroundStyle(failed ? Color.orange : Color.secondary).textSelection(.enabled) }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private func canRead(_ aid: AidConnection) -> Bool {
@@ -130,6 +130,6 @@ struct AuxiliaryVolumeSectionView: View {
             }.disabled(!canChange(aid)).accessibilityLabel(L("%@ %@ %@ sound", String(describing: allMuted ? L("Unmute") : L("Mute")), String(describing: subject), String(describing: name)))
             Button { adjust(aid, 1) } label: { Image(systemName: "plus").frame(width: 28, height: 24) }
                 .disabled(!canStep(aid, 1)).accessibilityLabel(L("Increase %@ %@ volume", String(describing: subject), String(describing: name)))
-        }.buttonStyle(.bordered)
+        }.buttonStyle(.bordered).font(AppType.body)
     }
 }

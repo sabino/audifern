@@ -21,6 +21,15 @@ struct AudiogramEditorView: View {
     @State private var showingHIMSAExport = false
     @State private var himsaSignal = HIMSAAudiogramExport.Signal.unknown
     @State private var himsaTransducer: HIMSAAudiogramExport.AirTransducer?
+    @State private var quickEar = AudiogramEar.left
+    @State private var quickFrequency = 1000
+    @State private var quickLevel = ""
+    @State private var quickNoResponse = false
+    @State private var advancedMeasurements = false
+    @State private var showingNotes = false
+    private var quickKey: AudiogramThresholdKey {
+        .init(ear: quickEar, conduction: conduction, frequencyHz: quickFrequency, masked: masked)
+    }
 
     private enum PendingAction { case new, select(UUID), importFile, revert }
 
@@ -36,28 +45,37 @@ struct AudiogramEditorView: View {
 
     var body: some View {
         ScrollViewReader { proxy in
+            GeometryReader { geometry in
+            HStack(alignment: .top, spacing: 0) {
+            if !store.library.exams.isEmpty { examSidebar }
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     header
-                    GroupBox {
-                        Text(L("Keep a plotted copy of your exam and export it as JSON or HIMSA XML. A sound preset can reference this exam; applying a preset restores the volume and EQ you saved manually. Exam values do not program the hearing aids."))
-                            .font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading).padding(6)
-                    } label: { Label(L("What this is used for"), systemImage: "info.circle") }
+                    Text(L("These are hearing-test records. Saving an exam does not calculate a prescription or change your hearing aids."))
+                        .font(AppType.caption).foregroundStyle(.secondary)
                     metadata
-                    ViewThatFits(in: .horizontal) {
+                    // Choose once from the actual viewport. Asking AppKit
+                    // controls and Canvas for unconstrained trial sizes inside
+                    // ViewThatFits can repeatedly invalidate a native sheet.
+                    let entryWidth: CGFloat = advancedMeasurements ? 400 : 300
+                    let sidebarWidth: CGFloat = store.library.exams.isEmpty ? 0 : 210
+                    if geometry.size.width - sidebarWidth - 56 >= 350 + 24 + entryWidth {
                         HStack(alignment: .top, spacing: 24) {
                             graphPanel.frame(minWidth: 350, maxWidth: .infinity)
-                            entryPanel.frame(width: 400)
+                            Group { if advancedMeasurements { entryPanel } else { quickEntryPanel } }.frame(width: entryWidth)
                         }
+                    } else {
                         VStack(spacing: 22) {
                             graphPanel
-                            entryPanel.frame(maxWidth: .infinity)
+                            Group { if advancedMeasurements { entryPanel } else { quickEntryPanel } }.frame(maxWidth: .infinity)
                         }
                     }
-                    notes
+                    ExpandableSection(L("Exam notes"), isExpanded: $showingNotes) { notes }
                     footer
                     if showingHIMSAExport { himsaExportOptions.id("himsa-export-options") }
                 }.padding(28)
+            }
+            }
             }
             .onChange(of: showingHIMSAExport) { _, visible in
                 if visible {
@@ -65,9 +83,11 @@ struct AudiogramEditorView: View {
                 }
             }
         }
-        .frame(minHeight: 700)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .tint(.teal)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Brand.background)
+        .tint(Brand.accent)
+        .onChange(of: quickKey) { _, key in quickLevel = store.text(for: key); quickNoResponse = store.noResponse(for: key) }
+        .onChange(of: store.draft.id) { _, _ in quickLevel = store.text(for: quickKey); quickNoResponse = store.noResponse(for: quickKey) }
         .confirmationDialog(L("Discard unsaved changes?"), isPresented: $confirmDiscard, titleVisibility: .visible) {
             Button(L("Discard changes"), role: .destructive) { performPendingAction() }
             Button(L("Cancel"), role: .cancel) { pendingAction = nil }
@@ -90,12 +110,68 @@ struct AudiogramEditorView: View {
                       defaultFilename: "audiogram") { store.reportExport($0) }
     }
 
+    private var examSidebar: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(L("Saved exams")).font(AppType.headline)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(store.library.exams) { exam in
+                        Button { if exam.id != store.draft.id { request(.select(exam.id)) } } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(exam.name).font(AppType.callout.weight(.medium))
+                                if let date = exam.examDate { Text(date).font(AppType.caption).foregroundStyle(.secondary) }
+                            }.frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                                .background(exam.id == store.draft.id ? Brand.accent.opacity(0.12) : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+                        }.buttonStyle(.plain)
+                    }
+                }
+            }
+            Button(L("New exam"), systemImage: "plus") { request(.new) }
+        }.padding(18).frame(width: 210).background(Brand.surface.opacity(0.6))
+    }
+
+    private var quickEntryPanel: some View {
+        Surface {
+            VStack(alignment: .leading, spacing: 20) {
+                Text(L("Add a result")).font(AppType.headline)
+                Text(L(conduction.label) + " · " + (masked ? L("Masked") : L("Unmasked")))
+                    .font(AppType.caption).foregroundStyle(.secondary)
+                Picker(L("Ear"), selection: $quickEar) {
+                    Text(L("Left")).tag(AudiogramEar.left)
+                    Text(L("Right")).tag(AudiogramEar.right)
+                }.pickerStyle(.segmented).font(AppType.body)
+                Picker(L("Frequency · Hz"), selection: $quickFrequency) {
+                    ForEach(Audiogram.frequenciesHz, id: \.self) { Text(String($0)).tag($0) }
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(L("Hearing level · dB HL")).font(AppType.callout)
+                    TextField("—", text: $quickLevel).textFieldStyle(.roundedBorder)
+                        .accessibilityLabel(L("Hearing level · dB HL"))
+                }
+                Toggle(L("No response"), isOn: $quickNoResponse).toggleStyle(.checkbox)
+                Button(store.text(for: quickKey).isEmpty ? L("Add point") : L("Update point")) {
+                    guard (try? Audiogram.parseLevel(quickLevel, for: quickKey)) != nil else { return }
+                    store.setText(quickLevel, for: quickKey)
+                    store.setNoResponse(quickNoResponse, for: quickKey)
+                }.buttonStyle(.borderedProminent).font(AppType.body)
+                    .disabled((try? Audiogram.parseLevel(quickLevel, for: quickKey)) == nil)
+                    .accessibilityIdentifier("audiogram-add-point")
+                Text(L("Accepted range: −20 to 130 dB HL. Enter the values printed on your exam."))
+                    .font(AppType.caption).foregroundStyle(.secondary)
+                Divider()
+                Button(L("Advanced measurements…")) { advancedMeasurements = true }
+                Text(L("Air and bone conduction, masking and the full entry table."))
+                    .font(AppType.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 6) {
-                Label(L("Audiogram"), systemImage: "chart.xyaxis.line").font(.title.weight(.semibold))
+                Label(L("Audiograms"), systemImage: "chart.xyaxis.line").font(.system(size: 32, weight: .bold))
                 Text(L("Copy the values from your exam. Leave untested frequencies blank."))
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(AppType.callout).foregroundStyle(.secondary)
             }
             Spacer()
             Menu {
@@ -114,7 +190,7 @@ struct AudiogramEditorView: View {
             Button(L("Save exam")) {
                 if let exam = store.save() { onSaved?(exam) }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.borderedProminent).font(AppType.body)
             .keyboardShortcut("s", modifiers: .command)
             .disabled(store.loadFailed || store.validationError != nil)
             .accessibilityIdentifier("audiogram-save")
@@ -124,18 +200,18 @@ struct AudiogramEditorView: View {
     private var metadata: some View {
         HStack(alignment: .top, spacing: 20) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(L("Exam name")).font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                Text(L("Exam name")).font(AppType.caption.weight(.medium)).foregroundStyle(.secondary)
                 TextField(L("Exam name"), text: $store.draft.name).textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("audiogram-name")
             }.frame(maxWidth: .infinity)
             VStack(alignment: .leading, spacing: 6) {
-                Text(L("Exam date · optional")).font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                Text(L("Exam date · optional")).font(AppType.caption.weight(.medium)).foregroundStyle(.secondary)
                 TextField("YYYY-MM-DD", text: $store.draft.examDate).textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("audiogram-date")
             }.frame(width: 170)
             VStack(alignment: .trailing, spacing: 6) {
-                Text(L("Storage")).font(.caption.weight(.medium)).foregroundStyle(.secondary)
-                Label(L("This Mac only"), systemImage: "lock").font(.callout).padding(.top, 3)
+                Text(L("Storage")).font(AppType.caption.weight(.medium)).foregroundStyle(.secondary)
+                Label(L("This Mac only"), systemImage: "lock").font(AppType.callout).padding(.top, 3)
             }
         }
     }
@@ -143,20 +219,21 @@ struct AudiogramEditorView: View {
     private var graphPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(L("Hearing level · dB HL")).font(.callout.weight(.medium))
+                Text(L("Hearing level · dB HL")).font(AppType.callout.weight(.medium))
                 Spacer()
-                Text(L("%@ entries", String(describing: store.plottedThresholds.count))).font(.caption).foregroundStyle(.secondary)
+                Text(L("%@ entries", String(describing: store.plottedThresholds.count))).font(AppType.caption).foregroundStyle(.secondary)
             }
-            AudiogramPlot(thresholds: store.plottedThresholds).frame(height: 475)
+            AudiogramPlot(thresholds: store.plottedThresholds).frame(height: 420)
             HStack(spacing: 16) {
                 Label(L("Right"), systemImage: "circle").foregroundStyle(.red)
                 Label(L("Left"), systemImage: "xmark").foregroundStyle(.blue)
                 Text("↓ NR").foregroundStyle(.secondary)
-            }.font(.caption)
-            Text(L("Air: ○ / ×; masked: △ / □. Bone: < / >; masked: [ / ]. NR marks the presentation level when no response was recorded."))
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }.font(AppType.caption)
+            if advancedMeasurements { Text(L("Air: ○ / ×; masked: △ / □. Bone: < / >; masked: [ / ]. NR marks the presentation level when no response was recorded."))
+                .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
             if store.plottedThresholds.isEmpty {
-                Text(L("No exam values entered yet.")).font(.caption).foregroundStyle(.secondary)
+                Text(L("No exam values entered yet.")).font(AppType.caption).foregroundStyle(.secondary)
             }
         }
         .padding(16)
@@ -165,32 +242,33 @@ struct AudiogramEditorView: View {
 
     private var entryPanel: some View {
         VStack(alignment: .leading, spacing: 13) {
+            Button(L("Back to simple entry")) { conduction = .air; masked = false; advancedMeasurements = false }
             Picker(L("Measurement"), selection: $conduction) {
                 ForEach(AudiogramConduction.allCases, id: \.self) { Text(L($0.label)).tag($0) }
-            }.pickerStyle(.segmented)
+            }.pickerStyle(.segmented).font(AppType.body)
             Toggle(L("Masked measurements"), isOn: $masked).toggleStyle(.checkbox)
-                .font(.callout)
+                .font(AppType.callout)
             Text(L("Each condition is stored separately. NR = no response at the entered level."))
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Grid(alignment: .leading, horizontalSpacing: 15, verticalSpacing: 10) {
                 GridRow {
                     Text("Hz").frame(width: 42, alignment: .trailing)
                     Text(L("Right · dB HL")).foregroundStyle(.red)
                     Text(L("Left · dB HL")).foregroundStyle(.blue)
-                }.font(.caption.weight(.semibold))
+                }.font(AppType.caption.weight(.semibold))
                 Divider().gridCellColumns(3)
                 ForEach(Audiogram.frequenciesHz, id: \.self) { frequency in
                     GridRow {
-                        Text("\(frequency)").font(.callout.monospacedDigit()).frame(width: 42, alignment: .trailing)
+                        Text("\(frequency)").font(AppType.callout.monospacedDigit()).frame(width: 42, alignment: .trailing)
                         thresholdCell(.right, frequency: frequency)
                         thresholdCell(.left, frequency: frequency)
                     }
                 }
             }
             Text(L("Accepted range: −20 to 130 dB HL. Enter the values printed on your exam."))
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Button(L("Clear thresholds…"), role: .destructive) { confirmClear = true }
-                .font(.caption).disabled(store.draft.cells.isEmpty)
+                .font(AppType.caption).disabled(store.draft.cells.isEmpty)
         }
         .padding(16)
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14))
@@ -203,12 +281,12 @@ struct AudiogramEditorView: View {
         return HStack(spacing: 5) {
             TextField("—", text: Binding(get: { store.text(for: key) }, set: { store.setText($0, for: key) }))
                 .textFieldStyle(.roundedBorder).frame(width: 60)
-                .multilineTextAlignment(.trailing).font(.callout.monospacedDigit())
+                .multilineTextAlignment(.trailing).font(AppType.callout.monospacedDigit())
                 .overlay(RoundedRectangle(cornerRadius: 5).stroke(invalid ? Color.orange : Color.clear))
                 .accessibilityLabel(L("%@, dB HL", String(describing: key.label)))
                 .accessibilityIdentifier("audiogram-\(ear.rawValue)-\(conduction.rawValue)-\(frequency)-\(masked ? "masked" : "unmasked")")
             Toggle("NR", isOn: Binding(get: { store.noResponse(for: key) }, set: { store.setNoResponse($0, for: key) }))
-                .toggleStyle(.checkbox).font(.caption)
+                .toggleStyle(.checkbox).font(AppType.caption)
                 .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .accessibilityLabel(L("%@, no response", String(describing: key.label)))
         }
@@ -216,26 +294,26 @@ struct AudiogramEditorView: View {
 
     private var notes: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(L("Exam notes")).font(.callout.weight(.medium))
+            Text(L("Exam notes")).font(AppType.callout.weight(.medium))
             TextEditor(text: $store.draft.notes)
-                .font(.body).scrollContentBackground(.hidden).padding(6)
+                .font(AppType.body).scrollContentBackground(.hidden).padding(6)
                 .frame(height: 75)
                 .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary))
                 .accessibilityLabel(L("Exam notes"))
             Text(L("Save keeps this exam on this Mac and makes it available as a reference for your sound presets."))
-                .font(.caption).foregroundStyle(.secondary)
+                .font(AppType.caption).foregroundStyle(.secondary)
         }
     }
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let error = store.error ?? store.validationError {
-                Label(M(error), systemImage: "exclamationmark.circle").font(.callout).foregroundStyle(.orange)
+                Label(M(error), systemImage: "exclamationmark.circle").font(AppType.callout).foregroundStyle(.orange)
             } else if !store.status.isEmpty {
-                Label(M(store.status), systemImage: "checkmark.circle").font(.callout).foregroundStyle(.secondary)
+                Label(M(store.status), systemImage: "checkmark.circle").font(AppType.callout).foregroundStyle(.secondary)
             } else if store.isDirty {
-                Text(L("Unsaved changes")).font(.caption).foregroundStyle(.secondary)
+                Text(L("Unsaved changes")).font(AppType.caption).foregroundStyle(.secondary)
             }
             HStack {
                 Button(L("Import JSON…")) { request(.importFile) }
@@ -262,7 +340,7 @@ struct AudiogramEditorView: View {
         return VStack(alignment: .leading, spacing: 18) {
             Text(L("Export HIMSA audiogram")).font(.title2.weight(.semibold))
             Text(L("Choose the measurement method recorded in your exam. Unknown details stay unknown."))
-                .font(.callout).foregroundStyle(.secondary)
+                .font(AppType.callout).foregroundStyle(.secondary)
             Picker(L("Test signal"), selection: $himsaSignal) {
                 ForEach(HIMSAAudiogramExport.Signal.allCases, id: \.self) { Text(L($0.label)).tag($0) }
             }
@@ -275,10 +353,10 @@ struct AudiogramEditorView: View {
             if hasMasked {
                 Label(L("HIMSA export needs actual masking levels, which are not stored yet. JSON keeps all masked measurements."),
                       systemImage: "info.circle")
-                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .font(AppType.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Text(L("Exports entered measurements as Audiogram 502 XML. Exam name, date and notes stay in the JSON record. Import into Noah depends on a compatible audiometry module."))
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button(L("Close export options")) { showingHIMSAExport = false }
                 Spacer()
@@ -290,7 +368,7 @@ struct AudiogramEditorView: View {
                         exporting = true
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.borderedProminent).font(AppType.body)
                 .disabled(hasMasked || (hasAir && himsaTransducer == nil))
             }
         }.padding(20).frame(maxWidth: 700, alignment: .leading)
@@ -337,7 +415,7 @@ private struct AudiogramPlot: View {
                 let y = plot.minY + Double(level + 20) / 150 * plot.height
                 var path = Path(); path.move(to: CGPoint(x: plot.minX, y: y)); path.addLine(to: CGPoint(x: plot.maxX, y: y))
                 context.stroke(path, with: .color(level == 0 ? Color.primary.opacity(0.35) : grid), lineWidth: level == 0 ? 1.3 : 0.7)
-                context.draw(Text("\(level)").font(.system(size: 9)).foregroundStyle(.secondary),
+                context.draw(Text("\(level)").font(.system(size: 13)).foregroundStyle(.secondary),
                              at: CGPoint(x: plot.minX - 7, y: y), anchor: .trailing)
             }
             for frequency in Audiogram.frequenciesHz {
@@ -348,10 +426,10 @@ private struct AudiogramPlot: View {
                 let label = frequency >= 1000
                     ? (Double(frequency) / 1000).formatted(.number.locale(Localization.shared.formattingLocale).precision(.fractionLength(0...1))) + "k"
                     : String(frequency)
-                context.draw(Text(label).font(.system(size: 9)).foregroundStyle(.secondary),
+                context.draw(Text(label).font(.system(size: 13)).foregroundStyle(.secondary),
                              at: CGPoint(x: x, y: plot.maxY + (interoctave ? 20 : 10)))
             }
-            context.draw(Text(L("Frequency · Hz")).font(.system(size: 10)).foregroundStyle(.secondary),
+            context.draw(Text(L("Frequency · Hz")).font(.system(size: 13)).foregroundStyle(.secondary),
                          at: CGPoint(x: plot.midX, y: plot.maxY + 34))
             for threshold in thresholds.sorted(by: { $0.key.masked && !$1.key.masked }) {
                 guard let normalized = Audiogram.chartPosition(frequencyHz: threshold.key.frequencyHz, levelDBHL: threshold.levelDBHL) else { continue }

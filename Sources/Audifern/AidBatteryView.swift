@@ -4,12 +4,13 @@ struct AidBatteryView: View {
     @EnvironmentObject private var preferences: AppPreferences
     @ObservedObject var store: BluetoothStore
     let aid: AidConnection
+    var compact = false
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 6) {
             if let percentage = aid.battery {
                 Label("\(percentage)%", systemImage: batterySymbol(percentage))
-                    .font(.callout.monospacedDigit())
+                    .font(AppType.callout.monospacedDigit())
                     .foregroundStyle(percentage < 20 ? Color.orange : Color.primary)
                     .accessibilityIdentifier("battery-\(aid.sideLabel.lowercased())-percentage")
             } else { Text(L("Battery —")).foregroundStyle(.secondary) }
@@ -18,7 +19,9 @@ struct AidBatteryView: View {
             } else if aid.batteryTelemetry?.isCharging == true {
                 Label(L("Charging"), systemImage: "bolt.fill").foregroundStyle(.secondary)
             } else if let seconds = aid.estimatedTimeLeftSeconds, let duration = duration(seconds) {
-                Text(L("Estimated time left: %@", String(describing: duration))).foregroundStyle(.secondary)
+                Text(compact ? L("About %@ left", duration) : L("Estimated time left: %@", String(describing: duration))).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(L("Estimated time left: %@", String(describing: duration)))
                     .accessibilityIdentifier("battery-\(aid.sideLabel.lowercased())-time")
                     .help(L("Calculated from the hearing aid’s reported remaining charge and measured current draw"))
             } else {
@@ -31,7 +34,7 @@ struct AidBatteryView: View {
                         .accessibilityLabel(L("Read %@ battery time", L(aid.sideLabel)))
                 }
             }
-        }.font(.caption)
+        }.font(AppType.caption)
     }
 
     private func batterySymbol(_ percentage: Int) -> String {

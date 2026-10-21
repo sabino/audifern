@@ -38,15 +38,15 @@ final class FittingWorkspaceStore: ObservableObject {
         reloadHistory()
     }
 
-    func save() {
-        guard !preview, !loadFailed else { return }
+    @discardableResult func save() -> Bool {
+        guard !preview, !loadFailed else { return false }
         do {
             // Preserve an existing legacy plan before replacing it. Refuse a
             // concurrent disk edit instead of overwriting a newly changed file.
             let previous = try currentSavedPlan()
             if let previous { try preserve(previous, reason: .savedPlan) }
             if let previous, FittingPlanComparison(previous, draft).isUnchanged {
-                reloadHistory(); status = "No changes to save. Your saved plan is preserved."; return
+                reloadHistory(); status = "No changes to save. Your saved plan is preserved."; return true
             }
             var updated = draft; updated.updatedAt = Date()
             let data = try updated.encoded()
@@ -58,9 +58,11 @@ final class FittingWorkspaceStore: ObservableObject {
             lastSavedData = readback
             draft = saved; canLoadDraft = true; status = "Fitting plan saved on this Mac. No settings were sent to the hearing aids."
             reloadHistory()
+            return true
         } catch {
             reloadHistory()
             status = "The plan could not be saved. The last saved copy has been preserved."
+            return false
         }
     }
 

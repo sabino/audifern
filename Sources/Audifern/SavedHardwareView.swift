@@ -6,23 +6,23 @@ struct SavedHardwareView: View {
 
     var body: some View {
         Surface {
-            DisclosureGroup {
+            ExpandableSection {
                 VStack(alignment: .leading, spacing: 12) {
                     LabeledContent(L("Instrument style"), value: code(profile.hardware.audiologicalStyle))
                     LabeledContent(L("Receiver connection"), value: code(profile.hardware.hearingInstrumentInterface))
                     LabeledContent(L("Replaceable receiver"), value: replaceableReceiver)
                     LabeledContent(L("Hardware fitting category"), value: code(profile.hardware.fittingLevel))
                     Text(L("Reported hardware categories help identify the device. They do not verify receiver size, physical parts or fitting compatibility."))
-                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     Divider()
                     LabeledContent(L("HIID format"), value: "\(profile.hiidMajor).\(profile.hiidMinor)")
                     LabeledContent(L("Model identifier"), value: String(profile.product.modelUID))
                     LabeledContent(L("Generic model identifier"), value: String(profile.product.genericModelUID))
                     LabeledContent(L("Hardware configuration"), value:
                         "\(profile.hardwarePlatformConfigurationUID) · v\(profile.hardwarePlatformConfigurationVersion)")
-                }.font(.callout).textSelection(.enabled).padding(.top, 14)
+                }.font(AppType.callout).textSelection(.enabled).padding(.top, 14)
             } label: {
-                Label(L("Hardware identification"), systemImage: "cpu").font(.headline)
+                Label(L("Hardware identification"), systemImage: "cpu").font(AppType.headline)
             }
         }.accessibilityIdentifier("saved-hardware-identification")
     }

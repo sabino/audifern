@@ -27,7 +27,7 @@ struct LinkedControlsView: View {
                     .accessibilityLabel(L("Decrease both microphone levels"))
                 VStack(spacing: 3) {
                     Text(level).font(.system(size: 36, weight: .semibold)).monospacedDigit().accessibilityIdentifier("linked-volume-value")
-                    Text(L("Volume")).font(.caption).foregroundStyle(.secondary)
+                    Text(L("Volume")).font(AppType.caption).foregroundStyle(.secondary)
                 }.frame(minWidth: 90)
                 Button { store.applyLinkedVolume(by: 1) } label: { Image(systemName: "plus").font(.title2).frame(width: 56, height: 56) }
                     .buttonStyle(RoundControlButtonStyle())
@@ -37,9 +37,9 @@ struct LinkedControlsView: View {
             Button { store.setLinkedMuted(!(controls?.allMuted ?? false)) } label: {
                 Label(controls?.allMuted == true ? L("Unmute") : L("Mute"), systemImage: controls?.allMuted == true ? "speaker.wave.2" : "speaker.slash")
                     .frame(minWidth: 110, minHeight: 24)
-            }.buttonStyle(.bordered).controlSize(.large).disabled(!canControl || controls == nil)
+            }.buttonStyle(.bordered).font(AppType.body).controlSize(.large).disabled(!canControl || controls == nil)
                 .accessibilityIdentifier("linked-mute")
-            Text(L("Volume steps preserve your left/right balance.")).font(.caption).foregroundStyle(.secondary)
+            Text(L("Volume steps preserve your left/right balance.")).font(AppType.caption).foregroundStyle(.secondary)
         }
     }
 }

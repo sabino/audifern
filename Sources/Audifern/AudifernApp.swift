@@ -84,11 +84,14 @@ private struct CompanionMenuBarView: View {
         }
         Divider()
         Button(L("Open Audifern")) { showMain() }
-        Button(L("Sound…")) { navigation.page = .sound; showMain() }
-        Button(L("Programs…")) { navigation.page = .programs; showMain() }
-        Button(L("Device information…")) { navigation.page = .devices; showMain() }
-        Button(L("Audiogram…")) { navigation.page = .audiogram; showMain() }
-        Button(L("Settings…")) { navigation.page = .settings; showMain() }
+        Button(L("Sound…")) { navigation.show(.hearingAids); showMain() }
+        Button(L("Equalizers…")) { navigation.show(.sound); showMain() }
+        Button(L("Presets…")) { navigation.show(.presets); showMain() }
+        Button(L("Programs…")) { navigation.show(.programs); showMain() }
+        Button(L("Device information…")) { navigation.show(.devices); showMain() }
+        Button(L("Audiogram…")) { navigation.show(.audiogram); showMain() }
+        Button(L("Settings…")) { navigation.show(.settings); showMain() }
+        Button(L("About Audifern")) { navigation.present(.about); showMain() }
         if store.connectedCount < 2 && store.pairCandidateIDs.count == 2 {
             Divider()
             Button(L("Connect both hearing aids")) { store.connectPair() }.disabled(!store.isPoweredOn)
@@ -110,6 +113,9 @@ private struct CompanionCommands: Commands {
     @ObservedObject var preferences: AppPreferences
     @Environment(\.openWindow) private var openWindow
     var body: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button(L("About Audifern")) { navigation.present(.about); showMain() }
+        }
         CommandGroup(replacing: .newItem) {
             Button(L("Open Audifern")) { show(.hearingAids) }.keyboardShortcut("1", modifiers: .command)
         }
@@ -118,7 +124,10 @@ private struct CompanionCommands: Commands {
         }
     }
     private func show(_ page: AppPage) {
-        navigation.page = page
+        navigation.show(page)
+        showMain()
+    }
+    private func showMain() {
         openWindow(id: "main")
         NSApplication.shared.activate(ignoringOtherApps: true)
     }

@@ -2,7 +2,16 @@
 
 Audifern controls hearing aids directly over local Bluetooth. It has no account,
 analytics SDK, cloud sync or automatic diagnostic-upload service. Opening an
-external help link uses your browser and the linked site's privacy policy.
+external help or donation link uses your browser and the linked site's privacy
+policy. The About screen does not contact a payment provider until you open its
+link. Its QR codes are generated locally.
+
+Contributions are voluntary. The current app does not register a donor, match a
+payment to an installation, or send a Mac/hearing-aid identifier to a payment
+provider. Copying a receiving address uses the local clipboard. Cryptocurrency
+addresses in the contribution catalog are public receiving destinations supplied
+by the maintainer. Payment providers and public blockchains have their own data
+visibility; the app cannot make a payment anonymous.
 
 ## Information the app uses
 

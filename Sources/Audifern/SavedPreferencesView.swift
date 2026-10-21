@@ -15,26 +15,26 @@ struct SavedPreferencesView: View {
     var body: some View {
         Surface {
             VStack(alignment: .leading, spacing: 16) {
-                Label(L("Saved buttons and notifications"), systemImage: "hand.tap").font(.headline)
-                Text(L(OticonSavedPreferences.limits)).font(.caption).foregroundStyle(.secondary)
+                Label(L("Saved buttons and notifications"), systemImage: "hand.tap").font(AppType.headline)
+                Text(L(OticonSavedPreferences.limits)).font(AppType.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                DisclosureGroup(L("Tap actions by listening context"), isExpanded: $tapsExpanded) {
+                ExpandableSection(L("Tap actions by listening context"), isExpanded: $tapsExpanded) {
                     Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 12) {
                         GridRow {
                             Text(L("Context")).foregroundStyle(.secondary)
                             Text(L("Single tap")).foregroundStyle(.secondary)
                             Text(L("Double tap")).foregroundStyle(.secondary)
-                        }.font(.caption.weight(.medium))
+                        }.font(AppType.caption.weight(.medium))
                         ForEach(OticonSavedPreferences.UseCase.allCases, id: \.self) { context in
                             GridRow {
-                                Text(L(context.label)).font(.callout.weight(.medium))
+                                Text(L(context.label)).font(AppType.callout.weight(.medium))
                                 Text(tap(.singleTap, context: context))
                                 Text(tap(.doubleTap, context: context))
                             }
                         }
-                    }.font(.callout).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 14)
+                    }.font(AppType.callout).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 14)
                 }
-                DisclosureGroup(L("Hearing-aid notification sounds"), isExpanded: $indicatorsExpanded) {
+                ExpandableSection(L("Hearing-aid notification sounds"), isExpanded: $indicatorsExpanded) {
                     VStack(alignment: .leading, spacing: 12) {
                         ForEach(preferences.audibleIndicators, id: \.event) { indicator in
                             valueRow(L(indicator.event.label), value: choice(indicator.mode))
@@ -44,10 +44,10 @@ struct SavedPreferencesView: View {
                             valueRow(L(setting.kind.label), value: choice(setting.value))
                         }
                         Text(L("Low, medium and high are saved categories. No notification or test tone is played when you inspect them."))
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    }.font(.callout).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 14)
+                            .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }.font(AppType.callout).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 14)
                 }
-            }.font(.callout)
+            }.font(AppType.callout)
         }.accessibilityIdentifier("saved-preferences")
     }
 

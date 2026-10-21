@@ -6,6 +6,7 @@ import SwiftUI
 struct DeviceExplorerView: View {
     @ObservedObject var store: BluetoothStore
     var technicalOnly = false
+    var targetID: UUID? = nil
     @EnvironmentObject private var preferences: AppPreferences
     @State private var showRegistry = false
     @State private var showGATT = false
@@ -28,14 +29,17 @@ struct DeviceExplorerView: View {
                 if technicalOnly { VStack(alignment: .leading, spacing: 7) {
                     Text(L("Device information")).font(.system(size: 29, weight: .semibold, design: .rounded))
                     Text(L("Versions, battery data and diagnostics reported independently by each hearing aid."))
-                        .font(.callout).foregroundStyle(.secondary)
+                        .font(AppType.callout).foregroundStyle(.secondary)
                 } }
                 if aids.isEmpty {
                     ContentUnavailableView(L("Connect your hearing aids"), systemImage: "ear.badge.waveform",
                                            description: Text(L("Connect them in Hearing aids to read their device information.")))
                         .frame(minHeight: 300)
                 } else {
-                    if !technicalOnly { LazyVGrid(columns: [GridItem(.flexible(minimum: 300)), GridItem(.flexible(minimum: 300))], alignment: .leading, spacing: 20) {
+                    if let targetID, let aid = store.connections[targetID] {
+                        PageHeading(title: L("%@ hearing aid", L(aid.sideLabel)), subtitle: L("Details reported by this hearing aid.")) { EmptyView() }
+                        deviceCard(aid)
+                    } else if !technicalOnly { LazyVGrid(columns: [GridItem(.flexible(minimum: 300)), GridItem(.flexible(minimum: 300))], alignment: .leading, spacing: 20) {
                         ForEach(aids) { deviceCard($0) }
                     } }
                     if technicalOnly {
@@ -43,13 +47,13 @@ struct DeviceExplorerView: View {
                         ForEach(aids) { aid in Text("\(L(aid.sideLabel)) · \(aid.model ?? aid.name)").tag(Optional(aid.id)) }
                     }.frame(maxWidth: 420).accessibilityIdentifier("device-inspection-target")
                     if let aid = selected {
-                        DisclosureGroup(isExpanded: $showRegistry) { registry(aid).padding(.top, 12) } label: {
+                        ExpandableSection(isExpanded: $showRegistry) { registry(aid).padding(.top, 12) } label: {
                             Label(L("Advertised transport services"), systemImage: "list.bullet.rectangle")
                         }
-                        DisclosureGroup(isExpanded: $showGATT) { gatt(aid).padding(.top, 12) } label: {
+                        ExpandableSection(isExpanded: $showGATT) { gatt(aid).padding(.top, 12) } label: {
                             Label(L("Bluetooth service inventory"), systemImage: "antenna.radiowaves.left.and.right")
                         }
-                        DisclosureGroup(isExpanded: $showFirmware) { firmwareAccess(aid).padding(.top, 12) } label: {
+                        ExpandableSection(isExpanded: $showFirmware) { firmwareAccess(aid).padding(.top, 12) } label: {
                             Label(L("Firmware inspection"), systemImage: "cpu")
                         }
                     }
@@ -63,19 +67,20 @@ struct DeviceExplorerView: View {
         VStack(alignment: .leading, spacing: 17) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Label(L(aid.sideLabel), systemImage: "ear").font(.title3.weight(.semibold))
-                    Text(L(aid.phase.label)).font(.caption).foregroundStyle(aid.isConnected ? Color.teal : Color.secondary)
+                    Label(L(aid.sideLabel), systemImage: "ear").font(AppType.subheading.weight(.semibold))
+                    Text(L(aid.phase.label)).font(AppType.caption).foregroundStyle(aid.isConnected ? Color.teal : Color.secondary)
                 }
                 Spacer()
                 AidBatteryView(store: store, aid: aid)
             }
             if let error = aid.error {
                 Label(M(DiagnosticPrivacy.redact(error, identifiers: [aid.id.uuidString, aid.name, aid.serialNumber].compactMap { $0 })),
-                      systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.orange)
+                      systemImage: "exclamationmark.circle").font(AppType.caption).foregroundStyle(.orange)
             }
+            if targetID == aid.id { HearingAidArtwork(right: aid.sideLabel == "Right").frame(maxWidth: .infinity).padding(.vertical, 18) }
             DeviceDetailsView(store: store, aid: aid)
             Divider()
-            Label(L("Software components"), systemImage: "shippingbox").font(.callout.weight(.medium))
+            Label(L("Software components"), systemImage: "shippingbox").font(AppType.callout.weight(.medium))
             if let metadata = aid.deviceMetadata {
                 version("Release package", metadata.releasePackageVersion)
                 version("Primary application", metadata.primaryAppVersion)
@@ -84,34 +89,34 @@ struct DeviceExplorerView: View {
                 version("Identification format", metadata.hiidVersion)
                 if !metadata.invalidFields.isEmpty {
                     Text(L("Some reported fields could not be decoded: %@.", String(describing: metadata.invalidFields.joined(separator: ", "))))
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(AppType.caption).foregroundStyle(.secondary)
                 }
             } else {
                 Text(L("Read additional information to load the component versions reported by this aid."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(AppType.caption).foregroundStyle(.secondary)
             }
             if let diagnostics = aid.coreDumpInfo {
                 Divider()
-                Label(L("Stored diagnostics"), systemImage: "doc.text.magnifyingglass").font(.callout.weight(.medium))
+                Label(L("Stored diagnostics"), systemImage: "doc.text.magnifyingglass").font(AppType.callout.weight(.medium))
                 version(L("Stored crash dumps"), String(diagnostics.storedCrashDumps))
                 version(L("Last dump counter"), String(diagnostics.lastDumpCounter))
             }
             if let health = aid.batteryHealth {
                 Divider()
-                DisclosureGroup(L("Battery diagnostic counters")) {
+                ExpandableSection(L("Battery diagnostic counters")) {
                     VStack(alignment: .leading, spacing: 8) {
                         version("Lifespan counter", String(health.lifespan))
                         version("Lifespan threshold", String(health.lifespanThreshold))
                         version("Average current draw", String(health.slowAverageCurrentDraw))
                         version("Full-charge capacity", String(health.fullChargeCapacity))
                         Text(L("Raw device values. Units and their conversion into a battery-health percentage have not been established. Remaining time is shown beside the battery level."))
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(AppType.caption).foregroundStyle(.secondary)
                     }.padding(.top, 10)
-                }.font(.callout)
+                }.font(AppType.callout)
             }
             HStack(spacing: 10) {
                 Button(L("Read additional information")) { store.refreshDeviceMetadata(aid.id) }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.borderedProminent).font(AppType.body)
                     .disabled(!aid.isConnected || aid.actionPending || aid.advancedBusy || aid.groupActionPending || store.isDemo)
                     .accessibilityLabel(L("Read %@ additional information", L(aid.sideLabel)))
                 if aid.advancedBusy { ProgressView().controlSize(.small) }
@@ -121,22 +126,22 @@ struct DeviceExplorerView: View {
                     .disabled(!aid.isConnected || aid.actionPending || aid.advancedBusy || aid.groupActionPending || store.isDemo)
                     .accessibilityLabel(L("Refresh %@ device information", L(aid.sideLabel)))
             }
-            if let status = aid.deviceMetadataStatus { Text(M(status)).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
+            if let status = aid.deviceMetadataStatus { Text(M(status)).font(AppType.caption).foregroundStyle(.secondary).textSelection(.enabled) }
         }.padding(20).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 18))
     }
 
     private func version(_ label: String, _ value: String?) -> some View {
-        LabeledContent(L(label)) { Text(value ?? L("Not reported")).font(.caption.monospaced()).textSelection(.enabled) }
-            .font(.caption)
+        LabeledContent(L(label)) { Text(value ?? L("Not reported")).font(AppType.caption.monospaced()).textSelection(.enabled) }
+            .font(AppType.caption)
     }
 
     private func registry(_ aid: AidConnection) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L("The aid advertises these service IDs and versions. Their presence does not establish that every operation is supported by this app or permitted in a consumer session."))
-                .font(.caption).foregroundStyle(.secondary)
+                .font(AppType.caption).foregroundStyle(.secondary)
             if aid.advancedServices.isEmpty {
-                Text(L("Read additional information to load the registry.")).font(.callout).foregroundStyle(.secondary)
+                Text(L("Read additional information to load the registry.")).font(AppType.callout).foregroundStyle(.secondary)
             } else {
                 ForEach(aid.advancedServices.sorted { $0.id < $1.id }, id: \.id) { service in
                     HStack(spacing: 18) {
@@ -144,7 +149,7 @@ struct DeviceExplorerView: View {
                         Text(String(format: "%08X", service.id)).monospaced().foregroundStyle(.secondary)
                         Text("\(service.major).\(service.minor)").monospaced().frame(width: 45, alignment: .trailing)
                         Text(service.isAvailable ? L("Advertised") : L("Unavailable")).foregroundStyle(.secondary).frame(width: 88, alignment: .trailing)
-                    }.font(.caption)
+                    }.font(AppType.caption)
                     Divider()
                 }
             }
@@ -159,33 +164,33 @@ struct DeviceExplorerView: View {
                     : aid.advancedServices.contains { $0.id == 0x0200000A && $0.isAvailable } ? L("Advertised") : L("Not reported"))
             version("Complete installed-image readout", L("Not established"))
             Text(L("The inspected update contracts describe uploading firmware packages. Version and diagnostic getters are available separately; no verified command for downloading the complete installed firmware image has been found in those contracts."))
-                .font(.callout).foregroundStyle(.secondary)
+                .font(AppType.callout).foregroundStyle(.secondary)
         }.frame(maxWidth: 780, alignment: .leading)
     }
 
     private func gatt(_ aid: AidConnection) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(L("%@ services · %@ characteristics discovered. Values are read only for recognized controls.", String(describing: aid.services.count), String(describing: aid.services.reduce(0) { $0 + $1.characteristics.count })))
-                .font(.caption).foregroundStyle(.secondary)
+                .font(AppType.caption).foregroundStyle(.secondary)
             ForEach(aid.services) { service in
-                DisclosureGroup {
+                ExpandableSection {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(service.characteristics) { characteristic in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(ReadOnlyInspection.name(service: service.uuid, characteristic: characteristic.uuid) ?? characteristic.uuid)
-                                    .font(.callout.weight(.medium)).textSelection(.enabled)
-                                Text(characteristic.uuid).font(.caption2.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
-                                Text(characteristic.properties).font(.caption).foregroundStyle(.secondary)
+                                    .font(AppType.callout.weight(.medium)).textSelection(.enabled)
+                                Text(characteristic.uuid).font(AppType.small.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                                Text(characteristic.properties).font(AppType.caption).foregroundStyle(.secondary)
                                 if let value = characteristic.value {
                                     Text(visibleValue(value, service: service.uuid, characteristic: characteristic.uuid))
-                                        .font(.caption.monospaced()).textSelection(.enabled)
+                                        .font(AppType.caption.monospaced()).textSelection(.enabled)
                                 }
                             }
                             Divider()
                         }
                     }.padding(.top, 10)
                 } label: {
-                    Text(L("%@ · %@ characteristics", String(describing: bluetoothServiceName(service.uuid)), String(describing: service.characteristics.count))).font(.callout)
+                    Text(L("%@ · %@ characteristics", String(describing: bluetoothServiceName(service.uuid)), String(describing: service.characteristics.count))).font(AppType.callout)
                 }
             }
         }

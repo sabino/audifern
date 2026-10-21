@@ -1,7 +1,7 @@
 import CompanionCore
 import SwiftUI
 
-/// Advanced sound and fitted-program controls. Daily volume lives in Listen.
+/// Consumer equalizers and fitted-program selection. Daily volume lives in Sound.
 struct HearingAidControlsView: View {
     enum Mode { case sound, programs }
     @ObservedObject var store: BluetoothStore
@@ -12,8 +12,18 @@ struct HearingAidControlsView: View {
     @AppStorage("linkedHearingAidStreamingEQ") private var linkedStreaming = false
     @AppStorage("linkedHearingAidStreamingVolume") private var linkedStreamingVolume = false
     @AppStorage("linkedHearingAidTinnitusVolume") private var linkedTinnitusVolume = false
-    @State private var showStreamingVolume = false
-    @State private var showTinnitus = false
+    enum SoundSection: String, CaseIterable, Identifiable {
+        case microphone, streaming, tinnitus
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .microphone: L("Microphone")
+            case .streaming: L("Streaming")
+            case .tinnitus: L("Tinnitus relief")
+            }
+        }
+    }
+    @State private var soundSection: SoundSection = .microphone
     @State private var restoreRequest: RestoreRequest?
     private struct RestoreRequest: Identifiable {
         let id = UUID()
@@ -27,68 +37,73 @@ struct HearingAidControlsView: View {
     private var canLink: Bool { aids.count == 2 && Set(aids.map(\.id)) == Set(store.connectedPair.map(\.id)) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            if aids.count == 2 {
-                Surface {
-                    VStack(spacing: 22) {
+        VStack(alignment: .leading, spacing: 20) {
+            if mode == .sound {
+                Picker(L("Sound source"), selection: $soundSection) {
+                    ForEach(SoundSection.allCases) { Text($0.title).tag($0) }
+                }.pickerStyle(.segmented).font(AppType.body).accessibilityIdentifier("equalizer-source")
+            }
+            Surface {
+                VStack(spacing: 22) {
+                    if mode == .programs && aids.count == 2 {
                         EarSettingsRow { sideHeading(aids[0]) } center: { EmptyView() } right: { sideHeading(aids[1]) }
-                        Divider()
-                        if mode == .programs {
+                    } else if mode == .programs, let aid = aids.first { sideHeading(aid) }
+                    if mode == .programs { Divider() }
+                    if mode == .programs {
+                        if aids.count == 2 {
                             EarSettingsRow {
-                                program(aids[0], ids: linkedPrograms && canLink ? aids.map(\.id) : [aids[0].id])
+                                ProgramSelectionView(store: store, aid: aids[0], targetIDs: linkedPrograms && canLink ? aids.map(\.id) : [aids[0].id])
                             } center: {
                                 EarLinkButton(title: "Program", linked: $linkedPrograms, available: canLink && !commonPrograms(aids).isEmpty, identifier: "link-program", accent: Brand.accent)
                             } right: {
-                                program(aids[1], ids: linkedPrograms && canLink ? aids.map(\.id) : [aids[1].id])
+                                ProgramSelectionView(store: store, aid: aids[1], targetIDs: linkedPrograms && canLink ? aids.map(\.id) : [aids[1].id])
                             }
-                        } else {
+                        } else if let aid = aids.first {
+                            ProgramSelectionView(store: store, aid: aid, targetIDs: [aid.id])
+                        }
+                    } else {
+                        switch soundSection {
+                        case .microphone:
                             PairedEqualizerView(store: store, aids: aids, microphone: true, linked: $linkedMicrophone, canLink: canLink)
-                            Divider()
-                            DisclosureGroup(L("Streaming-source volume"), isExpanded: $showStreamingVolume) {
-                                AuxiliaryVolumeSectionView(store: store, aids: aids, source: .streaming, linked: $linkedStreamingVolume).padding(.top, 12)
-                            }
+                        case .streaming:
                             PairedEqualizerView(store: store, aids: aids, microphone: false, linked: $linkedStreaming, canLink: canLink)
                             Divider()
-                            DisclosureGroup(isExpanded: $showTinnitus) {
-                                AuxiliaryVolumeSectionView(store: store, aids: aids, source: .tinnitus, linked: $linkedTinnitusVolume).padding(.top, 12)
-                            } label: { Label(L("Tinnitus relief"), systemImage: "waveform.path").foregroundStyle(.orange).font(.headline) }
-                            Text(L("Tinnitus controls require a program already fitted for you. Reported ranges alone do not enable therapy."))
-                                .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
-                            Divider()
-                            HStack {
-                                Text(L("Restores consumer adjustments. Your fitted programs stay unchanged.")).font(.caption).foregroundStyle(.secondary)
-                                Spacer()
-                                Button(L("Restore both ears…"), systemImage: "arrow.counterclockwise") {
-                                    restoreRequest = .init(ids: aids.map(\.id), target: L("Both ears"), scope: .all)
-                                }.disabled(!canRestore(aids.map(\.id), scope: .all)).accessibilityIdentifier("restore-both-ears")
-                            }
-                            EarSettingsRow { restoreMenu(aids[0]) } center: { EmptyView() } right: { restoreMenu(aids[1]) }
+                            AuxiliaryVolumeSectionView(store: store, aids: aids, source: .streaming, linked: $linkedStreamingVolume)
+                        case .tinnitus:
+                            VStack(alignment: .leading, spacing: 16) {
+                                Label(L("Tinnitus relief"), systemImage: "waveform.path").font(AppType.headline).foregroundStyle(.orange)
+                                Text(L("Tinnitus controls require a program already fitted for you. Reported ranges alone do not enable therapy."))
+                                    .font(AppType.callout).foregroundStyle(.secondary)
+                                AuxiliaryVolumeSectionView(store: store, aids: aids, source: .tinnitus, linked: $linkedTinnitusVolume)
+                            }.padding(18).background(Color.orange.opacity(0.055), in: RoundedRectangle(cornerRadius: 14))
                         }
                     }
                 }
-            } else {
-                ForEach(aids) { aid in
-                    Surface {
-                        VStack(alignment: .leading, spacing: 20) {
-                            sideHeading(aid)
-                            if mode == .programs { program(aid, ids: [aid.id]) }
-                            else {
-                                PairedEqualizerView(store: store, aids: [aid], microphone: true,
-                                    linked: .constant(false), canLink: false)
-                                Divider()
-                                PairedEqualizerView(store: store, aids: [aid], microphone: false,
-                                    linked: .constant(false), canLink: false)
-                                AuxiliaryVolumeSectionView(store: store, aids: [aid], source: .streaming, linked: .constant(false))
-                                AuxiliaryVolumeSectionView(store: store, aids: [aid], source: .tinnitus, linked: .constant(false))
-                                restoreMenu(aid)
+            }
+            if mode == .sound {
+                Surface {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Label(L("Restore sound defaults"), systemImage: "arrow.counterclockwise").font(AppType.headline)
+                                Text(L("Restores consumer adjustments. Your fitted programs stay unchanged.")).font(AppType.caption).foregroundStyle(.secondary)
                             }
+                            Spacer()
+                            if aids.count == 2 {
+                                Button(L("Restore both ears…")) {
+                                    restoreRequest = .init(ids: aids.map(\.id), target: L("Both ears"), scope: .all)
+                                }.disabled(!canRestore(aids.map(\.id), scope: .all)).accessibilityIdentifier("restore-both-ears")
+                            }
+                        }
+                        HStack {
+                            ForEach(aids) { aid in restoreMenu(aid); Spacer(minLength: 0) }
                         }
                     }
                 }
             }
             if let status = store.linkedActionStatus {
                 Label(M(status), systemImage: store.linkedActionFailed ? "exclamationmark.circle" : "checkmark.circle")
-                    .font(.caption).foregroundStyle(store.linkedActionFailed ? Color.orange : .secondary)
+                    .font(AppType.caption).foregroundStyle(store.linkedActionFailed ? Color.orange : .secondary)
             }
         }
         .alert(L("Restore sound defaults?"), isPresented: Binding(get: { restoreRequest != nil }, set: { if !$0 { restoreRequest = nil } }), presenting: restoreRequest) { request in
@@ -100,9 +115,9 @@ struct HearingAidControlsView: View {
     }
     private func sideHeading(_ aid: AidConnection) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            Label(L(aid.sideLabel), systemImage: "ear").font(.headline)
-            Text(aid.activeProgramName ?? L("Program not read")).font(.callout).foregroundStyle(.secondary)
-            if let status = aid.advancedStatus, aid.advancedBusy { Text(M(status)).font(.caption).foregroundStyle(.secondary) }
+            Label(L(aid.sideLabel), systemImage: "ear").font(AppType.headline)
+            Text(aid.activeProgramName ?? L("Program not read")).font(AppType.callout).foregroundStyle(.secondary)
+            if let status = aid.advancedStatus, aid.advancedBusy { Text(M(status)).font(AppType.caption).foregroundStyle(.secondary) }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
     private func canRestore(_ ids: [UUID], scope: ConsumerControlPlan.ResetScope) -> Bool {
@@ -117,7 +132,7 @@ struct HearingAidControlsView: View {
                     .disabled(!canRestore([aid.id], scope: scope))
             }
         } label: { Label(L("Restore %@…", L(aid.sideLabel)), systemImage: "arrow.counterclockwise") }
-            .menuStyle(.borderlessButton).font(.caption).fixedSize()
+            .menuStyle(.borderlessButton).font(AppType.caption).fixedSize()
     }
     private func commonPrograms(_ targets: [AidConnection]) -> [Int] {
         guard targets.count == 2 else { return [] }
@@ -125,22 +140,7 @@ struct HearingAidControlsView: View {
             targets[1].programIDs.contains(id) && targets[0].programNames[id] != nil && targets[0].programNames[id] == targets[1].programNames[id]
         }
     }
-    private func program(_ aid: AidConnection, ids: [UUID]) -> some View {
-        let targets = ids.compactMap { store.connections[$0] }
-        let programs = ids.count == 2 ? commonPrograms(targets) : aid.programIDs
-        return VStack(alignment: .leading, spacing: 9) {
-            Text(L("Fitted program")).font(.callout.weight(.medium))
-            if let active = aid.activeProgram {
-                Picker(L("%@ program", L(aid.sideLabel)), selection: Binding(get: { active }, set: { store.selectPrograms(ids, program: $0) })) {
-                    ForEach(programs, id: \.self) { id in Text(aid.programNames[id] ?? L("Program %d", id + 1)).tag(id) }
-                    if !programs.contains(active) { Text(aid.activeProgramName ?? L("Current program")).tag(active) }
-                }.labelsHidden().disabled(programs.count < 2 || !targets.allSatisfy(\.canChangeProgram))
-                if programs.count == 1 { Text(L("One program is fitted on this aid.")).font(.caption).foregroundStyle(.secondary) }
-            } else { Text(L("Not loaded")).font(.caption).foregroundStyle(.secondary) }
-            Button(L("Read program names")) { store.refreshProgramInfo(aid.id) }
-                .font(.caption).buttonStyle(.borderless).disabled(!aid.isConnected || aid.actionPending || aid.advancedBusy || aid.groupActionPending || store.isDemo)
-        }.frame(maxWidth: .infinity, alignment: .leading)
-    }
+
 }
 
 struct EarSettingsRow<Left: View, Center: View, Right: View>: View {
@@ -169,7 +169,7 @@ struct EarLinkButton: View {
                 Image(systemName: linked ? "link" : "link.badge.plus")
                     .font(.system(size: 16, weight: .semibold)).frame(width: 38, height: 30)
                     .background(linked ? accent.opacity(0.14) : Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
-                Text(linked ? L("Linked") : L("Separate")).font(.system(size: 9, weight: .medium))
+                Text(linked ? L("Linked") : L("Separate")).font(.system(size: 13, weight: .medium))
             }.foregroundStyle(linked ? accent : Color.secondary)
         }.buttonStyle(.plain).disabled(!available)
             .accessibilityLabel(L("Link %@ between ears", String(describing: title.lowercased())))
@@ -186,7 +186,7 @@ struct VolumeButtonsView: View {
     let aid: AidConnection
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(L("Volume and mute"), systemImage: "speaker.wave.2").font(.callout.weight(.medium))
+            Label(L("Volume and mute"), systemImage: "speaker.wave.2").font(AppType.callout.weight(.medium))
             HStack(spacing: 8) {
                 Button { store.adjustVolume(aid.id, by: -1) } label: { Image(systemName: "minus").frame(maxWidth: .infinity, minHeight: 24) }
                     .disabled(!aid.canChangeVolume || aid.volume?.level == aid.volumeRanges?.main.lowerBound)
@@ -199,7 +199,7 @@ struct VolumeButtonsView: View {
                 Button { store.adjustVolume(aid.id, by: 1) } label: { Image(systemName: "plus").frame(maxWidth: .infinity, minHeight: 24) }
                     .disabled(!aid.canChangeVolume || aid.volume?.level == aid.volumeRanges?.main.upperBound)
                     .accessibilityLabel(L("Increase %@ microphone level", L(aid.sideLabel)))
-            }.buttonStyle(.bordered)
+            }.buttonStyle(.bordered).font(AppType.body)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -215,9 +215,9 @@ struct SpeechBoosterCell: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(L(aid.sideLabel)).font(.callout.weight(.medium))
+            Text(L(aid.sideLabel)).font(AppType.callout.weight(.medium))
             Toggle(L("Speech boost"), isOn: Binding(get: { aid.speechBoosterEnabled ?? false }, set: { store.setSpeechBoosters(targetIDs, enabled: $0) }))
-                .toggleStyle(.switch).disabled(!canChange)
+                .toggleStyle(.switch).labelsHidden().disabled(!canChange)
                 .accessibilityLabel(L("%@ SpeechBooster%@", L(aid.sideLabel), String(describing: targetIDs.count == 2 ? L(", changes both ears") : "")))
             if aid.speechBoosterEnabled == nil {
                 Button(L("Load SpeechBooster")) { store.refreshConsumerFeatures(aid.id) }.buttonStyle(.borderless)
@@ -226,6 +226,6 @@ struct SpeechBoosterCell: View {
             } else if aid.activeProgram.flatMap({ aid.programBoostable[$0] }) == false {
                 Text(L("Unavailable in this program")).foregroundStyle(.secondary)
             } else if let status = aid.consumerStatus { Text(M(status)).foregroundStyle(.secondary) }
-        }.font(.caption).frame(maxWidth: .infinity, alignment: .leading)
+        }.font(AppType.caption).frame(maxWidth: .infinity, alignment: .leading)
     }
 }

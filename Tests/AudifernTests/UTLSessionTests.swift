@@ -276,6 +276,27 @@ private func syntheticEUSInventory(access: String = "NVRAM") -> Data {
     #expect(!peer.consumerOpen && peer.controlOpcodes.last == 2)
 }
 
+@MainActor @Test func expiredEQDeadlineStartsNoTransactionAndAnUnansweredReadCancelsWithoutSettingSound() async throws {
+    let peer = SyntheticUTLPeer()
+    let info = try UTLProtocol.GattInformation(data: Data([1, 0, 1, 0, 0, 244, 1, 1, 0x80, 0x80, 0x80, 0x80]))
+    let session = try UTLSession(info: info, physicalATTMTU: 247) { uuid, data in try await peer.write(uuid, data) }
+    peer.session = session
+    try await session.start(key: peer.key)
+    let count = peer.serviceTrace.count
+    await expectAcquisitionTimeout { _ = try await session.equalizerStep(deadline: .distantPast) }
+    await expectAcquisitionTimeout { _ = try await session.equalizer(microphone: true, stepDB: 1, deadline: .distantPast) }
+    #expect(peer.serviceTrace.count == count)
+    peer.suppressResponse = { handle, opcode, _ in handle == 9 && opcode == 3 }
+    await expectAcquisitionTimeout {
+        _ = try await session.equalizer(microphone: true, stepDB: 1, deadline: Date().addingTimeInterval(0.08))
+    }
+    #expect(peer.transaction == nil && session.isReady)
+    #expect(peer.serviceTrace.filter { $0.handle == 9 }.map(\.opcode) == [3])
+    #expect(peer.serviceTrace.contains { $0.handle == 8 && $0.opcode == 9 })
+    #expect(peer.currentSteps == Array(repeating: 0, count: 8))
+    await session.stop()
+}
+
 @MainActor @Test func fittingResponseDeadlineStillCancelsAndClosesTheOwnedSession() async throws {
     let peer = SyntheticUTLPeer(); peer.advertiseFitting = true; peer.expectedSessionType = 4
     peer.fittingRecord = syntheticFittingRecord()

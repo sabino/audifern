@@ -21,23 +21,42 @@ Audifern is not affiliated with or endorsed by Oticon or Demant.
 
 [Dark mode in Português (Brasil)](docs/images/audifern-dark.png) ·
 [Settings in Español](docs/images/audifern-settings-es.png) ·
+[Eight-band EQ](docs/images/consumer-eq-eight-bands.png) ·
+[Hearing profile](docs/images/hearing-profile-light.png) ·
+[About and contributions](docs/images/audifern-about.png) ·
 [Design concept, artwork and prompts](docs/design/prompts.md)
+
+These screenshots show the native 0.7.0 app with synthetic preview devices;
+preview controls cannot change hearing aids. See [capture details](docs/images/README.md).
 
 ## Around the app
 
-One window keeps the essentials separate from the details:
+Four destinations keep related tasks together. Focused editors and advanced
+settings open as native sheets attached to the app window, with Back and Done.
 
-| Page | What you can do |
+**About Audifern** is available from the app menu, menu-bar icon and Settings.
+It credits [sabino](https://github.com/sabino), shows the localized
+“Made with ❤️ and 🤖 in 🇧🇷” line, and offers optional Mercado Pago or
+cryptocurrency contributions with local QR codes and copyable receiving
+addresses. See [contributions and future supporter features](docs/contributions.md).
+
+| Destination | What you can do |
 | --- | --- |
-| **Listen** | Check both connections and batteries; adjust volume and mute, separately or together. |
-| **Sound** | Edit microphone and streaming EQ, load supported SpeechBooster and source controls. |
-| **Programs** | Inspect fitted programs and save local sound presets. |
-| **Fitting** | Explore supported saved fitting data or prepare a local plan with acoustics, an audiogram, rationale preferences, program ideas and private revision history. |
-| **Backups** | Save and compare verified private copies of readable consumer, fitting-system and persisted end-user data, with explicit coverage. Clinical restore is not implemented. |
-| **Devices** | Read model, software, firmware and available device diagnostics. Identifiers are hidden by default. |
-| **Audiogram** | Record an existing exam, plot it, and import or export it. |
-| **Settings** | Choose System, Light or Dark appearance; language; battery alerts; privacy preferences. |
-| **Developer** | Expand service information, the GATT inventory and local session diagnostics. |
+| **Sound** | See both device images, batteries and active programs; adjust volume, mute and SpeechBooster. Open the equalizers or save a sound from here. |
+| **Library** | Switch between fitted programs and local presets. Apply a saved sound or inspect a program’s consumer metadata. |
+| **Devices** | Connect your hearing aids, then open each aid’s versions, battery and device details in a focused sheet. Identifiers are hidden by default. |
+| **Hearing profile** | Review saved fitting data, manage audiograms, prepare a fitting plan one step at a time, and open backups or comparisons. |
+| **Settings** | Choose appearance and language, configure battery alerts, manage identifier visibility and open diagnostics. |
+
+Equalizers offer microphone, streaming and fitted tinnitus controls. Choose the
+left ear, right ear or both; switch from tone controls to eight individually
+reported bands without duplicating two cramped editors. Changes remain drafts
+until Apply. Unknown frequencies retain numbered device-order labels.
+
+Fitting planning uses five steps: About you, Hearing aids, Audiogram, Preferences
+and Review. It saves a local plan and revision history. Saved fitting inspection
+uses Overview, Programs, Buttons and alerts, and Advanced tabs. Clinical
+programming and a complete fitting restore are not implemented.
 
 The initial languages are **English, Português (Brasil) and Español**, with
 system-language selection. Appearance follows macOS unless you choose an
@@ -46,6 +65,13 @@ menu bar; **Quit Audifern** ends them.
 
 See the [fitting workspace preview and backup guide](docs/fitting-backups.md)
 for the new local planning tools and the limits of saved fitting data.
+
+The Sound page keeps device images beside the controls. Volume faders support
+native macOS keyboard and accessibility input; dragging previews the level and
+submits once on release. Linking preserves the existing left/right balance and
+each ear’s mute state. Every target must fit the reported limits of both aids;
+the app rechecks current volume and program and confirms each device write.
+Levels are device steps, not percentages or calibrated gain in dB.
 
 ## Download and install
 
@@ -105,6 +131,11 @@ advertising. A complete first-time pairing flow is not established.
 | Battery | Per-ear percentage, optional estimated time left and local milestone alerts. An estimate requires valid telemetry. |
 | Consumer program export | Readable program metadata and current consumer adjustments, not a clinical fitting backup. |
 | Audiograms | Local exam records and JSON/HIMSA XML export; no tones, diagnosis or prescription calculation. |
+
+Opening Equalizers automatically reads the selected aid's current EQ with the
+locally provisioned credential. Selecting **Both ears** loads a missing ear
+without restarting the first read. Each ear shows loading, success or a retryable
+error. Loading does not apply sound changes.
 
 Edits to EQ are drafts until **Apply**. Linked actions check both aids and
 confirm each write; a failure can leave an earlier write applied, and the app

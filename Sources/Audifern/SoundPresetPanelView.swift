@@ -6,7 +6,6 @@ struct SoundPresetPanelView: View {
     @ObservedObject var store: BluetoothStore
     @EnvironmentObject private var library: SoundPresetStore
     @EnvironmentObject private var navigation: AppNavigation
-    @State private var name = ""
     @State private var selectedID: UUID?
     @State private var status: String?
     @State private var isApplying = false
@@ -21,44 +20,42 @@ struct SoundPresetPanelView: View {
     }
 
     var body: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 14) {
-                Text(L("Save your current volume and equalizers as a named preset on this Mac. Applying a preset adjusts the existing hearing-aid program."))
-                    .font(.callout).foregroundStyle(.secondary)
-                HStack {
-                    TextField(L("New preset name"), text: $name).textFieldStyle(.roundedBorder)
-                    Button(L("Save current sound")) { saveCurrent(replacing: nil) }
-                        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !canCapture || isApplying)
+        VStack(alignment: .leading, spacing: 20) {
+            if library.presets.isEmpty {
+                Surface {
+                    ContentUnavailableView {
+                        Label(L("Your favorite sounds, saved"), systemImage: "bookmark")
+                    } description: {
+                        Text(L("Adjust your sound, then save it as a preset. You can apply it again from here."))
+                    } actions: {
+                        Button(L("Save current sound")) { navigation.present(.savePreset) }.buttonStyle(.borderedProminent).font(AppType.body)
+                    }.frame(minHeight: 260)
                 }
-                if !library.presets.isEmpty {
-                    HStack {
-                        Picker(L("Saved preset"), selection: $selectedID) {
-                            Text(L("Choose a preset")).tag(nil as UUID?)
-                            ForEach(library.presets) { Text($0.name).tag(Optional($0.id)) }
+            }
+            ForEach(library.presets) { preset in
+                Surface {
+                    HStack(spacing: 20) {
+                        Image(systemName: "waveform").font(.system(size: 27)).foregroundStyle(Brand.accent)
+                            .frame(width: 66, height: 66).background(Brand.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(preset.name).font(.system(size: 23, weight: .semibold))
+                            Text(preset.aids.map { L($0.side.rawValue.capitalized) }.joined(separator: " · "))
+                                .font(AppType.callout).foregroundStyle(.secondary)
+                            Label(L("Saved on this Mac"), systemImage: "laptopcomputer").font(AppType.caption).foregroundStyle(.secondary)
                         }
-                        Button(L("Apply")) { applySelected() }.disabled(selected == nil || isApplying || !canCapture)
-                        if isApplying { ProgressView().controlSize(.small) }
-                    }
-                    if let selected {
-                        HStack {
-                            Button(L("Update from current sound")) { saveCurrent(replacing: selected) }.disabled(!canCapture || isApplying)
-                            Spacer()
-                            Button(L("Delete preset"), role: .destructive) { confirmingDelete = true }.disabled(isApplying)
-                        }.font(.caption)
-                        Text(L("Saved for %@. Selecting it does not change the aids until you press Apply.", String(describing: selected.aids.map { $0.side.rawValue.capitalized }.joined(separator: " and "))))
-                            .font(.caption).foregroundStyle(.secondary)
+                        Spacer(minLength: 12)
+                        Button(L("Apply")) { selectedID = preset.id; applySelected() }
+                            .buttonStyle(.borderedProminent).font(AppType.body).disabled(isApplying || !canCapture)
+                        Menu {
+                            Button(L("Update from current sound")) { saveCurrent(replacing: preset) }.disabled(!canCapture || isApplying)
+                            Button(L("Delete preset"), role: .destructive) { selectedID = preset.id; confirmingDelete = true }.disabled(isApplying)
+                        } label: { Label(L("More"), systemImage: "ellipsis") }.fixedSize()
                     }
                 }
-                HStack {
-                    Button(L("Audiogram")) { navigation.page = .audiogram }
-                    if let label = library.linkedAudiogramLabel {
-                        Text(L("Linked exam: %@", String(describing: label))).font(.caption).foregroundStyle(.secondary)
-                        Button(L("Unlink")) { library.linkedAudiogramID = nil; library.linkedAudiogramLabel = nil }.font(.caption)
-                    } else { Text(L("A saved exam can be attached for reference.")).font(.caption).foregroundStyle(.secondary) }
-                }
-                if let message = status ?? library.error { Text(M(message)).font(.caption).textSelection(.enabled) }
-            }.padding(8).frame(maxWidth: .infinity, alignment: .leading)
-        } label: { Label(L("Sound presets on this Mac"), systemImage: "bookmark") }
+            }
+            if isApplying { ProgressView(L("Checking current hearing-aid settings…")) }
+            if let message = status ?? library.error { Text(M(message)).font(AppType.callout).textSelection(.enabled) }
+        }
         .confirmationDialog(L("Delete this saved sound preset?"), isPresented: $confirmingDelete) {
             Button(L("Delete preset"), role: .destructive) {
                 guard let selectedID else { return }
@@ -70,23 +67,11 @@ struct SoundPresetPanelView: View {
 
     private func saveCurrent(replacing existing: SoundPreset?) {
         do {
-            guard canCapture else { throw SoundPreset.ValidationError.invalid("Wait for the current hearing-aid request to finish before saving.") }
-            let aids: [SoundPreset.Aid] = try liveAids.map { aid in
-                guard let model = aid.model, let program = aid.activeProgram, let volume = aid.volume,
-                      let side = SoundPreset.Side(rawValue: aid.sideLabel.lowercased()) else {
-                    throw SoundPreset.ValidationError.invalid("Read the hearing-aid model, side, program and volume first.")
-                }
-                return try .init(side: side, model: model, programID: program, volume: volume.level, muted: volume.muted,
-                                 microphoneSteps: aid.microphoneEqualizer?.rawSteps,
-                                 streamingSteps: aid.streamingEqualizer?.rawSteps,
-                                 microphoneStepDB: aid.microphoneEqualizer?.stepDB,
-                                 streamingStepDB: aid.streamingEqualizer?.stepDB)
-            }
-            let preset = try SoundPreset(id: existing?.id ?? UUID(), name: existing?.name ?? name,
-                                         createdAt: existing?.createdAt ?? Date(), updatedAt: Date(),
-                                         audiogramID: library.linkedAudiogramID ?? existing?.audiogramID, aids: aids)
+            guard canCapture, let existing else { return }
+            let preset = try SoundPresetCapture.make(aids: liveAids, name: existing.name,
+                audiogramID: library.linkedAudiogramID, replacing: existing)
             try library.save(preset)
-            selectedID = preset.id; name = ""
+            selectedID = preset.id
             status = "Saved \(preset.name) on this Mac. Audiogram values are stored for reference; they do not prescribe amplification."
         } catch { status = error.localizedDescription }
     }

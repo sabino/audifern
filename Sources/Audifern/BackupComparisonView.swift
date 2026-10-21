@@ -23,7 +23,7 @@ struct BackupComparisonView: View {
         VStack(alignment: .leading, spacing: 20) {
             if backups.entries.count < 2 {
                 Text(L("Save at least two backups to compare the state they captured."))
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(AppType.callout).foregroundStyle(.secondary)
             } else {
                 HStack(spacing: 20) {
                     selection(L("First backup"), selected: first, binding: $firstSelection)
@@ -33,12 +33,12 @@ struct BackupComparisonView: View {
                 if let comparison {
                     ForEach(comparison.aids, id: \.side) { aid in aidComparison(aid) }
                     Text(L("Unchanged means the captured data matches. It does not establish identical sound, a complete fitting or a safe restore. No settings are sent to the hearing aids."))
-                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 } else if first?.id == second?.id {
-                    Text(L("Choose two different backups.")).font(.callout).foregroundStyle(.secondary)
+                    Text(L("Choose two different backups.")).font(AppType.callout).foregroundStyle(.secondary)
                 } else {
                     Text(L("These captures could not be compared. Their original files remain unchanged."))
-                        .font(.callout).foregroundStyle(.orange)
+                        .font(AppType.callout).foregroundStyle(.orange)
                 }
             }
         }.accessibilityIdentifier("backup-comparison")
@@ -46,7 +46,7 @@ struct BackupComparisonView: View {
 
     private func selection(_ title: String, selected: DeviceBackupStore.Entry?, binding: Binding<UUID?>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.caption.weight(.medium)).foregroundStyle(.secondary)
+            Text(title).font(AppType.caption.weight(.medium)).foregroundStyle(.secondary)
             Picker(title, selection: Binding(get: { selected?.id }, set: { binding.wrappedValue = $0 })) {
                 ForEach(Array(backups.entries.enumerated()), id: \.element.id) { index, entry in
                     Text(L("Backup %d", backups.entries.count - index) + " · " +
@@ -56,7 +56,7 @@ struct BackupComparisonView: View {
             }.labelsHidden()
             if let selected {
                 Text(selected.backup.capturedAt, format: .dateTime.day().month(.wide).year().hour().minute().second())
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(AppType.caption).foregroundStyle(.secondary)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -64,18 +64,18 @@ struct BackupComparisonView: View {
     private func aidComparison(_ aid: DeviceBackupComparison.Aid) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Label(L(aid.side.rawValue.capitalized), systemImage: "ear").font(.headline)
+                Label(L(aid.side.rawValue.capitalized), systemImage: "ear").font(AppType.headline)
                 Spacer()
                 if aid.isComparable {
                     Label(L("Matching saved identity"), systemImage: "checkmark.shield")
-                        .font(.caption).foregroundStyle(Brand.accent)
+                        .font(AppType.caption).foregroundStyle(Brand.accent)
                 }
             }
             if !aid.isComparable {
                 Text(aid.identity == .missingEar
                      ? L("This ear was not captured in both backups.")
                      : L("These captures do not identify the same hearing aid. Setting comparisons are unavailable."))
-                    .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .font(AppType.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             } else {
                 row(L("Fitting-system record"), aid.fittingRecord ?? .notCaptured)
                 ForEach(DeviceBackupComparison.Section.allCases, id: \.self) { section in
@@ -83,16 +83,16 @@ struct BackupComparisonView: View {
                 }
                 if aid.sections.isEmpty {
                     Text(L("Section details need two captured records with a matching supported fitting profile."))
-                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-                DisclosureGroup(L("Consumer control comparison"), isExpanded: expansion(aid.side, values: $consumerExpanded)) {
+                ExpandableSection(L("Consumer control comparison"), isExpanded: expansion(aid.side, values: $consumerExpanded)) {
                     VStack(spacing: 10) {
                         ForEach(DeviceBackupComparison.ConsumerField.allCases, id: \.self) { field in
                             row(consumerTitle(field), aid.consumer[field] ?? .notCaptured)
                         }
                     }.padding(.top, 10)
-                }.font(.callout)
-                DisclosureGroup(L("Persisted setting comparison"), isExpanded: expansion(aid.side, values: $scopesExpanded)) {
+                }.font(AppType.callout)
+                ExpandableSection(L("Persisted setting comparison"), isExpanded: expansion(aid.side, values: $scopesExpanded)) {
                     VStack(alignment: .leading, spacing: 10) {
                         row(L("Scope inventory"), aid.scopeInventory ?? .notCaptured)
                         row(L("Scope metadata"), aid.scopeMetadata ?? .notCaptured)
@@ -103,8 +103,8 @@ struct BackupComparisonView: View {
                                 row(L("Scope %d · item %d", Int(scope.scope), Int(scope.id)), scope.difference)
                             }
                         }
-                    }.font(.caption).padding(.top, 10)
-                }.font(.callout)
+                    }.font(AppType.caption).padding(.top, 10)
+                }.font(AppType.callout)
             }
         }.padding(18).background(Brand.background.opacity(0.6), in: RoundedRectangle(cornerRadius: 14))
     }
@@ -117,10 +117,10 @@ struct BackupComparisonView: View {
 
     private func row(_ title: String, _ difference: DeviceBackupComparison.Difference) -> some View {
         HStack(spacing: 14) {
-            Text(title).font(.callout)
+            Text(title).font(AppType.callout)
             Spacer(minLength: 8)
             Label(differenceTitle(difference), systemImage: difference == .identical ? "equal.circle" : difference == .changed ? "circle.lefthalf.filled" : "minus.circle")
-                .font(.caption.weight(.medium)).foregroundStyle(difference == .identical ? Brand.accent : difference == .changed ? .orange : .secondary)
+                .font(AppType.caption.weight(.medium)).foregroundStyle(difference == .identical ? Brand.accent : difference == .changed ? .orange : .secondary)
         }
     }
     private func differenceTitle(_ difference: DeviceBackupComparison.Difference) -> String {

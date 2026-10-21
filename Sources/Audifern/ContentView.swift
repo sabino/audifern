@@ -10,59 +10,83 @@ struct ContentView: View {
     @EnvironmentObject private var navigation: AppNavigation
     @EnvironmentObject private var preferences: AppPreferences
     @EnvironmentObject private var presets: SoundPresetStore
+    @State private var windowContentSize = CGSize(width: 1060, height: 740)
 
     var body: some View {
         NavigationSplitView {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 9) { BrandMark(); Text(Brand.name).font(.title3.weight(.semibold)) }
-                    .padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 24)
-                List {
-                    Section(L("Everyday")) { ForEach(AppPage.everydayPages) { navigationRow($0) } }
-                    Section(L("Workspace")) { ForEach(AppPage.workspacePages) { navigationRow($0) } }
+                HStack(spacing: 10) {
+                    BrandMark()
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(Brand.name).font(AppType.subheading.weight(.semibold)).foregroundStyle(.primary)
+                        Text(L("Your listening space")).font(AppType.caption).foregroundStyle(.secondary)
+                    }
+                }.padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 20)
+                List(selection: $navigation.page) {
+                    ForEach(AppPage.mainPages) { navigationRow($0) }
                 }.listStyle(.sidebar)
                 Spacer(minLength: 0)
-                List { navigationRow(.settings); navigationRow(.developer) }
-                    .listStyle(.sidebar).frame(height: 110)
-                Button { navigation.page = .devices } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "dot.radiowaves.left.and.right").foregroundStyle(Brand.accent)
+                Button { navigation.present(.settings) } label: {
+                    Label(L("Settings"), systemImage: "gearshape").font(AppType.body)
+                        .labelStyle(AlignedLabelStyle())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 4).padding(.vertical, 16)
+                }.buttonStyle(.plain).padding(.horizontal, 12)
+                Button { navigation.show(.devices) } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "dot.radiowaves.left.and.right").font(.system(size: 18, weight: .medium))
+                            .frame(width: 24, height: 26).foregroundStyle(Brand.accent)
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(store.isDemo ? L("Preview mode") : L("Direct Bluetooth")).font(.caption.weight(.medium))
-                            Text(L("No account. No telemetry.")).font(.caption2).foregroundStyle(.secondary)
+                            Text(store.isDemo ? L("Preview mode") : L("Direct Bluetooth")).font(AppType.caption.weight(.medium)).foregroundStyle(.primary)
+                            Text(L("Local and private")).font(AppType.caption).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 0)
-                    }.padding(14)
+                    }.padding(.horizontal, 6).padding(.vertical, 14)
                 }.buttonStyle(.plain).padding(10)
-            }.navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 250)
+            }.navigationSplitViewColumnWidth(min: 220, ideal: 245, max: 280)
         } detail: {
             pageContent.frame(maxWidth: .infinity, maxHeight: .infinity).background(Brand.background)
         }
         .navigationSplitViewStyle(.balanced)
-        .frame(minWidth: 1040, minHeight: 720)
+        .frame(minWidth: 1060, minHeight: 740)
+        .font(AppType.body)
+        .controlSize(.large)
         .tint(Brand.accent)
         .preferredColorScheme(preferences.appearance.colorScheme)
         .environment(\.locale, Localization.shared.formattingLocale)
         .navigationTitle(Brand.name)
+        .background {
+            GeometryReader { geometry in Color.clear.preference(key: AppWindowSizeKey.self, value: geometry.size) }
+        }
+        .onPreferenceChange(AppWindowSizeKey.self) { size in
+            if size.width > 0, size.height > 0, size != windowContentSize { windowContentSize = size }
+        }
         .toolbar {
             ToolbarItem(placement: .automatic) {
-                Button { navigation.page = .devices } label: {
+                Button { navigation.show(.devices) } label: {
                     Label(store.isDemo ? L("Preview mode") : M(store.bluetoothStatus), systemImage: "dot.radiowaves.left.and.right")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(AppType.caption).foregroundStyle(.secondary)
                 }.buttonStyle(.plain).help(L("Connection details"))
             }
+            ToolbarItem(placement: .automatic) {
+                Button { navigation.present(.settings) } label: { Label(L("Settings"), systemImage: "gearshape") }
+                    .help(L("Settings"))
+            }
+        }
+        .sheet(item: $navigation.sheet, onDismiss: { navigation.sheetPath = [] }) { _ in
+            AppTaskSheet(store: store, workspace: fittingWorkspace, backups: backups,
+                         audiograms: audiogramStore, notifications: notifications,
+                         availableSize: CGSize(width: windowContentSize.width - 40, height: windowContentSize.height - 40))
         }
     }
 
     private func navigationRow(_ page: AppPage) -> some View {
-        Button { navigation.page = page } label: {
-            Label(page.title, systemImage: page.symbol)
-                .font(.system(size: 14, weight: navigation.page == page ? .semibold : .regular))
-                .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8).padding(.horizontal, 8)
-                .contentShape(Rectangle())
-        }.buttonStyle(.plain)
-            .listRowInsets(EdgeInsets(top: 2, leading: 4, bottom: 2, trailing: 4))
-            .listRowBackground(navigation.page == page ? Brand.accent.opacity(0.13) : Color.clear)
-            .foregroundStyle(navigation.page == page ? Brand.accent : .primary)
+        Label(page.title, systemImage: page.symbol)
+            .labelStyle(AlignedLabelStyle())
+            .font(.system(size: 17, weight: .medium))
+            .frame(maxWidth: .infinity, minHeight: 46, alignment: .leading)
+            .contentShape(Rectangle())
+            .tag(page)
             .accessibilityIdentifier(page.accessibilityID)
             .accessibilityAddTraits(navigation.page == page ? [.isSelected] : [])
     }
@@ -73,14 +97,21 @@ struct ContentView: View {
         case .sound:
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    PageHeading(title: L("Sound"), subtitle: L("Fine-tune your existing listening program.")) { ConnectionBadge(store: store) }
+                    PageHeading(title: L("Equalizers"), subtitle: L("Fine-tune your existing listening program.")) { ConnectionBadge(store: store) }
                     if store.orderedConnections.isEmpty { connectPlaceholder }
                     else { HearingAidControlsView(store: store, mode: .sound) }
                 }.padding(30).frame(maxWidth: 1100)
             }
-        case .programs: ProgramsView(store: store)
+        case .presets:
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    PageHeading(title: L("Presets"), subtitle: L("Save a sound you like and return to it later.")) { ConnectionBadge(store: store) }
+                    Surface { SoundPresetPanelView(store: store).disabled(store.isDemo) }
+                }.padding(30).frame(maxWidth: 1100)
+            }
+        case .programs: LibraryView(store: store)
         case .fitting:
-            FittingPageView(store: store, workspace: fittingWorkspace, backups: backups, audiograms: audiogramStore)
+            HearingProfileView(store: store, workspace: fittingWorkspace, backups: backups, audiograms: audiogramStore)
         case .backups: DeviceBackupsView(store: store, backups: backups)
         case .devices: DevicesPageView(store: store)
         case .audiogram:
@@ -97,6 +128,11 @@ struct ContentView: View {
         ContentUnavailableView {
             Label(L("Connect your hearing aids"), systemImage: "ear.badge.waveform")
         } description: { Text(L("Choose your devices to load their available controls.")) }
-        actions: { Button(L("Devices")) { navigation.page = .devices } }.frame(minHeight: 320)
+        actions: { Button(L("Devices")) { navigation.show(.devices) } }.frame(minHeight: 320)
     }
+}
+
+private struct AppWindowSizeKey: PreferenceKey {
+    static let defaultValue = CGSize.zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
 }

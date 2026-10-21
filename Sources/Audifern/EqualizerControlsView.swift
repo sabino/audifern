@@ -21,7 +21,7 @@ struct EqualizerControlsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Label(L("Equalizer"), systemImage: "slider.vertical.3").font(.headline)
+                Label(L("Equalizer"), systemImage: "slider.vertical.3").font(AppType.headline)
                 Spacer()
                 if aid?.advancedBusy == true { ProgressView().controlSize(.small) }
             }
@@ -30,21 +30,21 @@ struct EqualizerControlsView: View {
                     .accessibilityIdentifier("eq-\(aid?.sideLabel.lowercased() ?? "aid")-microphone")
                 Text(L("Streaming")).tag(false)
                     .accessibilityIdentifier("eq-\(aid?.sideLabel.lowercased() ?? "aid")-streaming")
-            }.pickerStyle(.segmented)
+            }.pickerStyle(.segmented).font(AppType.body)
 
             if let equalizer {
                 ForEach(0..<3) { index in
                     let range = equalizer.threeBandRangesDB[index]
                     HStack(spacing: 10) {
-                        Text([L("Lows"), L("Mids"), L("Highs")][index]).font(.callout).frame(width: 42, alignment: .leading)
+                        Text([L("Lows"), L("Mids"), L("Highs")][index]).font(AppType.callout).frame(width: 42, alignment: .leading)
                         if range.lowerBound < range.upperBound {
                             Slider(value: Binding(get: { draft[index] }, set: { draft[index] = $0; edited = true }),
                                    in: range, step: equalizer.stepDB)
                                 .accessibilityLabel("\(aid?.sideLabel ?? L("Hearing aid")) \(microphone ? "microphone" : "streaming") \(["lows", "mids", "highs"][index])")
                         } else { Text(L("Fixed")).foregroundStyle(.secondary).frame(maxWidth: .infinity) }
                         Text(draft[index], format: .number.precision(.fractionLength(1)).sign(strategy: .always()))
-                            .font(.caption.monospacedDigit()).frame(width: 42, alignment: .trailing)
-                        Text("dB").font(.caption).foregroundStyle(.secondary)
+                            .font(AppType.caption.monospacedDigit()).frame(width: 42, alignment: .trailing)
+                        Text("dB").font(AppType.caption).foregroundStyle(.secondary)
                     }
                 }
                 .disabled(aid?.actionPending == true || aid?.advancedBusy == true || aid?.groupActionPending == true)
@@ -55,23 +55,23 @@ struct EqualizerControlsView: View {
                         if microphone { store.setMicrophoneEqualizer(aidID, bandsDB: draft) }
                         else { store.setStreamingEqualizer(aidID, bandsDB: draft) }
                         edited = false
-                    }.buttonStyle(.borderedProminent).disabled(!canApply)
+                    }.buttonStyle(.borderedProminent).font(AppType.body).disabled(!canApply)
                         .accessibilityLabel(L("Apply %@ %@ equalizer", String(describing: aid?.sideLabel.lowercased() ?? L("hearing aid")), String(describing: microphone ? "microphone" : "streaming")))
-                }.font(.caption)
+                }.font(AppType.caption)
                 Text(microphone ? L("Adjusts sound from the hearing-aid microphones.") : L("Adjusts audio streamed to the hearing aids."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(AppType.caption).foregroundStyle(.secondary)
                 if !equalizer.rangesReportedByDevice {
                     Text(L("Limits follow Companion’s consumer controls."))
-                        .font(.caption2).foregroundStyle(.secondary)
+                        .font(AppType.small).foregroundStyle(.secondary)
                 }
             } else {
                 Text(microphone ? L("Load the aid’s advanced controls to read its microphone equalizer.") : L("The streaming equalizer has not been read yet."))
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(AppType.callout).foregroundStyle(.secondary)
                 Button(L("Load advanced controls")) { store.refreshAdvanced(aidID) }
                     .disabled(aid?.isConnected != true || aid?.advancedBusy == true || aid?.actionPending == true || aid?.groupActionPending == true)
                     .accessibilityLabel(L("Load %@ advanced controls", String(describing: aid?.sideLabel.lowercased() ?? L("hearing aid"))))
             }
-            if let status = aid?.advancedStatus { Text(M(status)).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
+            if let status = aid?.advancedStatus { Text(M(status)).font(AppType.caption).foregroundStyle(.secondary).textSelection(.enabled) }
         }
         .onAppear { useCurrentValues() }
         .onChange(of: microphone) { _, _ in useCurrentValues() }

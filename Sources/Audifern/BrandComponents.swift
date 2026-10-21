@@ -8,8 +8,16 @@ enum Brand {
             ? NSColor(srgbRed: 0.35, green: 0.81, blue: 0.65, alpha: 1)
             : NSColor(srgbRed: 0.06, green: 0.44, blue: 0.34, alpha: 1)
     })
-    static let background = Color(nsColor: .windowBackgroundColor)
-    static let surface = Color(nsColor: .controlBackgroundColor)
+    static let background = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(srgbRed: 0.105, green: 0.115, blue: 0.12, alpha: 1)
+            : NSColor(srgbRed: 0.97, green: 0.975, blue: 0.98, alpha: 1)
+    })
+    static let surface = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(srgbRed: 0.16, green: 0.17, blue: 0.18, alpha: 1)
+            : .white
+    })
 }
 
 struct PageHeading<Trailing: View>: View {
@@ -19,8 +27,8 @@ struct PageHeading<Trailing: View>: View {
     var body: some View {
         HStack(alignment: .top, spacing: 20) {
             VStack(alignment: .leading, spacing: 7) {
-                Text(title).font(.system(size: 30, weight: .bold))
-                Text(subtitle).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(title).font(.system(size: 34, weight: .bold))
+                Text(subtitle).font(AppType.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
             trailing()
@@ -34,6 +42,7 @@ struct Surface<Content: View>: View {
         content().padding(24).frame(maxWidth: .infinity, alignment: .leading)
             .background(Brand.surface, in: RoundedRectangle(cornerRadius: 20))
             .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.065)))
+            .shadow(color: .black.opacity(0.025), radius: 12, x: 0, y: 4)
     }
 }
 
@@ -44,7 +53,7 @@ struct ConnectionBadge: View {
         HStack(spacing: 7) {
             Circle().fill(store.connectedCount > 0 ? Brand.accent : .secondary).frame(width: 7, height: 7)
             Text(store.isDemo ? L("Preview mode") : store.connectedCount > 0 ? L("%d connected", store.connectedCount) : L("Disconnected"))
-                .font(.callout.weight(.medium))
+                .font(AppType.callout.weight(.medium))
         }.padding(.horizontal, 13).padding(.vertical, 9)
             .background(Brand.surface, in: Capsule()).overlay(Capsule().strokeBorder(.quaternary))
             .accessibilityIdentifier("connection-status")
@@ -53,10 +62,11 @@ struct ConnectionBadge: View {
 
 struct HearingAidArtwork: View {
     var right = false
+    var size: CGFloat = 1
     var body: some View {
         Image(nsImage: AppResources.hearingAid).resizable().scaledToFit()
             .scaleEffect(x: right ? -1.4 : 1.4, y: 1.4)
-            .frame(width: 120, height: 175).accessibilityHidden(true)
+            .frame(width: 120 * size, height: 175 * size).accessibilityHidden(true)
     }
 }
 

@@ -36,21 +36,21 @@ struct StoredFittingMetadataView: View {
         VStack(alignment: .leading, spacing: 20) {
             Surface {
                 VStack(alignment: .leading, spacing: 14) {
-                    Label(L("Fitting record details"), systemImage: "doc.text.magnifyingglass").font(.headline)
+                    Label(L("Fitting record details"), systemImage: "doc.text.magnifyingglass").font(AppType.headline)
                     LabeledContent(L("Fitting software version"), value: softwareVersion)
                     LabeledContent(L("Stored rationales"), value: rationaleLabels.isEmpty ? L("Not reported") : rationaleLabels.joined(separator: ", "))
                     LabeledContent(L("Acoustics checked in saved fitting"), value: snapshot.acousticsVerified ? L("Yes") : L("No"))
                     Text(L("The fitting software version describes the software that saved this record. It is separate from the hearing aid’s firmware and software versions. Rationale entries include stored setup positions, not just your listening programs."))
-                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }.font(.callout)
+                        .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }.font(AppType.callout)
             }
             Surface {
-                DisclosureGroup(isExpanded: $showAudiogram) {
+                ExpandableSection(isExpanded: $showAudiogram) {
                     VStack(alignment: .leading, spacing: 18) {
                         Label(L("Measurement units are not stored"), systemImage: "info.circle")
-                            .font(.callout.weight(.medium)).foregroundStyle(.orange)
+                            .font(AppType.callout.weight(.medium)).foregroundStyle(.orange)
                         Text(L("These are saved fitting values, not the original exam. They may have been rounded or interpolated, and may include uncorrected ABR/nHL levels. Audifern does not label them dB HL or use them to calculate a fitting. The original exam date is unknown."))
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                            .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         curvesTable([
                             (L("Air conduction"), snapshot.airConduction),
                             (L("Bone conduction"), snapshot.boneConduction),
@@ -60,9 +60,9 @@ struct StoredFittingMetadataView: View {
                     }.padding(.top, 16)
                 } label: {
                     HStack {
-                        Label(L("Saved audiogram"), systemImage: "chart.xyaxis.line").font(.headline)
+                        Label(L("Saved audiogram"), systemImage: "chart.xyaxis.line").font(AppType.headline)
                         Spacer()
-                        Text(L("%d stored values", storedValueCount)).font(.caption).foregroundStyle(.secondary)
+                        Text(L("%d stored values", storedValueCount)).font(AppType.caption).foregroundStyle(.secondary)
                     }
                 }
             }
@@ -79,34 +79,34 @@ struct StoredFittingMetadataView: View {
     }
 
     private var importControls: some View {
-        DisclosureGroup(isExpanded: $showImport) {
+        ExpandableSection(isExpanded: $showImport) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(L("Copy ordinary air and bone response points from both saved ears into a new local draft. No-response, uncertain, uncomfortable-level and in-situ points stay in the backup. Review and save the draft separately; this never changes the aids."))
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 Toggle(L("I have checked the source exam and these stored levels are dB HL"), isOn: $unitsConfirmed)
-                    .toggleStyle(.checkbox).font(.callout)
+                    .toggleStyle(.checkbox).font(AppType.callout)
                 if audiograms?.isDirty == true {
                     Toggle(L("Replace the unsaved audiogram draft; keep saved exams unchanged"), isOn: $discardConfirmed)
-                        .toggleStyle(.checkbox).font(.callout).foregroundStyle(.orange)
+                        .toggleStyle(.checkbox).font(AppType.callout).foregroundStyle(.orange)
                 }
                 Button(L("Copy to audiogram editor"), action: copyForReview)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.bordered).font(AppType.body)
                     .disabled(!unitsConfirmed || (audiograms?.isDirty == true && !discardConfirmed))
                 if importError {
                     Text(L("No supported response points could be copied. The backup and saved exams remain unchanged."))
-                        .font(.caption).foregroundStyle(.orange)
+                        .font(AppType.caption).foregroundStyle(.orange)
                 }
             }.padding(.top, 12)
-        } label: { Text(L("Review as a local audiogram…")).font(.callout.weight(.medium)) }
+        } label: { Text(L("Review as a local audiogram…")).font(AppType.callout.weight(.medium)) }
             .onChange(of: showImport) { _, _ in resetConfirmation() }
     }
 
     private var additionalMetadata: some View {
         Surface {
-            DisclosureGroup {
+            ExpandableSection {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(L("The raw fitting archive also preserves these values. They do not start a measurement, apply a correction or change adaptation."))
-                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     if let adaptation = snapshot.adaptation {
                         LabeledContent(L("Saved adaptation steps"), value: "\(adaptation.startStep) → \(adaptation.endStep)")
                         LabeledContent(L("Time per step · raw value"), value: String(adaptation.timePerStep))
@@ -122,7 +122,7 @@ struct StoredFittingMetadataView: View {
                     if let act = snapshot.audibleContrastThreshold {
                         LabeledContent(L("ACT · stored value"), value: (Double(act.valueTenths) / 10).formatted(.number.precision(.fractionLength(1))))
                     }
-                    DisclosureGroup(L("Real-ear and correction vectors")) {
+                    ExpandableSection(L("Real-ear and correction vectors")) {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(L("Raw stored vectors; no acoustic conversion or calibration is applied."))
                                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -131,14 +131,14 @@ struct StoredFittingMetadataView: View {
                             if let correction = snapshot.autoFitCorrection {
                                 vector(L("Auto-fit correction"), values: correction.values)
                             }
-                        }.font(.caption).padding(.top, 10)
+                        }.font(AppType.caption).padding(.top, 10)
                     }
                     if snapshot.hasOpaqueTail {
                         Text(L("Additional unrecognized metadata is preserved in the raw backup."))
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(AppType.caption).foregroundStyle(.secondary)
                     }
-                }.font(.callout).padding(.top, 16)
-            } label: { Label(L("Additional fitting metadata"), systemImage: "slider.horizontal.3").font(.headline) }
+                }.font(AppType.callout).padding(.top, 16)
+            } label: { Label(L("Additional fitting metadata"), systemImage: "slider.horizontal.3").font(AppType.headline) }
         }
     }
 
@@ -150,16 +150,16 @@ struct StoredFittingMetadataView: View {
                     ForEach(curves.indices, id: \.self) { index in
                         Text(curves[index].0).frame(width: 150, alignment: .leading)
                     }
-                }.font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                }.font(AppType.caption.weight(.semibold)).foregroundStyle(.secondary)
                 ForEach(OticonBusinessData.frequencies.indices, id: \.self) { index in
                     GridRow(alignment: .top) {
-                        Text(String(OticonBusinessData.frequencies[index])).font(.callout.monospacedDigit())
+                        Text(String(OticonBusinessData.frequencies[index])).font(AppType.callout.monospacedDigit())
                             .frame(width: 50, alignment: .trailing)
                         ForEach(curves.indices, id: \.self) { curve in
                             let point = curves[curve].1.points[index]
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(point.level.map(String.init) ?? "—").font(.callout.monospacedDigit())
-                                Text(tagLabel(point)).font(.caption2).foregroundStyle(.secondary)
+                                Text(point.level.map(String.init) ?? "—").font(AppType.callout.monospacedDigit())
+                                Text(tagLabel(point)).font(AppType.small).foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
                             }.frame(width: 150, alignment: .leading)
                         }
@@ -190,7 +190,7 @@ struct StoredFittingMetadataView: View {
     private func vector(_ title: String, values: [Int8]) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title).fontWeight(.medium)
-            Text(values.map(String.init).joined(separator: "  ")).font(.caption.monospaced())
+            Text(values.map(String.init).joined(separator: "  ")).font(AppType.caption.monospaced())
                 .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -207,7 +207,7 @@ struct StoredFittingMetadataView: View {
         guard !points.isEmpty else { importError = true; return }
         let notes = L("Copied from a saved fitting backup after confirming dB HL units against the source exam. Values may be rounded or interpolated. Original exam date unknown. Only ordinary air/bone response points were copied; other metadata remains in the backup.")
         let exam = Audiogram(name: L("Saved fitting audiogram"), notes: notes, thresholds: points)
-        if audiograms.reviewImportedExam(exam) { navigation.page = .audiogram }
+        if audiograms.reviewImportedExam(exam) { navigation.show(.audiogram) }
         else { importError = true }
     }
 }

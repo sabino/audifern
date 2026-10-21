@@ -15,24 +15,24 @@ struct SavedSoundControlsView: View {
                             header(L("Frequency lowering"), symbol: "waveform.path", enabled: enabled)
                             LabeledContent(L("Strength"), value: choice(controls.frequencyLowering.weight))
                             LabeledContent(L("Retain source frequencies"), value: controls.frequencyLowering.retainsSource ? L("Yes") : L("No"))
-                            DisclosureGroup(L("Saved frequency configuration")) {
+                            ExpandableSection(L("Saved frequency configuration")) {
                                 VStack(alignment: .leading, spacing: 10) {
                                     LabeledContent(L("Configuration index"), value: String(controls.frequencyLowering.configurationIndex))
                                     LabeledContent(L("Prescribed index"), value: String(controls.frequencyLowering.prescribedConfigurationIndex))
                                     Text(L("These are stored configuration indices. Audifern has not established their cutoff frequencies or source-to-destination frequency map."))
-                                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                                        .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                                 }.padding(.top, 10)
                             }
-                        }.font(.callout)
+                        }.font(AppType.callout)
                     }
                 }
                 if program.transientControl != nil || program.windControl != nil {
                     Surface {
                         VStack(alignment: .leading, spacing: 16) {
-                            Label(L("Sudden sounds and wind"), systemImage: "wind").font(.headline)
+                            Label(L("Sudden sounds and wind"), systemImage: "wind").font(AppType.headline)
                             if let value = program.transientControl { LabeledContent(L("Transient control"), value: choice(value)) }
                             if let value = program.windControl { LabeledContent(L("Wind control"), value: choice(value)) }
-                        }.font(.callout)
+                        }.font(AppType.callout)
                     }
                 }
                 if let tinnitus = program.tinnitus {
@@ -43,12 +43,12 @@ struct SavedSoundControlsView: View {
                             LabeledContent(L("Stored modulation"), value: choice(tinnitus.modulation))
                             LabeledContent(L("Level steering"), value: tinnitus.levelSteeringEnabled ? L("Enabled") : L("Disabled"))
                             Text(L("Reading this saved configuration generates no sound. Stored defaults do not enable therapy. Treatment levels and spectral shaping remain in the private backup."))
-                                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        }.font(.callout)
+                                .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        }.font(AppType.callout)
                     }.tint(.orange)
                 }
                 Surface {
-                    DisclosureGroup {
+                    ExpandableSection {
                         VStack(alignment: .leading, spacing: 12) {
                             LabeledContent(L("Microphone balance"), value: choice(controls.streaming.microphoneBalance))
                             LabeledContent(L("Phone stream loudness"), value: choice(controls.streaming.mfiLoudness))
@@ -62,9 +62,9 @@ struct SavedSoundControlsView: View {
                             LabeledContent(L("CROS source · stored choice"), value: choice(program.inputs.crosSource))
                             LabeledContent(L("CROS balance · raw coordinate"), value: program.inputs.crosBalance.formatted(.number.precision(.fractionLength(0...1))))
                             Text(L("Stored accessory preferences do not establish that a source is paired, playing or supported in the selected program. The CROS balance unit is not established by this reader."))
-                                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        }.font(.callout).padding(.top, 14)
-                    } label: { Label(L("Saved streaming and input preferences"), systemImage: "antenna.radiowaves.left.and.right").font(.headline) }
+                                .font(AppType.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        }.font(AppType.callout).padding(.top, 14)
+                    } label: { Label(L("Saved streaming and input preferences"), systemImage: "antenna.radiowaves.left.and.right").font(AppType.headline) }
                 }
             }
         }.accessibilityIdentifier("saved-sound-controls")
@@ -72,10 +72,10 @@ struct SavedSoundControlsView: View {
 
     private func header(_ title: String, symbol: String, enabled: Bool) -> some View {
         HStack {
-            Label(title, systemImage: symbol).font(.headline)
+            Label(title, systemImage: symbol).font(AppType.headline)
             Spacer(minLength: 12)
             Text(enabled ? L("Enabled in saved program") : L("Disabled in saved program"))
-                .font(.caption.weight(.medium)).foregroundStyle(enabled ? Brand.accent : Color.secondary)
+                .font(AppType.caption.weight(.medium)).foregroundStyle(enabled ? Brand.accent : Color.secondary)
         }
     }
     private func choice(_ value: OticonSavedControls.Choice) -> String {

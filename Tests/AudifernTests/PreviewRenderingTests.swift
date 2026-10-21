@@ -5,6 +5,120 @@ import SwiftUI
 import Testing
 @testable import Audifern
 
+@MainActor @Test(.enabled(if: ProcessInfo.processInfo.environment["AUDIFERN_PREVIEW_OUTPUT"] != nil))
+func renderAboutAndContributionsWithoutOpeningLinksOrBluetooth() throws {
+    let output = try #require(ProcessInfo.processInfo.environment["AUDIFERN_PREVIEW_OUTPUT"])
+    let folder = URL(fileURLWithPath: output, isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    NSApplication.shared.setActivationPolicy(.prohibited)
+    let services = AudifernServices(demo: true)
+    let cases: [(String, AppLanguage, ColorScheme, AboutView.ContributionMethod, DonationAsset, Int)] = [
+        ("en-mp", .english, .light, .mercadoPago, .bitcoin, 900),
+        ("en-btc", .english, .light, .cryptocurrency, .bitcoin, 900),
+        ("pt-btc", .portugueseBrazil, .light, .cryptocurrency, .bitcoin, 714),
+        ("es-usdc", .spanish, .light, .cryptocurrency, .usdc, 714),
+        ("en-eth-dark", .english, .dark, .cryptocurrency, .ethereum, 714),
+        ("pt-sol-dark", .portugueseBrazil, .dark, .cryptocurrency, .solana, 714)
+    ]
+    for (name, language, scheme, method, asset, width) in cases {
+        services.preferences.language = language
+        services.preferences.appearance = scheme == .light ? .light : .dark
+        NSApplication.shared.appearance = NSAppearance(named: scheme == .light ? .aqua : .darkAqua)
+        let content = AboutView(initialMethod: method, initialAsset: asset)
+            .environmentObject(services.preferences).environment(\.colorScheme, scheme)
+            .frame(width: CGFloat(width), height: 1050).background(Brand.background)
+        let hosting = NSHostingView(rootView: content)
+        hosting.frame = NSRect(x: 0, y: 0, width: width, height: 1050)
+        hosting.layoutSubtreeIfNeeded()
+        #expect(hosting.window == nil && services.bluetooth.isDemo)
+        let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        try PrivateDocuments.writeNew(png, to: folder.appendingPathComponent("about-\(name).png"))
+    }
+}
+
+@MainActor @Test(.enabled(if: ProcessInfo.processInfo.environment["AUDIFERN_PREVIEW_OUTPUT"] != nil))
+func renderContextualTaskSheetsAndEveryGuidedPlanStepWithoutWindows() throws {
+    let output = try #require(ProcessInfo.processInfo.environment["AUDIFERN_PREVIEW_OUTPUT"])
+    let folder = URL(fileURLWithPath: output, isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    NSApplication.shared.setActivationPolicy(.prohibited)
+    let services = AudifernServices(demo: true)
+    let windowCount = NSApplication.shared.windows.count
+    let routes: [(String, AppSheet)] = [
+        ("equalizers", .equalizers), ("save-preset", .savePreset), ("settings", .settings),
+        ("settings-battery", .settings), ("settings-privacy", .settings), ("backups", .backups), ("audiograms", .audiograms), ("saved-fitting", .savedFitting),
+        ("device-details", .device(DemoData.leftID)), ("backup-comparison", .backupComparison)
+    ] + FittingPlanStep.allCases.map { ("plan-\($0.rawValue)", AppSheet.fittingPlan) }
+    for (name, route) in routes {
+      for scheme in [ColorScheme.light, .dark] {
+        services.preferences.language = .english
+        services.preferences.appearance = scheme == .light ? .light : .dark
+        if name.hasPrefix("plan-"), let number = Int(name.dropFirst(5)), let step = FittingPlanStep(rawValue: number) {
+            services.navigation.fittingStep = step
+        }
+        services.defaults.set(name == "settings-battery" ? "battery" : name == "settings-privacy" ? "privacy" : "general", forKey: "settingsSection")
+        services.navigation.sheet = route; services.navigation.sheetPath = []
+        NSApplication.shared.appearance = NSAppearance(named: scheme == .light ? .aqua : .darkAqua)
+        let content = AppTaskSheet(store: services.bluetooth, workspace: services.fittingWorkspace, backups: services.backups,
+            audiograms: services.audiograms, notifications: services.batteryNotifications)
+            .environmentObject(services.preferences).environmentObject(services.navigation)
+            .environmentObject(services.presets).environmentObject(services.equalizerDrafts)
+            .defaultAppStorage(services.defaults).environment(\.colorScheme, scheme)
+            .frame(width: 1000, height: 920).background(Brand.background)
+        let hosting = NSHostingView(rootView: content)
+        hosting.frame = NSRect(x: 0, y: 0, width: 1000, height: 920)
+        hosting.layoutSubtreeIfNeeded()
+        #expect(hosting.window == nil && NSApplication.shared.windows.count == windowCount)
+        let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        try PrivateDocuments.writeNew(png, to: folder.appendingPathComponent("sheet-\(name)-\(scheme == .light ? "light" : "dark").png"))
+      }
+    }
+}
+
+@MainActor @Test(.enabled(if: ProcessInfo.processInfo.environment["AUDIFERN_PREVIEW_OUTPUT"] != nil))
+func renderEverydayNavigationWithoutOpeningAWindowOrBluetooth() throws {
+    let output = try #require(ProcessInfo.processInfo.environment["AUDIFERN_PREVIEW_OUTPUT"])
+    let folder = URL(fileURLWithPath: output, isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    NSApplication.shared.setActivationPolicy(.prohibited)
+    let services = AudifernServices(demo: true)
+    let cases: [(AppPage, AppLanguage, ColorScheme, Int, Int)] = [
+        (.hearingAids, .english, .light, 1240, 1100),
+        (.hearingAids, .english, .dark, 1080, 1100),
+        (.hearingAids, .portugueseBrazil, .light, 1080, 1100),
+        (.hearingAids, .spanish, .light, 1080, 1100),
+        (.sound, .english, .light, 1080, 1100),
+        (.presets, .english, .dark, 1080, 1100),
+        (.programs, .english, .light, 1080, 1100)
+    ]
+    for (page, language, scheme, width, height) in cases {
+        services.preferences.language = language
+        services.preferences.appearance = scheme == .light ? .light : .dark
+        services.navigation.page = page
+        NSApplication.shared.appearance = NSAppearance(named: scheme == .light ? .aqua : .darkAqua)
+        let content = ContentView(store: services.bluetooth, audiogramStore: services.audiograms,
+            notifications: services.batteryNotifications, fittingWorkspace: services.fittingWorkspace, backups: services.backups)
+            .environmentObject(services.preferences).environmentObject(services.navigation)
+            .environmentObject(services.presets).environmentObject(services.equalizerDrafts)
+            .defaultAppStorage(services.defaults)
+            .environment(\.colorScheme, scheme).preferredColorScheme(scheme)
+            .frame(width: CGFloat(width), height: CGFloat(height)).background(Brand.background)
+        let hosting = NSHostingView(rootView: content)
+        hosting.frame = NSRect(x: 0, y: 0, width: width, height: height)
+        hosting.layoutSubtreeIfNeeded()
+        #expect(hosting.window == nil && services.bluetooth.isDemo)
+        let bitmap = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+        #expect(bitmap.pixelsWide == width && bitmap.pixelsHigh == height)
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        try PrivateDocuments.writeNew(png, to: folder.appendingPathComponent("everyday-\(page.rawValue)-\(language.rawValue)-\(scheme == .light ? "light" : "dark")-\(width).png"))
+    }
+}
+
 /// Optional artifact check used during UI work. An in-memory hosting view paints
 /// synthetic content; it does not open, focus or capture a Mac window. Window
 /// chrome, menu behavior and onscreen interaction remain separate checks.

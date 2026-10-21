@@ -84,8 +84,17 @@ microphone EQ, streaming EQ and volume ranges until refreshed.
 
 ## Advanced UTL path
 
-`Load advanced controls` is an explicit user action. Ordinary connection does
-not authenticate a proprietary application channel. The implementation:
+Opening the Equalizers editor automatically reads consumer EQ for the selected
+ear using the locally provisioned credential. Selecting Both ears requests only
+missing EQs; duplicate requests reuse an in-progress read. Changing targets does
+not cancel the channel's owned transaction. Loading never sends EQ-set commands.
+Errors are shown for each ear with an explicit Retry action; failed reads do not
+loop automatically. Program or connection changes invalidate the read context.
+
+EQ acquisition is separate from optional battery, identification and
+SpeechBooster queries. It waits briefly for an existing device operation and
+uses a shared deadline for EQ info and values. Neither ordinary connection nor
+opening the editor enters fitting mode. The advanced channel implementation:
 
 1. Reads GATT transport information and chooses a closed channel within the
    advertised channel count. It never takes over an open channel.

@@ -86,6 +86,10 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
     private var probeConfiguration: LaunchConfiguration?
     private var recorder: ProbeRecorder?
     private var probeHasAttemptedConnect = false
+    lazy var equalizerLoader = EqualizerLoader { [weak self] context in
+        guard let self else { throw UTLSession.SessionError.disconnected }
+        try await self.readEqualizers(context)
+    }
 
     var orderedConnections: [AidConnection] {
         connections.values.sorted {
@@ -617,6 +621,16 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
               let payload = OticonRemoteProtocol.volumePayload(level: volume.level + delta, muted: volume.muted, reportedRange: ranges.main) else { return }
         writeSetting(id, characteristicUUID: OticonRemoteProtocol.mainVolume, data: payload, label: "Volume \(volume.level + delta)")
     }
+    /// The slider submits once, on release. Its original snapshot must still
+    /// match, and the existing consumer executor re-reads both aids before
+    /// writing and confirms every write. No intermediate drag values are sent.
+    func setMainVolume(_ selection: MainVolumeSelection, level: Int) {
+        guard selection.matches(connections), let levels = selection.levels(setting: level) else {
+            linkedActionFailed = true; linkedActionStatus = "Sound controls changed. Refresh before retrying."
+            return
+        }
+        performConsumerChange(selection.aids.map(\.id), change: .volumeLevels(levels))
+    }
     func setMuted(_ id: UUID, muted: Bool) {
         guard let state = connections[id], state.canChangeVolume, let volume = state.volume, let ranges = state.volumeRanges,
               let payload = OticonRemoteProtocol.volumePayload(level: volume.level, muted: muted, reportedRange: ranges.main) else { return }
@@ -975,6 +989,85 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
         connections[id]?.deviceMetadataStatus = failures.isEmpty ? "Device details read from hearing aid." : failures.joined(separator: " ")
     }
 
+    /// Load just consumer EQs when their editor opens. Do not hold their busy
+    /// state for serial-number, battery or SpeechBooster queries.
+    func loadEqualizersIfNeeded(_ ids: [UUID], microphone: Bool, retry: Bool = false) {
+        guard !isDemo, probeConfiguration == nil else { return }
+        for id in ids {
+            guard let aid = connections[id], liveLink(id) != nil else { continue }
+            let loaded = microphone
+                ? aid.microphoneEqualizer != nil && aid.writableMicrophoneEqualizer
+                : aid.streamingEqualizer != nil && aid.writableStreamingEqualizer
+            if loaded && !retry { continue }
+            let context = EqualizerLoader.Context(id: id, connectedAt: aid.connectedAt, program: aid.activeProgram)
+            // A later program/channel invalidation needs a new read even if an
+            // earlier read in this connection completed successfully.
+            let completed = equalizerLoader.states[id]?.status == .loaded
+            equalizerLoader.request(context, retry: retry || completed)
+        }
+    }
+
+    private func readEqualizers(_ context: EqualizerLoader.Context) async throws {
+        let id = context.id
+        guard let link = liveLink(id) else { throw UTLSession.SessionError.disconnected }
+        func validate() throws {
+            guard liveLink(id) === link, let aid = connections[id],
+                  aid.connectedAt == context.connectedAt, aid.activeProgram == context.program else {
+                throw UTLSession.SessionError.unavailable("The hearing aid or program changed during the EQ read.")
+            }
+        }
+        let waitDeadline = Date().addingTimeInterval(12)
+        while connections[id]?.advancedBusy == true || connections[id]?.actionPending == true
+                || connections[id]?.groupActionPending == true || link.pending != nil {
+            try validate()
+            guard Date() < waitDeadline else {
+                throw UTLSession.SessionError.unavailable("Another device operation is still running. Try loading the EQ again.")
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        try validate()
+        connections[id]?.advancedBusy = true
+        connections[id]?.advancedStatus = "Loading equalizers…"
+        defer { if liveLink(id) === link { connections[id]?.advancedBusy = false } }
+        do {
+            let session = try await readyAdvancedSession(id, link: link)
+            try validate()
+            guard let service = session.services.first(where: { UTLAdvanced.supportsEqualizer($0, microphone: false) }) else {
+                throw UTLSession.SessionError.unavailable("No supported equalizer contract was advertised.")
+            }
+            let deadline = Date().addingTimeInterval(20)
+            let step: Double
+            if service.major >= 2 { step = try await session.equalizerStep(deadline: deadline) }
+            else {
+                _ = try? await session.equalizerStep(deadline: deadline)
+                step = OticonEqualizer.defaultStepDB
+            }
+            try validate()
+            let microphoneEQ = UTLAdvanced.supportsEqualizer(service, microphone: true)
+                ? try await session.equalizer(microphone: true, stepDB: step, deadline: deadline) : nil
+            try validate()
+            let streamingEQ = try await session.equalizer(microphone: false, stepDB: step, deadline: deadline)
+            try validate()
+            connections[id]?.microphoneEqualizer = microphoneEQ
+            connections[id]?.writableMicrophoneEqualizer = microphoneEQ != nil
+            connections[id]?.streamingEqualizer = streamingEQ
+            connections[id]?.writableStreamingEqualizer = true
+            connections[id]?.advancedStatus = "Advanced equalizers read from hearing aid."
+            record("equalizers_read", "Consumer equalizers read from hearing aid", details: ["uuid": id.uuidString])
+        } catch {
+            guard liveLink(id) === link else { throw error }
+            connections[id]?.advancedStatus = "Advanced controls: \(UTLSession.describe(error))"
+            if let session = link.utlSession {
+                await session.stop()
+                if link.utlSession === session { link.utlSession = nil }
+            }
+            invalidateEqualizer(id, microphone: true); invalidateEqualizer(id, microphone: false)
+            invalidateConsumerFeatures(id, link: link)
+            record("equalizers_unavailable", "Consumer EQ read stopped: \(UTLSession.describe(error))", details: ["uuid": id.uuidString])
+            throw error
+        }
+    }
+
     /// Explicit opt-in: opens one free UTL channel, authenticates locally, and
     /// performs service discovery and consumer-EQ reads. No fitting transaction.
     func refreshAdvanced(_ id: UUID, keyURL: URL? = nil) {
@@ -1177,6 +1270,14 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                 if let program = original.remoteCharacteristics[OticonRemoteProtocol.activeProgram] {
                     _ = try await self.readUtility(step.aidID, characteristic: program)
                 }
+                if step.expectedVolume != nil {
+                    for uuid in [OticonRemoteProtocol.volumeRanges, OticonRemoteProtocol.mainVolume] {
+                        guard let characteristic = original.remoteCharacteristics[uuid], characteristic.properties.contains(.read) else {
+                            throw UTLSession.SessionError.unavailable("Current volume and limits are unavailable.")
+                        }
+                        _ = try await self.readUtility(step.aidID, characteristic: characteristic)
+                    }
+                }
                 guard let state = self.connections[step.aidID] else { throw UTLSession.SessionError.disconnected }
                 try step.validate(state)
             }, apply: { step in
@@ -1188,7 +1289,7 @@ final class BluetoothStore: NSObject, ObservableObject, @preconcurrency CBCentra
                               let payload = OticonRemoteProtocol.volumePayload(level: level, muted: muted, reportedRange: range) else {
                             throw UTLSession.SessionError.unavailable("Volume limits changed.")
                         }
-                        try await self.awaitSetting(step.aidID, characteristicUUID: OticonRemoteProtocol.mainVolume, data: payload, label: "Default volume and mute")
+                        try await self.awaitSetting(step.aidID, characteristicUUID: OticonRemoteProtocol.mainVolume, data: payload, label: "Volume and mute")
                     case .equalizer(let microphone, let steps, _):
                         try await self.applyEqualizer(step.aidID, microphone: microphone, steps: steps)
                         self.connections[step.aidID]?.advancedStatus = "\(microphone ? "Microphone" : "Streaming") EQ confirmed by hearing aid."

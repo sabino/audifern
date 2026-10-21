@@ -53,6 +53,40 @@ preserved without an invented interpretation. When a raw identification response
 is present, its reported profile and numeric model identifiers must agree before
 this decoder is selected. Contradictory overlapping identity fields are rejected.
 
+### Saved-state summary and PDF
+
+**Summary & PDF…** opens an inline preview of both ears from the selected,
+immutable backup. It uses the same verified readers as the saved-fitting
+inspector and does not connect to hearing aids or request a fresh read. Changing
+the selected backup closes the preview; changing the inspected ear does not
+change the two-ear report. A missing ear, missing record, unsupported format and
+undecodable details have distinct labels. Partial acquisition and advertised
+persisted EUS coverage are reported separately from decoded fitting content.
+
+The summary includes the capture date, reported model and software/firmware
+versions, P1–P4 fitted user slots, saved adaptation, recognized acoustic
+categories, selected processing settings and readable fitting-software/rationale
+metadata. Saved rationales describe setup positions, not a verified rationale
+for each listening program. Acoustic categories do not verify the parts
+currently fitted, and archived settings do not establish current activity.
+
+The report projection excludes serial numbers, Bluetooth/MAC addresses, UUIDs,
+custom device/program names, acquisition notes, audiograms, real-ear values,
+gain/MPO matrices, raw records and opaque sections. It still describes saved
+hearing settings and their capture date. Missing fields remain missing rather
+than being filled from a connected aid or consumer snapshot. Unsupported raw
+records remain in the private backup and are not embedded in the PDF.
+
+**Save PDF…** uses the native file dialog; **Print…** opens the native print
+dialog. Both are user-initiated. The preview and paginated PDF share one
+localized presentation, with independently designed text and graphics. PDF
+rendering happens in memory and does not create a temporary copy of the backup.
+The generated PDF file wrapper requests owner-only permissions (0600); the user
+chooses its destination in the native save dialog.
+The summary is not a complete clinical report, measured response, prescription
+or restorable fitting. Saving or printing it never changes the private archive
+or the hearing aids.
+
 The [acoustics](saved-acoustics.md), [sound settings](saved-control-wire-evidence.md)
 and [tap/notification preferences](saved-preferences.md) guides describe the exact
 accepted formats and remaining unknowns. A stored setting does not prove current
@@ -107,10 +141,12 @@ file was not replaced. These files may include personal preparation notes.
 
 ![Native fitting-plan view with synthetic content in light mode](images/fitting-plan-light.png)
 
-[Dark appearance](images/fitting-plan-dark.png). These are in-memory native view
-renders using synthetic content, without activating a window or connecting to
-hearing aids. They show the local planning tool; they are not Genie screenshots
-or evidence of a complete clinical fitting implementation.
+[Dark appearance in Português (Brasil)](images/fitting-plan-dark.png). The plan
+screenshots show the native 0.7.0 app with synthetic preview data; the history
+images are isolated native view renders with synthetic revisions. No hearing
+aids were connected for these captures. They show the local planning tool;
+they are not Genie screenshots or evidence of a complete clinical fitting
+implementation.
 
 ## Protocol boundary
 

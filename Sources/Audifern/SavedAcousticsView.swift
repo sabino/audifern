@@ -7,13 +7,13 @@ struct SavedAcousticsView: View {
     var body: some View {
         Surface {
             VStack(alignment: .leading, spacing: 16) {
-                Label(L("Saved acoustics"), systemImage: "ear").font(.headline)
+                Label(L("Saved acoustics"), systemImage: "ear").font(AppType.headline)
                 LabeledContent(L("Earpiece"), value: label(labels.earpiece))
                 LabeledContent(L("Vent"), value: label(labels.vent))
                 LabeledContent(L("Acoustic fitting level"), value: label(labels.fittingLevel))
-                Text(L(OticonSavedAcoustics.limits)).font(.caption).foregroundStyle(.secondary)
+                Text(L(OticonSavedAcoustics.limits)).font(AppType.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                DisclosureGroup(L("Hook, tubing and recorded codes")) {
+                ExpandableSection(L("Hook, tubing and recorded codes")) {
                     VStack(alignment: .leading, spacing: 12) {
                         LabeledContent(L("Hook"), value: label(labels.hook))
                         LabeledContent(L("Tubing"), value: label(labels.tubing))
@@ -23,12 +23,12 @@ struct SavedAcousticsView: View {
                                 Text(item.0)
                                 Spacer()
                                 Text("\(item.1.rawCode) · \(item.1.identifier ?? "?")")
-                                    .font(.caption.monospaced()).textSelection(.enabled)
+                                    .font(AppType.caption.monospaced()).textSelection(.enabled)
                             }
                         }
-                    }.font(.caption).padding(.top, 12)
-                }.font(.callout)
-            }.font(.callout)
+                    }.font(AppType.caption).padding(.top, 12)
+                }.font(AppType.callout)
+            }.font(AppType.callout)
         }.accessibilityIdentifier("saved-acoustics")
     }
 

@@ -27,6 +27,7 @@ struct ConsumerControlPlan {
         }
     }
     enum Change {
+        case volumeLevels([UUID: Int])
         case equalizer(microphone: Bool, bandsDB: [Double])
         case equalizerChannels(microphone: Bool, levelsByAid: [UUID: [Double]])
         case speechBooster(Bool)
@@ -52,6 +53,7 @@ struct ConsumerControlPlan {
         let side: String
         let program: Int?
         let setting: Setting
+        var expectedVolume: OticonRemoteProtocol.Volume? = nil
 
         func validate(_ aid: AidConnection) throws {
             guard aid.id == aidID, aid.isConnected, aid.activeProgram == program else {
@@ -64,6 +66,9 @@ struct ConsumerControlPlan {
             case .volume(let level, _):
                 guard available.canChangeVolume, aid.volumeRanges?.main.contains(level) == true else {
                     throw PlanError.unavailable("\(side) volume is unavailable or outside its reported range.")
+                }
+                if let expectedVolume, aid.volume != expectedVolume {
+                    throw PlanError.unavailable("Volume or mute changed. Refresh before retrying.")
                 }
             case .equalizer(let microphone, let steps, let expected):
                 let eq = microphone ? aid.microphoneEqualizer : aid.streamingEqualizer
@@ -111,13 +116,16 @@ struct ConsumerControlPlan {
         if case .equalizerChannels(_, let levels) = change, Set(levels.keys) != Set(aids.map(\.id)) {
             throw PlanError.unavailable("An EQ draft must match every selected hearing aid exactly.")
         }
+        if case .volumeLevels(let levels) = change, Set(levels.keys) != Set(aids.map(\.id)) {
+            throw PlanError.unavailable("Volume targets must match every selected hearing aid exactly.")
+        }
         var planned: [Step] = []
         for aid in aids {
             guard aid.isConnected, !aid.actionPending, !aid.advancedBusy, !aid.groupActionPending else {
                 throw PlanError.unavailable("Wait for both aids to finish connecting or changing settings.")
             }
-            func append(_ setting: Setting) throws {
-                let step = Step(aidID: aid.id, side: aid.sideLabel, program: aid.activeProgram, setting: setting)
+            func append(_ setting: Setting, expectedVolume: OticonRemoteProtocol.Volume? = nil) throws {
+                let step = Step(aidID: aid.id, side: aid.sideLabel, program: aid.activeProgram, setting: setting, expectedVolume: expectedVolume)
                 try step.validate(aid)
                 planned.append(step)
             }
@@ -128,6 +136,11 @@ struct ConsumerControlPlan {
                 try append(.equalizer(microphone: microphone, steps: eq.steps(forThreeBandDB: bandsDB), expected: eq))
             }
             switch change {
+            case .volumeLevels(let levels):
+                guard let target = levels[aid.id], let current = aid.volume else {
+                    throw PlanError.unavailable("Load current volume before changing it.")
+                }
+                try append(.volume(level: target, muted: current.muted), expectedVolume: current)
             case .equalizer(let microphone, let bandsDB): try equalizer(microphone, bandsDB)
             case .equalizerChannels(let microphone, let levelsByAid):
                 guard let bandsDB = levelsByAid[aid.id],

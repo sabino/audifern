@@ -21,7 +21,7 @@ struct DeveloperView: View {
             Picker(L("Developer tools"), selection: $section) {
                 Text(L("Activity log")).tag("activity")
                 Text(L("Advanced Bluetooth")).tag("bluetooth")
-            }.pickerStyle(.segmented).frame(maxWidth: 430).padding(.horizontal, 30)
+            }.pickerStyle(.segmented).font(AppType.body).frame(maxWidth: 430).padding(.horizontal, 30)
                 .accessibilityIdentifier("developer-section")
             if section == "bluetooth" {
                 DeviceExplorerView(store: store, technicalOnly: true)
@@ -30,27 +30,27 @@ struct DeveloperView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             Label(preferences.showIdentifiers ? L("Identifiers visible on this Mac") : L("Identifiers hidden"), systemImage: "eye.slash")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(AppType.caption).foregroundStyle(.secondary)
                             Spacer()
                             Button(L("Clear log")) { store.clearEvents() }.buttonStyle(.borderless)
                         }
                         Text(L("Exports always omit identifiers, raw packets and authentication material, even when identifiers are visible locally."))
-                            .font(.caption).foregroundStyle(.secondary)
-                        if let exportStatus { Text(exportStatus).font(.caption).foregroundStyle(.secondary) }
+                            .font(AppType.caption).foregroundStyle(.secondary)
+                        if let exportStatus { Text(exportStatus).font(AppType.caption).foregroundStyle(.secondary) }
                         if store.events.isEmpty { ContentUnavailableView(L("No events yet"), systemImage: "text.alignleft") }
                         ForEach(store.events.reversed()) { event in
-                            DisclosureGroup {
+                            ExpandableSection {
                                 let details = DiagnosticPrivacy.shareableDetails(event.details, identifiers: identifiers)
                                 ForEach(details.keys.sorted(), id: \.self) { key in
-                                    LabeledContent(key, value: details[key] ?? "").font(.caption.monospaced()).textSelection(.enabled)
+                                    LabeledContent(key, value: details[key] ?? "").font(AppType.caption.monospaced()).textSelection(.enabled)
                                 }
-                                if details.isEmpty { Text(L("No shareable protocol details.")).font(.caption).foregroundStyle(.secondary) }
+                                if details.isEmpty { Text(L("No shareable protocol details.")).font(AppType.caption).foregroundStyle(.secondary) }
                             } label: {
                                 HStack(alignment: .firstTextBaseline, spacing: 14) {
                                     Text(event.timestamp, style: .time).monospacedDigit().foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
                                     Text(preferences.showIdentifiers ? M(event.message) : M(DiagnosticPrivacy.redact(event.message, identifiers: identifiers)))
                                         .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                                }.font(.callout)
+                                }.font(AppType.callout)
                             }.padding(14).background(Brand.surface, in: RoundedRectangle(cornerRadius: 12))
                         }
                     }.padding(.horizontal, 30).padding(.bottom, 30)
