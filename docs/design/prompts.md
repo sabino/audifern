@@ -28,12 +28,32 @@ credentials, manufacturer/Apple logos, browser chrome, marketing copy or
 excessive glass effects.
 ```
 
-## Transparent brand mark
+## Canonical brand mark
 
-Saved as [BrandMark.png](../../Sources/Audifern/Resources/BrandMark.png). The
-editable [mark.svg](../../branding/mark.svg) and
-[monochrome mark](../../branding/mark-mono.svg) are simplified vector redraws of
-the concept, rather than an automatically traced or generated SVG.
+[branding/mark.svg](../../branding/mark.svg) is the source of truth for the
+Audifern mark. It is the original editable vector redraw of the generated
+concept. From 0.8.1, every current app surface uses exports of this exact SVG;
+the earlier generated PNG is retained only in private design history.
+
+[BrandMark.png](../../Sources/Audifern/Resources/BrandMark.png) is a transparent
+2048-pixel export. The [monochrome SVG](../../branding/mark-mono.svg) preserves
+the same paths. The host, widgets and menu panel share the PNG; macOS uses its
+alpha silhouette for the menu-bar template image. The Dock icon places the
+same mark on the existing rounded tile.
+
+Regenerate after editing the canonical SVG, using `rsvg-convert` from librsvg:
+
+```sh
+python3 scripts/generate-brand-assets.py
+python3 scripts/generate-brand-assets.py --check
+```
+
+The [export manifest](../../branding/derived-assets.json) records the source,
+renderer and output hashes. Local packaging and CI check the committed exports
+without requiring a renderer. Update the SVG and regenerate rather than editing
+the PNG or monochrome derivative independently.
+
+The original concept was generated with this prompt:
 
 ```text
 Use case: logo-brand
@@ -69,7 +89,9 @@ Both PNG assets retain real alpha transparency. The menu-bar symbol uses a
 monochrome template rendering. The app icon adds its own native rounded tile.
 The working name has not undergone professional trademark clearance.
 
-Nonessential `caBX` content-credentials metadata was removed from public PNG
-copies during privacy preparation. The pixel, alpha and color data were retained
-byte-for-byte. Unmodified originals stay in the private research workspace; this
-document preserves the generation provenance and prompt set.
+Nonessential `caBX` content-credentials metadata was removed from the original
+generated PNG copies during privacy preparation, preserving their pixel, alpha
+and color data. Unmodified originals stay in the private research workspace.
+The current brand PNG is a fresh SVG export; the hearing-aid illustration
+retains its original generated pixels. This document preserves the concept
+provenance and prompt set.

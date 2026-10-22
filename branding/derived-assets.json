@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "outputs": {
+    "Sources/Audifern/Resources/BrandMark.png": "3f7e129ec560b1a3155e21d68cf53594af6012911b12bc3a3d4c0f7b7aebda87",
+    "branding/mark-mono.svg": "a863cf4797154eccad47197aa379e2d9253bfb067c35557252e37e877f745453"
+  },
+  "rasterPixels": 2048,
+  "renderer": "rsvg-convert version 2.63.2",
+  "source": "branding/mark.svg",
+  "sourceSHA256": "00df4cd812ec62eb5934d41add993f6b64d5d4d0ddf82da58e96a34f8270cb48"
+}

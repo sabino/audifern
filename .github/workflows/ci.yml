@@ -43,6 +43,7 @@ jobs:
           "$(go env GOPATH)/bin/actionlint" -color
       - name: Python and shell checks
         run: |
+          python3 scripts/generate-brand-assets.py --check
           python3 -m unittest discover -s Tests -p 'test_*.py'
           python3 scripts/test-audit-localization.py
           python3 scripts/audit-localization.py --strict

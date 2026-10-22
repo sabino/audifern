@@ -15,6 +15,7 @@ case "$architecture" in
 esac
 
 cd "$project_dir"
+python3 scripts/generate-brand-assets.py --check
 swift build -c "$configuration" --jobs "${AUDIFERN_BUILD_JOBS:-${OPEN_COMPANION_BUILD_JOBS:-2}}" ${architecture_args[@]+"${architecture_args[@]}"}
 binary_dir="$(swift build -c "$configuration" ${architecture_args[@]+"${architecture_args[@]}"} --show-bin-path)"
 mkdir -p "$project_dir/build"

@@ -24,14 +24,15 @@ Audifern is not affiliated with or endorsed by Oticon or Demant.
 [Eight-band EQ](docs/images/audifern-eq-eight-bands.png) ·
 [Hearing profile](docs/images/hearing-profile-light.png) ·
 [About and contributions](docs/images/audifern-about.png) ·
+[Packaged app icon](docs/images/audifern-app-icon.png) ·
 [Design concept, artwork and prompts](docs/design/prompts.md)
 
-These screenshots show the native 0.8.0 app with synthetic preview devices;
+These screenshots show the native 0.8.1 app with synthetic preview devices;
 preview controls cannot change hearing aids. See [capture details](docs/images/README.md).
 
 ## Around the app
 
-Audifern 0.8.0 adds a configurable graphical menu-bar
+Audifern includes a configurable graphical menu-bar
 panel, desktop widgets, macOS 26 Control Center controls and searchable native
 Help. The top Together/Separate selector sets every sound section; individual sections
 can override it and show **Mixed modes**, with an explanation on hover. EQ lives directly in Sound, with vertical
@@ -202,6 +203,7 @@ must use demo data. See [the privacy guide](PRIVACY.md) and
 swift test --jobs 2
 python3 -m unittest discover -s Tests -p 'test_*.py'
 python3 scripts/audit-localization.py --strict
+python3 scripts/generate-brand-assets.py --check
 python3 scripts/audit-public-source.py \
   --allow-identity "$(git show -s --format='%an <%ae>' HEAD)"
 ```
@@ -209,6 +211,10 @@ python3 scripts/audit-public-source.py \
 Review the contributor identity before allowing it. The privacy checker flags
 embedded signatures for review; see [public-history verification](docs/public-release-audit.md#public-distribution)
 for the owner's intentionally signed commits.
+
+The app, widgets and Dock icon use exports of the canonical
+[branding/mark.svg](branding/mark.svg). See [brand asset regeneration](docs/design/prompts.md#canonical-brand-mark)
+when changing the artwork; normal builds use the checked-in exports.
 
 The optional HIMSA schema check needs a locally acquired `Audiogram-1-502.xsd`:
 set `HIMSA_AUDIOGRAM_SCHEMA` to its path when running Swift tests. The schema is

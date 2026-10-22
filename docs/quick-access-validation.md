@@ -151,3 +151,20 @@ GPG signatures are retained as requested.
   and strict 1,986-key audit. Known-private-pattern scanning found no new source
   or device-data findings; historical signatures remain intentional public
   metadata and dangling historical identities remain private.
+
+## Canonical branding follow-up — 0.8.1 (17)
+
+- The repository's `branding/mark.svg` is unchanged and is now the canonical
+  source for the app's transparent mark, widget art, menu panel and Dock tile.
+  The monochrome SVG is generated from the same paths. The manifest records
+  source/output hashes; local packaging and CI check for stale exports.
+- Checked that both packaged host and widget contain the exact same generated
+  PNG. Extracted and reviewed the packaged ICNS. Temporary fixtures confirmed
+  the export check rejects an independently modified source SVG or PNG.
+- Re-ran the 64 Python tests and strict 1,986-key localization audit. No sound
+  or protocol behavior was changed.
+- Retook 15 native demo views in English, Brazilian Portuguese and Spanish,
+  including both grouping modes, About, Help, Settings and the native popover.
+  README captures and an extracted app-icon image were exported without
+  nonessential PNG metadata. No real-device data or Bluetooth central was used.
+  The temporary capture app was closed and demo preferences and focus restored.

@@ -1,6 +1,6 @@
 import AppKit
 
-// Package the original transparent brand artwork, without vendor imagery.
+// Place the canonical SVG's transparent raster export on a native icon tile.
 guard CommandLine.arguments.count == 3,
       let mark = NSImage(contentsOfFile: CommandLine.arguments[2]) else { fatalError("Usage: make-icon.swift OUTPUT.iconset MARK.png") }
 let output = URL(fileURLWithPath: CommandLine.arguments[1])

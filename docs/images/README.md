@@ -1,6 +1,6 @@
 # Screenshot provenance
 
-The current README screenshots show **Audifern 0.8.0 (16)**, captured on macOS
+The current README screenshots show **Audifern 0.8.1 (17)**, captured on macOS
 on 2026-10-21. They are native window and AppKit popover captures from a
 separately packaged documentation app launched with `--demo`.
 
@@ -9,6 +9,10 @@ It never creates a Bluetooth central, changes a hearing aid or reads the normal
 exam library. The regular app and real-device information were not used. Preview
 preferences, the existing preview window's layout and the user's focus were
 restored after capture; the temporary documentation app was closed.
+
+All current marks come from the unchanged canonical `branding/mark.svg`.
+`audifern-app-icon.png` is extracted from the packaged ICNS; it is the same mark
+on the existing native rounded tile, rather than a separate logo concept.
 
 ## Current captures
 
@@ -41,8 +45,8 @@ interface, not physical interoperability or complete clinical fitting.
 
 ## Earlier supporting images
 
-The unchanged fitting-plan light/dark captures and `consumer-eq-eight-bands.png`
-show the native 0.7.0 demo app. The latter predates the inline EQ editor now
+The historical fitting-plan light/dark captures and `consumer-eq-eight-bands.png`
+show the native 0.7.0 demo app with the earlier generated mark. The latter predates the inline EQ editor now
 shown in the README. Fitting-plan-history light/dark images are direct
 SwiftUI/AppKit renders with synthetic revision history.
 
