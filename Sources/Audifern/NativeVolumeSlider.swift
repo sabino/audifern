@@ -98,11 +98,17 @@ struct NativeVolumeSlider: NSViewRepresentable {
         slider.frame = showsScale ? NSRect(x: 0, y: 0, width: bounds.width, height: 28) : bounds
     }
     func scalePosition(for value: Int) -> CGFloat {
-        guard let cell = slider.cell as? NSSliderCell else { return 0 }
-        let bar = cell.barRect(flipped: slider.isFlipped)
-        let inset = cell.knobRect(flipped: slider.isFlipped).width / 2
+        // Native bar and thumb end insets differ between macOS releases.
+        // Query a detached cell copy so labels follow this system's geometry
+        // without changing the live control's value or sending an action.
+        guard let cell = slider.cell?.copy() as? NSSliderCell else { return 0 }
+        cell.controlView = slider
+        cell.doubleValue = slider.minValue
+        let minimum = cell.knobRect(flipped: slider.isFlipped).midX
+        cell.doubleValue = slider.maxValue
+        let maximum = cell.knobRect(flipped: slider.isFlipped).midX
         let fraction = CGFloat(value - scaleRange.lowerBound) / CGFloat(max(1, scaleRange.upperBound - scaleRange.lowerBound))
-        let x = bar.minX + inset + fraction * max(0, bar.width - inset * 2)
+        let x = minimum + fraction * (maximum - minimum)
         return slider.convert(NSPoint(x: x, y: 0), to: self).x
     }
     override func draw(_ dirtyRect: NSRect) {

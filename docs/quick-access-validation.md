@@ -187,6 +187,8 @@ GPG signatures are retained as requested.
   step marked and explicit minimum, zero and maximum labels in narrow controls.
   Wider controls label each step. Zero follows the native thumb travel rather
   than assuming a symmetric range; the synthetic sample uses -8 through +3.
+  A detached native-cell copy supplies the thumb endpoints on each macOS version;
+  tests confirm these geometry queries leave the live value and actions unchanged.
 - The full Swift test run passed: 68 XCTest cases (one optional fixture skipped),
   131 core Swift Testing cases and 174 app cases. The separate opt-in rendering
   check passed for English, Brazilian Portuguese and Spanish, both grouping

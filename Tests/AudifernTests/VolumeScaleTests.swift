@@ -15,9 +15,11 @@ import Testing
     // Exercise reported-value updates through the representable, instead of
     // mutating the NSControl underneath SwiftUI's value ownership.
     for value in -8...3 {
+        var previews: [Int?] = []
+        var commits: [Int] = []
         let host = NSHostingView(rootView: NativeVolumeSlider(value: value, range: -8...3, enabled: true,
             label: "Synthetic volume", vertical: false, showsScale: true,
-            preview: { _ in }, commit: { _ in }).frame(width: 320, height: 48))
+            preview: { previews.append($0) }, commit: { commits.append($0) }).frame(width: 320, height: 48))
         host.frame = NSRect(x: 0, y: 0, width: 320, height: 48)
         host.layoutSubtreeIfNeeded()
         let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
@@ -36,6 +38,8 @@ import Testing
         #expect(zero > (minimum + maximum) / 2)
         let thumb = slider.convert(cell.knobRect(flipped: slider.isFlipped), to: scale)
         #expect(abs(scale.scalePosition(for: value) - thumb.midX) <= 0.5)
+        #expect(slider.doubleValue == Double(value))
+        #expect(previews.isEmpty && commits.isEmpty)
         #expect(host.window == nil)
     }
 }
