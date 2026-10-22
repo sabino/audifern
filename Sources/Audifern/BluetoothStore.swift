@@ -38,7 +38,6 @@ import QuickAccessKit
     var batteryPollTask: Task<Void, Never>?
     var batteryPollGeneration: UUID?
     var batteryZeroRetryCount = 0
-    var automaticConsumerReadRequested = false
     init(_ peripheral: CBPeripheral) { self.peripheral = peripheral }
 }
 
@@ -96,6 +95,10 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
     lazy var equalizerLoader = EqualizerLoader { [weak self] context in
         guard let self else { throw UTLSession.SessionError.disconnected }
         try await self.readEqualizers(context)
+    }
+    lazy var consumerFeatureLoader = DeviceReadLoader { [weak self] context in
+        guard let self else { throw UTLSession.SessionError.disconnected }
+        try await self.readAutomaticConsumerFeatures(context)
     }
 
     var orderedConnections: [AidConnection] {
@@ -942,6 +945,9 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
                details: ["uuid": id.uuidString, "services": session.services.map {
                    String(format: "%08X/%u.%u", $0.id, $0.major, $0.minor)
                }.joined(separator: ",")])
+        // Opening a new channel invalidated SpeechBooster above. Queue its
+        // replacement read even when this channel was opened by the EQ editor.
+        if purpose == .consumer { loadConsumerFeaturesIfNeeded(id, retry: true) }
         return session
     }
 
@@ -1163,17 +1169,14 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
     /// Read-only consumer feature refresh. Reuses a current session without
     /// changing EQ or writing either ear's consumer settings.
     func refreshConsumerFeatures(_ id: UUID) {
-        guard probeConfiguration == nil, let link = liveLink(id), link.pending == nil,
-              connections[id]?.advancedBusy == false, connections[id]?.groupActionPending == false else { return }
-        guard let session = link.utlSession, session.isReady else { refreshAdvanced(id); return }
-        connections[id]?.advancedBusy = true
-        Task {
-            defer { if self.liveLink(id) === link { self.connections[id]?.advancedBusy = false } }
-            await self.readConsumerFeatures(id, link: link, session: session)
+        if let aid = connections[id], aid.activeProgram.flatMap({ aid.programBoostable[$0] }) == nil {
+            links[id]?.programInfoRequested = false
         }
+        loadConsumerFeaturesIfNeeded(id, retry: true)
     }
 
     private func readConsumerFeatures(_ id: UUID, link: AidLink, session: UTLSession) async {
+        let program = connections[id]?.activeProgram
         var failures: [String] = []
         if session.supportsBatteryTelemetry {
             do {
@@ -1200,11 +1203,12 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
         if session.supportsSpeechBooster {
             do {
                 let state = try await session.speechBooster()
-                guard liveLink(id) === link else { return }
+                guard liveLink(id) === link, connections[id]?.activeProgram == program else { return }
                 connections[id]?.speechBoosterEnabled = state.isEnabled
                 connections[id]?.writableSpeechBooster = true
                 record("speech_booster_read", "Speech Booster state read from hearing aid", details: ["uuid": id.uuidString])
             } catch {
+                guard liveLink(id) === link, connections[id]?.activeProgram == program else { return }
                 connections[id]?.speechBoosterEnabled = nil
                 connections[id]?.writableSpeechBooster = false
                 failures.append("Speech Booster: \(UTLSession.describe(error))")
@@ -1256,31 +1260,60 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
         }
     }
     private func startAutomaticConsumerRead(_ id: UUID, link: AidLink) {
-        guard probeConfiguration == nil, !link.automaticConsumerReadRequested,
+        guard liveLink(id) === link else { return }
+        loadConsumerFeaturesIfNeeded(id)
+    }
+    private func loadConsumerFeaturesIfNeeded(_ id: UUID, retry: Bool = false) {
+        guard !isDemo, probeConfiguration == nil, let link = liveLink(id), let aid = connections[id],
+              aid.activeProgram != nil,
               link.utlCharacteristics[UTLProtocol.information] != nil,
               link.utlCharacteristics[UTLProtocol.control] != nil,
               FileManager.default.fileExists(atPath: UTLSession.defaultKeyURL.path) else { return }
-        link.automaticConsumerReadRequested = true
-        Task { [weak self, weak link] in
-            guard let self, let link else { return }
-            let deadline = Date().addingTimeInterval(30)
-            // Let discovery and the initial native reads finish first.
-            do { try await Task.sleep(for: .seconds(1)) } catch { return }
-            while self.liveLink(id) === link && Date() < deadline {
-                if self.connections[id]?.canChangeVolume == true && link.pending == nil {
-                    self.connections[id]?.advancedBusy = true
-                    defer { if self.liveLink(id) === link { self.connections[id]?.advancedBusy = false } }
-                    do {
-                        let session = try await self.readyAdvancedSession(id, link: link)
-                        guard self.liveLink(id) === link else { return }
-                        await self.readConsumerFeatures(id, link: link, session: session)
-                    } catch {
-                        self.record("consumer_auto_read_unavailable", "Automatic device feature reading is unavailable; cached battery age is preserved", details: ["uuid": id.uuidString])
-                    }
-                    return
-                }
-                do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+        consumerFeatureLoader.request(.init(id: id, connectedAt: aid.connectedAt, program: aid.activeProgram), retry: retry)
+    }
+    private func readAutomaticConsumerFeatures(_ context: DeviceReadLoader.Context) async throws {
+        let id = context.id
+        guard let link = liveLink(id) else { throw UTLSession.SessionError.disconnected }
+        func validate() throws {
+            guard liveLink(id) === link, let aid = connections[id], aid.connectedAt == context.connectedAt,
+                  aid.activeProgram == context.program else {
+                throw UTLSession.SessionError.unavailable("The hearing aid or program changed during the feature read.")
             }
+        }
+        // Initial discovery, metadata cursors and EQ reads have priority. A
+        // busy operation delays this read instead of dropping it permanently.
+        try await Task.sleep(for: .milliseconds(250))
+        try validate()
+        maybeReadProgramNames(id, link: link)
+        let deadline = Date().addingTimeInterval(45)
+        while connections[id]?.advancedBusy == true || connections[id]?.actionPending == true
+                || connections[id]?.groupActionPending == true || link.pending != nil
+                || link.utilityRead != nil || link.utilityWrite != nil {
+            try validate()
+            guard Date() < deadline else {
+                throw UTLSession.SessionError.unavailable("Another device operation is still running. Try refreshing SpeechBooster again.")
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        try validate()
+        connections[id]?.advancedBusy = true
+        defer {
+            if liveLink(id) === link {
+                connections[id]?.advancedBusy = false
+                maybeReadProgramNames(id, link: link)
+            }
+        }
+        do {
+            let session = try await readyAdvancedSession(id, link: link)
+            try validate()
+            await readConsumerFeatures(id, link: link, session: session)
+            try validate()
+            if session.supportsSpeechBooster && connections[id]?.speechBoosterEnabled == nil {
+                throw UTLSession.SessionError.unavailable(connections[id]?.consumerStatus ?? "SpeechBooster could not be read.")
+            }
+        } catch {
+            record("consumer_auto_read_unavailable", "Automatic device feature reading is unavailable; cached battery age is preserved", details: ["uuid": id.uuidString])
+            throw error
         }
     }
     private func startBatteryPolling(_ id: UUID, link: AidLink) {
@@ -1577,7 +1610,8 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
         guard liveLink(id) === link else { throw UTLSession.SessionError.disconnected }
     }
     private func maybeReadProgramNames(_ id: UUID, link: AidLink) {
-        guard probeConfiguration == nil, !link.programInfoRequested, connections[id]?.advancedBusy == false, connections[id]?.groupActionPending == false,
+        guard probeConfiguration == nil, !link.programInfoRequested, link.pending == nil,
+              connections[id]?.actionPending == false, connections[id]?.advancedBusy == false, connections[id]?.groupActionPending == false,
               connections[id]?.programIDs.isEmpty == false,
               link.remoteCharacteristics[OticonProgramInfo.selector] != nil,
               link.remoteCharacteristics[OticonProgramInfo.information] != nil else { return }
@@ -1846,6 +1880,7 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
         updateCharacteristic(id, link: link, characteristic: characteristic) { $0.value = text }
         updateLiveState(id, service: service.uuid.uuidString, characteristic: characteristic.uuid.uuidString, value: value)
         maybeReadProgramNames(id, link: link)
+        startAutomaticConsumerRead(id, link: link)
         // The serial is displayed per aid, but not duplicated into event logs.
         if !(HearingAidDiscovery.normalizedUUID(service.uuid.uuidString) == StandardGATT.deviceInformationService && HearingAidDiscovery.normalizedUUID(characteristic.uuid.uuidString) == "2A25") {
             record("gatt_value", "Read-only GATT value received", details: ["uuid": id.uuidString, "service": service.uuid.uuidString, "characteristic": characteristic.uuid.uuidString, "value": text, "value_hex": value.hexString])
@@ -1926,7 +1961,10 @@ final class BluetoothStore: NSObject, ObservableObject, AutomaticConnectionTrans
                     }
                 }
                 connections[id]?.activeProgram = program
-            case OticonRemoteProtocol.availablePrograms: connections[id]?.programIDs = OticonRemoteProtocol.programIDs(bitmap: value) ?? []
+            case OticonRemoteProtocol.availablePrograms:
+                let programs = OticonRemoteProtocol.programIDs(bitmap: value) ?? []
+                if connections[id]?.programIDs != programs { links[id]?.programInfoRequested = false }
+                connections[id]?.programIDs = programs
             case OticonEqualizer.legacyCharacteristic:
                 if let link = liveLink(id), let state = try? OticonEqualizer.legacyStreamingState(value) {
                     link.legacyEqualizerData = value

@@ -31,8 +31,8 @@ import Foundation
             aid.batteryTelemetry = try? OticonBattery.fastState(battery, service: service)
             aid.batteryTelemetryUpdatedAt = Date()
             aid.volume = .init(data: Data([0, 1])); aid.volumeRanges = .init(data: Data([0xF8, 3, 0, 18, 0xFB, 0]))
-            aid.activeProgram = 0; aid.programIDs = [0]; aid.programNames = [0: "General"]
-            aid.programBoostable = [0: true]; aid.programTinnitus = [0: false]; aid.programStreaming = [0: false]
+            aid.activeProgram = 0; aid.programIDs = [0, 1]; aid.programNames = [0: "General", 1: "Comfort"]
+            aid.programBoostable = [0: true, 1: true]; aid.programTinnitus = [0: false, 1: false]; aid.programStreaming = [0: false, 1: false]
             aid.speechBoosterEnabled = false
             aid.microphoneEqualizer = try? .init(rawSteps: Array(repeating: 0, count: 8), minimumSteps: Array(repeating: -6, count: 8),
                                                maximumSteps: Array(repeating: 6, count: 8), stepDB: 1)

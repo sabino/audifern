@@ -2027,3 +2027,16 @@
 "Some sections use Together and others use Separate. Choose a mode here to apply it to all sound controls." = "Some sections use Together and others use Separate. Choose a mode here to apply it to all sound controls.";
 "In Sound, choose Streaming to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Source volume is a separate tab for supported TV or generic-streamer programs." = "In Sound, choose Streaming to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Source volume is a separate tab for supported TV or generic-streamer programs.";
 "Source volume" = "Source volume";
+
+// Program shortcuts and read-only status
+"Current program: %@" = "Current program: %@";
+"Program shortcuts change both ears." = "Program shortcuts change both ears.";
+"Quick programs" = "Quick programs";
+"Keep at least one" = "Keep at least one";
+"Shown in Sound and the menu bar. This does not change the active program." = "Shown in Sound and the menu bar. This does not change the active program.";
+"EQ read status" = "EQ read status";
+"Refresh both EQs" = "Refresh both EQs";
+"Reading SpeechBooster…" = "Reading SpeechBooster…";
+"Retry SpeechBooster" = "Retry SpeechBooster";
+"The hearing aid or program changed during the feature read." = "The hearing aid or program changed during the feature read.";
+"Another device operation is still running. Try refreshing SpeechBooster again." = "Another device operation is still running. Try refreshing SpeechBooster again.";

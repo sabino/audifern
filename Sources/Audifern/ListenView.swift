@@ -100,22 +100,26 @@ struct ListenView: View {
 
     private func singleDevice(_ aid: AidConnection) -> some View {
         Surface(insets: 14) {
-            HStack(spacing: 18) {
-                HearingAidArtwork(right: aid.sideLabel == "Right", size: 0.48)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(L(aid.sideLabel)).font(AppType.headline)
-                    Text(aid.model ?? L("Hearing aid")).font(AppType.caption).foregroundStyle(.secondary)
-                    AidBatteryView(store: store, aid: aid, compact: true)
-                }
-                Spacer(minLength: 0)
-                DailyVolumeControl(store: store, aid: aid, targets: [aid]).frame(maxWidth: 280)
-                Spacer(minLength: 0)
-                VStack(spacing: 8) {
-                    DeviceSoundButtons(aid: aid)
-                    SpeechBoosterQuickButton(store: store, aids: [aid])
-                    Button(L("Connect the other ear")) { navigation.show(.devices) }.font(AppType.caption)
-                }
-            }.frame(height: 140)
+            VStack(spacing: 8) {
+                QuickProgramPicker(store: store, aids: [aid], identifier: "sound-quick-programs")
+                HStack(spacing: 18) {
+                    HearingAidArtwork(right: aid.sideLabel == "Right", size: 0.48)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(L(aid.sideLabel)).font(AppType.headline)
+                        Text(aid.model ?? L("Hearing aid")).font(AppType.caption).foregroundStyle(.secondary)
+                        AidBatteryView(store: store, aid: aid, compact: true)
+                    }
+                    Spacer(minLength: 0)
+                    DailyVolumeControl(store: store, aid: aid, targets: [aid]).frame(maxWidth: 280)
+                    Spacer(minLength: 0)
+                    VStack(spacing: 8) {
+                        DeviceSoundButtons(aid: aid)
+                        SpeechBoosterQuickButton(store: store, aids: [aid])
+                        Button(L("Connect the other ear")) { navigation.show(.devices) }.font(AppType.caption)
+                    }
+                }.frame(height: 140)
+                if devicesExpanded { QuickProgramSettings(aids: [aid]) }
+            }
         }
     }
 
@@ -148,5 +152,5 @@ struct ListenView: View {
 struct SoundWorkspaceMetrics {
     let height: CGFloat
     var preview = false
-    var faderHeight: CGFloat { max(32, min(340, height - (preview ? 684 : 654))) }
+    var faderHeight: CGFloat { max(32, min(340, height - (preview ? 724 : 694))) }
 }

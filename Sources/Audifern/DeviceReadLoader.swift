@@ -1,9 +1,9 @@
 import Combine
 import Foundation
 
-/// One read per connection/program and aid. A second ear can load independently;
-/// switching targets cannot cancel an owned transport operation or queue copies.
-@MainActor final class EqualizerLoader: ObservableObject {
+/// Coalesces read-only work per connection/program and aid. A second ear can
+/// load independently; new contexts wait for owned transport cleanup.
+@MainActor final class DeviceReadLoader: ObservableObject {
     struct Context: Equatable {
         let id: UUID
         let connectedAt: Date?
@@ -47,3 +47,5 @@ import Foundation
         }
     }
 }
+
+typealias EqualizerLoader = DeviceReadLoader

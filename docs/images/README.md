@@ -67,3 +67,13 @@ version metadata was incremented to 0.8.2 (18). It shows the same control
 implementation released in 0.8.2, including centered grouping, the asymmetric
 volume scale and the relocated reset/restore actions. Nonessential PNG metadata
 was removed. The existing supporting screenshots remain from 0.8.1.
+
+## Program shortcuts in 0.8.3
+
+`audifern-program-shortcuts.png` shows the native Sound workspace in English
+with one shared EQ status below Together/Separate. `audifern-program-menu.png`
+shows the menu-bar panel in Brazilian Portuguese and dark appearance. Both are
+headless SwiftUI/AppKit renders from the local rendering tests, using synthetic
+General/Comfort programs, devices and battery readings. No hearing aids,
+identifiers or personal settings are used. Demo mode disables device writes;
+the EQ refresh action is omitted in these synthetic captures.

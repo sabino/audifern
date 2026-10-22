@@ -99,6 +99,9 @@ struct PairedEqualizerView: View {
                     detailPicker.pickerStyle(.menu).frame(width: 174)
                 }.frame(maxWidth: .infinity, alignment: .trailing)
             }
+            if appliesToBoth {
+                readStatus(aids, suffix: "together").frame(maxWidth: .infinity)
+            }
             HStack(alignment: .top, spacing: 20) {
                 if appliesToBoth, let aid = aids.first { editor(aid) }
                 else { ForEach(aids) { editor($0) } }
@@ -148,19 +151,13 @@ struct PairedEqualizerView: View {
 
     private func editor(_ aid: AidConnection) -> some View {
         VStack(spacing: compact ? 6 : 12) {
-            HStack(spacing: 8) {
-                Text(appliesToBoth ? L("Together") : L(aid.sideLabel))
-                    .font(AppType.callout.weight(.semibold)).foregroundStyle(appliesToBoth ? Brand.accent : .primary)
-                if compact {
-                    ForEach(targets(aid)) { compactLoadingStatus($0) }
-                }
-                Spacer(minLength: 0)
-                Text("dB").font(AppType.small).foregroundStyle(.tertiary)
-            }.frame(height: 24)
-            if !compact {
-                HStack(alignment: .center, spacing: 12) {
-                    ForEach(targets(aid)) { loadingStatus($0) }
-                }.frame(height: 46)
+            if !appliesToBoth {
+                HStack(spacing: 8) {
+                    Text(L(aid.sideLabel)).font(AppType.callout.weight(.semibold))
+                    readStatus([aid], suffix: aid.sideLabel.lowercased())
+                    Spacer(minLength: 0)
+                    Text("dB").font(AppType.small).foregroundStyle(.tertiary)
+                }.frame(height: 24)
             }
             GeometryReader { geometry in
                 let count = showsDetailed ? 8 : 3
@@ -199,6 +196,9 @@ struct PairedEqualizerView: View {
         .padding(compact ? 10 : 12).frame(maxWidth: .infinity)
         .background(Brand.background.opacity(0.65), in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Brand.accent.opacity(0.09)))
+        .overlay(alignment: .topTrailing) {
+            if appliesToBoth { Text("dB").font(AppType.small).foregroundStyle(.tertiary).padding(10) }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("\(source)-eq-editor-\(appliesToBoth ? "together" : aid.sideLabel.lowercased())")
     }
@@ -242,53 +242,11 @@ struct PairedEqualizerView: View {
             .accessibilityLabel(L("Discard %@ %@ EQ edits", L(aid.sideLabel), L(source)))
     }
 
-    private func compactLoadingStatus(_ aid: AidConnection) -> some View {
-        let status = loader.states[aid.id]?.status
-        let failed: Bool = { if case .failed = status { return true }; return false }()
-        return HStack(spacing: 4) {
-            if status?.isLoading == true { ProgressView().controlSize(.mini) }
-            else {
-                Image(systemName: failed ? "exclamationmark.circle" : equalizer(aid) != nil ? "checkmark.circle" : "circle.dotted")
-                    .foregroundStyle(failed ? Color.orange : Brand.accent)
-                    .accessibilityLabel(failed ? L("Could not load %@ EQ.", L(aid.sideLabel)) : equalizer(aid) != nil ? L("%@ EQ loaded", L(aid.sideLabel)) : L("%@ EQ is not loaded.", L(aid.sideLabel)))
-                if !store.isDemo {
-                    Button { store.loadEqualizersIfNeeded([aid.id], microphone: microphone, retry: true) } label: {
-                        Image(systemName: "arrow.clockwise").frame(width: 16, height: 18)
-                    }.buttonStyle(.borderless).disabled(!aid.isConnected)
-                        .accessibilityLabel(L("Refresh %@ EQ", L(aid.sideLabel)))
-                        .accessibilityIdentifier("\(source)-eq-retry-\(aid.sideLabel.lowercased())")
-                }
+    private func readStatus(_ targets: [AidConnection], suffix: String) -> some View {
+        EqualizerReadStatusView(summary: .init(aids: targets, microphone: microphone, states: loader.states),
+            identifier: "\(source)-eq-retry-\(suffix)", allowsRefresh: !store.isDemo, canRefresh: targets.contains(where: \.isConnected)) {
+                store.loadEqualizersIfNeeded(targets.map(\.id), microphone: microphone, retry: true)
             }
-        }.font(AppType.small).help(statusMessage(aid))
-    }
-    private func loadingStatus(_ aid: AidConnection) -> some View {
-        let status = loader.states[aid.id]?.status
-        let loading = status?.isLoading == true
-        let hasEQ = equalizer(aid) != nil
-        let failed: Bool = { if case .failed = status { return true }; return false }()
-        return HStack(alignment: .center, spacing: 6) {
-            if loading { ProgressView().controlSize(.mini) }
-            Text(!aid.isConnected ? L("%@ is disconnected.", L(aid.sideLabel))
-                 : loading ? L("Loading %@ EQ…", L(aid.sideLabel))
-                 : failed ? L("Could not load %@ EQ.", L(aid.sideLabel))
-                 : hasEQ ? L("%@ EQ loaded", L(aid.sideLabel))
-                 : L("%@ EQ is not loaded.", L(aid.sideLabel)))
-                .font(AppType.small).foregroundStyle(failed ? Color.orange : .secondary).lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .help(statusMessage(aid))
-            if !loading && !store.isDemo {
-                Button(hasEQ ? L("Refresh") : L("Retry")) {
-                    store.loadEqualizersIfNeeded([aid.id], microphone: microphone, retry: true)
-                }.disabled(!aid.isConnected).font(AppType.small).controlSize(.small)
-                    .accessibilityIdentifier("\(source)-eq-retry-\(aid.sideLabel.lowercased())")
-            }
-        }.frame(maxWidth: .infinity)
-    }
-    private func statusMessage(_ aid: AidConnection) -> String {
-        if case .failed(let error) = loader.states[aid.id]?.status { return M(error) }
-        return equalizer(aid)?.frequenciesHz == nil
-            ? L("Numbered bands follow device order. This aid has not reported frequency labels.")
-            : L("Frequencies reported by this hearing aid. These are consumer EQ adjustments.")
     }
     private func bandLabel(_ aid: AidConnection, band: Int) -> String {
         guard showsDetailed else { return [L("Lows"), L("Mids"), L("Highs")][band] }

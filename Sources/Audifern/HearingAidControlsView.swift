@@ -231,13 +231,7 @@ struct SpeechBoosterCell: View {
             Toggle(L("Speech boost"), isOn: Binding(get: { aid.speechBoosterEnabled ?? false }, set: { store.setSpeechBoosters(targetIDs, enabled: $0) }))
                 .toggleStyle(.switch).labelsHidden().disabled(!canChange)
                 .accessibilityLabel(L("%@ SpeechBooster%@", L(aid.sideLabel), String(describing: targetIDs.count == 2 ? L(", changes both ears") : "")))
-            if aid.speechBoosterEnabled == nil {
-                Button(L("Load SpeechBooster")) { store.refreshConsumerFeatures(aid.id) }.buttonStyle(.borderless)
-                    .disabled(!aid.isConnected || aid.actionPending || aid.advancedBusy || aid.groupActionPending)
-                    .accessibilityLabel(L("Load %@ SpeechBooster", L(aid.sideLabel)))
-            } else if aid.activeProgram.flatMap({ aid.programBoostable[$0] }) == false {
-                Text(L("Unavailable in this program")).foregroundStyle(.secondary)
-            } else if let status = aid.consumerStatus { Text(M(status)).foregroundStyle(.secondary) }
+            SpeechBoosterReadStatusView(store: store, aids: targetIDs.compactMap { store.connections[$0] })
         }.font(AppType.caption).frame(maxWidth: .infinity, minHeight: 94, maxHeight: 94, alignment: .topLeading)
     }
 }

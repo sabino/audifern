@@ -23,13 +23,16 @@ Audifern is not affiliated with or endorsed by Oticon or Demant.
 [Settings in Español](docs/images/audifern-settings-es.png) ·
 [Eight-band EQ](docs/images/audifern-eq-eight-bands.png) ·
 [Revised Sound controls in 0.8.2](docs/images/audifern-sound-clarity.png) ·
+[Program shortcuts in 0.8.3](docs/images/audifern-program-shortcuts.png) ·
+[Program shortcuts in the menu bar](docs/images/audifern-program-menu.png) ·
 [Hearing profile](docs/images/hearing-profile-light.png) ·
 [About and contributions](docs/images/audifern-about.png) ·
 [Packaged app icon](docs/images/audifern-app-icon.png) ·
 [Design concept, artwork and prompts](docs/design/prompts.md)
 
 The original screenshots show the native 0.8.1 app; the revised Sound preview
-shows the controls released in 0.8.2. All use synthetic devices, and preview
+shows the controls released in 0.8.2. The program-shortcut previews show 0.8.3.
+All use synthetic devices, and preview
 controls cannot change hearing aids. See [capture details](docs/images/README.md).
 
 ## Around the app
@@ -40,6 +43,11 @@ Help. The top Together/Separate selector sets every sound section; individual se
 can override it and show **Mixed modes**, with an explanation on hover. EQ lives directly in Sound, with vertical
 faders for both ears side by side or one shared set. Timestamped battery runtime
 counts down locally between hourly device reads.
+Colored fitted-program shortcuts appear above the hearing-aid controls and in
+the menu-bar panel. Expand the hearing-aid section to choose which programs to
+show; at least one remains selected. A single choice shows the current program
+without a switcher. SpeechBooster reads automatically on connection, program
+changes and replacement consumer sessions, without changing its setting.
 [Together](docs/images/audifern-sound-together.png) · [Separate](docs/images/audifern-sound-separate.png) ·
 [Menu-bar panel](docs/images/audifern-menu-bar.png) · [Quick access settings](docs/images/audifern-quick-access.png) ·
 [Device details](docs/images/audifern-device-details.png) · [Help](docs/images/audifern-help.png).

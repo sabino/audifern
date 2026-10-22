@@ -8,6 +8,7 @@ struct SpeechBoosterQuickButton: View {
     @State private var showing = false
     private var canLink: Bool { aids.count == 2 && store.connectedPair.count == 2 }
     private var state: String {
+        if aids.isEmpty || aids.contains(where: { $0.speechBoosterEnabled == nil }) { return L("Not loaded") }
         if aids.allSatisfy({ $0.speechBoosterEnabled == true }) { return L("On") }
         if aids.allSatisfy({ $0.speechBoosterEnabled == false }) { return L("Off") }
         return L("Mixed")
@@ -48,13 +49,7 @@ struct SpeechBoosterQuickButton: View {
                 .toggleStyle(.switch).labelsHidden()
                 .disabled(!targets.allSatisfy(\.canChangeSpeechBooster) || store.linkedActionPending)
                 .accessibilityLabel(label)
-            if targets.contains(where: { $0.speechBoosterEnabled == nil }) {
-                Button(L("Load SpeechBooster")) {
-                    for aid in targets { store.refreshConsumerFeatures(aid.id) }
-                }.font(AppType.small).disabled(targets.contains { !$0.isConnected || $0.advancedBusy || $0.actionPending })
-            } else if targets.contains(where: { aid in aid.activeProgram.flatMap { aid.programBoostable[$0] } == false }) {
-                Text(L("Unavailable in this program")).font(AppType.caption).foregroundStyle(.secondary)
-            }
+            SpeechBoosterReadStatusView(store: store, aids: targets)
         }.frame(maxWidth: .infinity)
     }
 }

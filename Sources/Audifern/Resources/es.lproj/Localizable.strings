@@ -2027,3 +2027,16 @@
 "Some sections use Together and others use Separate. Choose a mode here to apply it to all sound controls." = "Algunas secciones usan Juntos y otras usan Separados. Elige un modo aquí para aplicarlo a todos los controles de sonido.";
 "In Sound, choose Streaming to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Source volume is a separate tab for supported TV or generic-streamer programs." = "En Sonido, elija Streaming para ajustar graves, medios y agudos u ocho canales del audífono. Separados muestra ambos oídos sin cambiar de pestaña. Aplicar confirma los cambios solicitados. Volumen de fuente es una pestaña separada para programas de TV o transmisores genéricos compatibles.";
 "Source volume" = "Volumen de fuente";
+
+// Program shortcuts and read-only status
+"Current program: %@" = "Programa actual: %@";
+"Program shortcuts change both ears." = "Los accesos de programa cambian ambos oídos.";
+"Quick programs" = "Programas rápidos";
+"Keep at least one" = "Mantén al menos uno";
+"Shown in Sound and the menu bar. This does not change the active program." = "Se muestran en Sonido y en la barra de menús. Esto no cambia el programa activo.";
+"EQ read status" = "Estado de lectura del EQ";
+"Refresh both EQs" = "Actualizar ambos EQ";
+"Reading SpeechBooster…" = "Leyendo SpeechBooster…";
+"Retry SpeechBooster" = "Volver a leer SpeechBooster";
+"The hearing aid or program changed during the feature read." = "El audífono o programa cambió durante la lectura de funciones.";
+"Another device operation is still running. Try refreshing SpeechBooster again." = "Hay otra operación del dispositivo en curso. Intenta actualizar SpeechBooster de nuevo.";

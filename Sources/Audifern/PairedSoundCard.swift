@@ -15,6 +15,7 @@ struct PairedSoundCard: View {
     var body: some View {
         Surface(insets: compact ? 12 : 16) {
             VStack(spacing: compact ? 6 : 8) {
+                QuickProgramPicker(store: store, aids: pair, identifier: "sound-quick-programs")
                 SoundSectionHeader {
                         Text(masterMixed ? L("Mixed modes") : L("Hearing aids")).font(AppType.callout.weight(.semibold)).lineLimit(1)
                             .help(masterMixed ? L("Some sections use Together and others use Separate. Choose a mode here to apply it to all sound controls.") : L("All sound controls"))
@@ -55,6 +56,7 @@ struct PairedSoundCard: View {
                         .font(AppType.caption).foregroundStyle(store.linkedActionFailed ? Color.orange : .secondary)
                         .lineLimit(1).frame(height: 20)
                         .accessibilityIdentifier("sound-change-status")
+                    QuickProgramSettings(aids: pair)
                 }
             }
         }.animation(reduceMotion ? nil : .smooth(duration: 0.22), value: together)

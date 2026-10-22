@@ -8,7 +8,6 @@ struct MenuBarPanel: View {
     @EnvironmentObject private var preferences: AppPreferences
     @AppStorage("groupedHearingAidControls") private var together = true
     @AppStorage("groupedSpeechBoosterControls") private var speechTogether = true
-    @AppStorage("groupedProgramControls") private var programsTogether = true
     private var aids: [AidConnection] { store.orderedConnections.filter { ["Left", "Right"].contains($0.sideLabel) }.sorted { $0.sideLabel < $1.sideLabel } }
     var body: some View {
         VStack(spacing: 12) {
@@ -27,23 +26,15 @@ struct MenuBarPanel: View {
                 Circle().fill(store.connectedCount > 0 ? Brand.accent : .secondary).frame(width: 6, height: 6)
                 Text(store.isDemo ? L("Preview mode") : store.connectedCount > 0 ? L("%d connected", store.connectedCount) : L("Disconnected"))
             }.font(AppType.caption).foregroundStyle(.secondary).frame(height: 20)
+            if preferences.menuBarPrograms, !aids.isEmpty {
+                QuickProgramPicker(store: store, aids: aids, identifier: "menu-quick-programs")
+            }
             HStack(alignment: .top, spacing: 16) {
                 ear("Left")
                 Divider().frame(height: preferences.menuBarArtwork ? 146 : 68)
                 ear("Right")
             }.padding(.vertical, 2)
             if preferences.menuBarSound { soundControls }
-            if preferences.menuBarPrograms, let first = aids.first {
-                panel {
-                    HStack(spacing: 14) {
-                        if programsTogether {
-                            ProgramSelectionView(store: store, aid: first, targetIDs: aids.map(\.id), compact: true)
-                        } else {
-                            ForEach(aids) { aid in ProgramSelectionView(store: store, aid: aid, targetIDs: [aid.id], compact: true) }
-                        }
-                    }.frame(minHeight: 44)
-                }
-            }
             if preferences.menuBarAudio { audioControls }
             panel {
                 HStack(spacing: 10) {
@@ -77,7 +68,6 @@ struct MenuBarPanel: View {
             .onAppear { automation.refreshAudio() }
             .onChange(of: together) { _, _ in didChangeLayout?() }
             .onChange(of: speechTogether) { _, _ in didChangeLayout?() }
-            .onChange(of: programsTogether) { _, _ in didChangeLayout?() }
     }
     private func panel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content().padding(13).frame(maxWidth: .infinity).background(Brand.surface.opacity(0.85), in: RoundedRectangle(cornerRadius: 15))
@@ -132,6 +122,7 @@ struct MenuBarPanel: View {
                                 .toggleStyle(.switch).font(AppType.caption).disabled(store.isDemo || !aid.canChangeSpeechBooster)
                         }}.accessibilityLabel(L("SpeechBooster"))
                     }
+                    SpeechBoosterReadStatusView(store: store, aids: aids)
                 } else { Text(L("Connect your hearing aids")).font(AppType.callout).foregroundStyle(.secondary).frame(height: 58) }
             }
         }

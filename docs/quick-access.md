@@ -36,11 +36,38 @@ Equalizers live directly in Sound, replacing the large program card.
 Microphone, Streaming and Tinnitus relief have their own source tabs. Tone
 controls use vertical Lows/Mids/Highs faders; the detailed view uses eight
 vertical faders. Separate shows both ears simultaneously, while Together shows
-one shared set. No left/right editor tab is needed. Both aids load independently,
+one shared set. Together has one centered status and refresh below its selector;
+hover or click the status for each ear's result. Separate uses the same status
+disclosure beside each ear, with independent refresh buttons.
+No left/right editor tab is needed. Both aids load independently,
 and the Apply action uses each ear's own current/draft vector. A differing value
 is marked **≠**, with both readings available in the tooltip. Program names stay
-beside the device details and link to Library. More sound controls opens the
-existing attached sheet for source-volume and restore actions.
+beside the device details and link to Library. Source volume has its own tab,
+and restore actions sit below the editors.
+
+## Quick programs and SpeechBooster
+
+Colored program shortcuts sit above the master Together/Separate selector in
+Sound, and below the connection count in the menu-bar panel. They select a fitted
+program on both aids, independently of volume/EQ grouping. Only matching,
+device-reported slot IDs and names are offered for a pair. Names are never
+invented or translated; a newly fitted program appears when both aids report it.
+
+Expand the hearing-aid section to choose the **Quick programs** shown on both
+surfaces. Choices are stored locally per device pair and cannot be reduced to
+zero. With one included program there is no quick switcher: the active program
+is shown as a label, including when it differs from the included shortcut.
+A single available fitted program has no customization controls. The complete
+Library → Programs controls remain available for individual-ear selection.
+Settings → Quick access can hide the menu-bar program row.
+
+SpeechBooster is read automatically after connection and program changes, and
+when opening a replacement consumer channel clears its previous state. These
+reads wait for metadata, EQ and other owned operations, and coalesce repeated
+notifications. They never enable SpeechBooster or change a listening setting.
+The main popover and menu bar expose the same state without requiring a manual
+load. If an automatic read fails, **Retry SpeechBooster** is available there.
+Unsupported programs stay disabled; errors are not retried continuously.
 
 Grouped volume preserves the difference between the current left/right levels;
 it stops at either ear's reported limit. Program changes require matching fitted

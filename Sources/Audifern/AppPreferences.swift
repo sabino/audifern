@@ -30,6 +30,14 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     @Published var menuBarAudio: Bool { didSet { defaults.set(menuBarAudio, forKey: "menuBarAudio") } }
     @Published var menuBarLabel: String { didSet { defaults.set(menuBarLabel, forKey: "menuBarLabel") } }
     @Published var widgetsEnabled: Bool { didSet { defaults.set(widgetsEnabled, forKey: "widgetsEnabled") } }
+    @Published private(set) var quickProgramSelections: [String: [Int]] {
+        didSet { defaults.set(quickProgramSelections, forKey: "quickProgramSelections") }
+    }
+
+    func setQuickProgram(_ id: Int, included: Bool, catalog: ProgramShortcutCatalog) {
+        guard let selection = catalog.selection(changing: id, included: included, saved: quickProgramSelections[catalog.scope]) else { return }
+        quickProgramSelections[catalog.scope] = selection
+    }
 
     func groupAllSoundControls(_ together: Bool) {
         SoundGroupingPreferences.setAll(together, defaults: defaults)
@@ -45,10 +53,11 @@ enum AppAppearance: String, CaseIterable, Identifiable {
         menuBarArtwork = defaults.object(forKey: "menuBarArtwork") as? Bool ?? true
         menuBarTime = defaults.object(forKey: "menuBarTime") as? Bool ?? true
         menuBarSound = defaults.object(forKey: "menuBarSound") as? Bool ?? true
-        menuBarPrograms = defaults.bool(forKey: "menuBarPrograms")
+        menuBarPrograms = defaults.object(forKey: "menuBarPrograms") as? Bool ?? true
         menuBarAudio = defaults.object(forKey: "menuBarAudio") as? Bool ?? true
         menuBarLabel = ["icon", "minimum", "both"].contains(defaults.string(forKey: "menuBarLabel") ?? "") ? defaults.string(forKey: "menuBarLabel")! : "icon"
         widgetsEnabled = defaults.object(forKey: "widgetsEnabled") as? Bool ?? true
+        quickProgramSelections = defaults.dictionary(forKey: "quickProgramSelections") as? [String: [Int]] ?? [:]
         Localization.shared.language = language
     }
 }
