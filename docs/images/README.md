@@ -1,6 +1,6 @@
 # Screenshot provenance
 
-The current README screenshots show **Audifern 0.8.1 (17)**, captured on macOS
+The original README screenshots show **Audifern 0.8.1 (17)**, captured on macOS
 on 2026-10-21. They are native window and AppKit popover captures from a
 separately packaged documentation app launched with `--demo`.
 
@@ -57,3 +57,13 @@ concepts remain labeled as concepts in [their provenance](../design/quick-access
 Native Help-menu search, widget-gallery and Control Center registration checks
 are recorded in [the validation ledger](../quick-access-validation.md).
 Physical sound changes through every widget/control action remain unverified.
+
+## Sound-control clarity — 0.8.2
+
+`audifern-sound-clarity.png` is a native dark-mode Sound capture of the revised
+controls, using synthetic devices with all sections Together. It was captured
+on 2026-10-22 from implementation commit `1628ba8`, before the release-only
+version metadata was incremented to 0.8.2 (18). It shows the same control
+implementation released in 0.8.2, including centered grouping, the asymmetric
+volume scale and the relocated reset/restore actions. Nonessential PNG metadata
+was removed. The existing supporting screenshots remain from 0.8.1.

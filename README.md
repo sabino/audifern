@@ -22,6 +22,7 @@ Audifern is not affiliated with or endorsed by Oticon or Demant.
 [Dark mode in Português (Brasil)](docs/images/audifern-dark.png) ·
 [Settings in Español](docs/images/audifern-settings-es.png) ·
 [Eight-band EQ](docs/images/audifern-eq-eight-bands.png) ·
+[Revised Sound controls in 0.8.2](docs/images/audifern-sound-clarity.png) ·
 [Hearing profile](docs/images/hearing-profile-light.png) ·
 [About and contributions](docs/images/audifern-about.png) ·
 [Packaged app icon](docs/images/audifern-app-icon.png) ·
@@ -69,7 +70,9 @@ testing. See [connections and the handoff research](docs/connections.md).
 | **Hearing profile** | Review saved fitting data, manage audiograms, prepare a fitting plan one step at a time, and open backups or comparisons. |
 | **Settings** | Choose appearance and language, configure battery alerts, manage identifier visibility and open diagnostics. |
 
-Equalizers offer microphone, streaming and fitted tinnitus controls. Choose Together for one shared editor or Separate for both ears side by side;
+Equalizers offer microphone, streaming and fitted tinnitus controls, plus a
+separate Source volume tab for supported streaming programs. Reset EQ is beside
+Apply; Restore sound defaults sits underneath the editors. Choose Together for one shared editor or Separate for both ears side by side;
 switch between three vertical tone faders and eight individually reported bands. Changes remain drafts
 until Apply. Unknown frequencies retain numbered device-order labels.
 
@@ -91,7 +94,9 @@ native macOS keyboard and accessibility input; dragging previews the level and
 submits once on release. Linking preserves the existing left/right balance and
 each ear’s mute state. Every target must fit the reported limits of both aids;
 the app rechecks current volume and program and confirms each device write.
-Levels are device steps, not percentages or calibrated gain in dB.
+The scale marks device steps and labels the reported bounds and zero, including
+asymmetric ranges such as -8 through +3. Levels are device steps, not percentages
+or calibrated gain in dB.
 
 ## Download and install
 
