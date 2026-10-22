@@ -76,7 +76,13 @@ jobs:
           python3 --version
           uname -m
       - name: Swift tests
-        run: swift test --jobs 2
+        run: |
+          # Native layout measurement can monopolize the main actor on Intel.
+          # Keep it out of the process exercising real transport deadlines;
+          # both invocations remain required and together run the full suite.
+          layout_tests='AudifernTests\.(compactSoundKeepsBothEarsFadersInsideAShortViewport|soundGroupingStaysCenteredWhenAHeaderHasNoLeadingTitle)'
+          swift test --jobs 2 --skip "$layout_tests"
+          swift test --jobs 2 --skip-build --filter "$layout_tests"
       - name: Compile the selected-identity exporter without accessing any key
         if: hashFiles('scripts/export-signing-identity.swift') != ''
         run: xcrun swiftc scripts/export-signing-identity.swift -o "$RUNNER_TEMP/audifern-export-check"
