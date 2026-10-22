@@ -8,6 +8,9 @@ enum Brand {
             ? NSColor(srgbRed: 0.35, green: 0.81, blue: 0.65, alpha: 1)
             : NSColor(srgbRed: 0.06, green: 0.44, blue: 0.34, alpha: 1)
     })
+    // Native filled controls use white labels, including dark-mode segmented
+    // pickers. The brighter semantic accent is for text, artwork and tracks.
+    static let controlTint = Color(nsColor: NSColor(srgbRed: 0.04, green: 0.41, blue: 0.30, alpha: 1))
     static let background = Color(nsColor: NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             ? NSColor(srgbRed: 0.105, green: 0.115, blue: 0.12, alpha: 1)

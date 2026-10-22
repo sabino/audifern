@@ -115,7 +115,7 @@ struct FittingWorkspaceView: View {
                     }
                     Picker(L("Ears"), selection: $draft.ears) {
                         ForEach(FittingWorkspaceEars.allCases) { Text(L($0.title)).tag($0) }
-                    }.pickerStyle(.segmented).font(AppType.body)
+                    }.pickerStyle(.segmented).tint(Brand.controlTint).font(AppType.body)
                     HStack(alignment: .top, spacing: 18) {
                         ForEach(draft.ears.ears, id: \.self) { ear in acousticsEditor(ear).frame(maxWidth: .infinity) }
                     }
@@ -156,7 +156,7 @@ struct FittingWorkspaceView: View {
                 }
                     .disabled(validationMessage != nil || store.isDemo)
                 if let next = navigation.fittingStep.next {
-                    Button(L("Continue")) { navigation.fittingStep = next }.buttonStyle(.borderedProminent).font(AppType.body)
+                    Button(L("Continue")) { navigation.fittingStep = next }.buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
                         .keyboardShortcut(.defaultAction)
                 }
             }.padding(22)
@@ -198,7 +198,7 @@ struct FittingWorkspaceView: View {
                     Spacer(minLength: 0)
                     VStack(alignment: .trailing, spacing: 10) {
                         Button { saveDraft() } label: { Label(L("Save plan"), systemImage: "square.and.arrow.down") }
-                            .buttonStyle(.borderedProminent).font(AppType.body).disabled(validationMessage != nil || store.isDemo)
+                            .buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body).disabled(validationMessage != nil || store.isDemo)
                             .accessibilityIdentifier("fitting-save-plan")
                         Button(L("Reload saved…")) { confirmingReload = true }
                             .buttonStyle(.borderless).font(AppType.caption).disabled(!canLoadDraft || store.isDemo)
@@ -247,7 +247,7 @@ struct FittingWorkspaceView: View {
                     }.accessibilityIdentifier("fitting-model")
                     Picker(L("Ears"), selection: $draft.ears) {
                         ForEach(FittingWorkspaceEars.allCases) { Text(L($0.title)).tag($0) }
-                    }.pickerStyle(.segmented).font(AppType.body)
+                    }.pickerStyle(.segmented).tint(Brand.controlTint).font(AppType.body)
                     Text(L("Choose the model on your fitting record. A planning profile does not confirm connected-device compatibility."))
                         .font(AppType.caption).foregroundStyle(.secondary)
                     }

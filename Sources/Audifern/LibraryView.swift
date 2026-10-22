@@ -9,12 +9,12 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: 26) {
                 PageHeading(title: L("Library"), subtitle: L("Your fitted programs and the sounds you save.")) {
                     Button(L("Save current sound"), systemImage: "plus") { navigation.present(.savePreset) }
-                        .buttonStyle(.borderedProminent).font(AppType.body)
+                        .buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
                 }
                 Picker(L("Library content"), selection: $navigation.libraryPresets) {
                     Text(L("Fitted programs")).tag(false)
                     Text(L("My presets")).tag(true)
-                }.pickerStyle(.segmented).font(AppType.body).frame(maxWidth: 620)
+                }.pickerStyle(.segmented).tint(Brand.controlTint).font(AppType.body).frame(maxWidth: 620)
                 if navigation.libraryPresets { SoundPresetPanelView(store: store).disabled(store.isDemo) }
                 else {
                     if store.orderedConnections.isEmpty {

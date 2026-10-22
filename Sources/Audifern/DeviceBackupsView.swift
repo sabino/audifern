@@ -32,7 +32,7 @@ struct DeviceBackupsView: View {
                             Button { capture() } label: {
                                 Label(store.deviceBackupBusy ? L("Reading your hearing aids…") : L("Back up readable state"),
                                       systemImage: "arrow.down.doc")
-                            }.buttonStyle(.borderedProminent).font(AppType.body)
+                            }.buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
                                 .disabled(store.connectedCount == 0 || store.deviceBackupBusy || store.programSnapshotBusy || store.isDemo)
                                 .accessibilityIdentifier("create-device-backup")
                             if store.deviceBackupBusy { ProgressView().controlSize(.small) }

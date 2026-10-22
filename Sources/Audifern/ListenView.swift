@@ -56,7 +56,7 @@ struct ListenView: View {
                         } description: { Text(L("Keep your hearing aids nearby, then connect over Bluetooth.")) }
                         actions: {
                             if store.pairCandidateIDs.count == 2 {
-                                Button(L("Connect hearing aids")) { store.connectPair() }.buttonStyle(.borderedProminent)
+                                Button(L("Connect hearing aids")) { store.connectPair() }.buttonStyle(.borderedProminent).tint(Brand.controlTint)
                                     .disabled(!store.isPoweredOn)
                             }
                             Button(L("Find hearing aids")) { navigation.show(.devices) }
@@ -69,6 +69,7 @@ struct ListenView: View {
                 }
             }
             .padding(20).frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+            .tint(Brand.accent)
             .animation(reduceMotion ? nil : .smooth(duration: 0.22), value: devicesExpanded)
         }
         .onChange(of: navigation.soundFocus) { _, request in if request != nil { devicesExpanded = false } }
@@ -120,16 +121,7 @@ struct ListenView: View {
 
     private func equalizerCard(faderHeight: CGFloat) -> some View {
         Surface(insets: 14) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 12) {
-                    Label(L("Equalizers"), systemImage: "slider.vertical.3").font(AppType.headline)
-                    Spacer(minLength: 0)
-                    Button(L("More sound controls…")) { navigation.present(.equalizers) }
-                        .font(AppType.caption).buttonStyle(.bordered).controlSize(.regular)
-                        .accessibilityIdentifier("more-sound-controls")
-                }.frame(height: 26)
-                HearingAidControlsView(store: store, embedded: true, faderHeight: faderHeight)
-            }
+            HearingAidControlsView(store: store, embedded: true, faderHeight: faderHeight)
         }.frame(maxHeight: .infinity, alignment: .top)
             .accessibilityIdentifier("sound-equalizers")
     }
@@ -144,7 +136,7 @@ struct ListenView: View {
                 }
                 Spacer(minLength: 0)
                 Button(L("Edit equalizers")) { devicesExpanded = false }
-                    .buttonStyle(.borderedProminent).font(AppType.caption)
+                    .buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.caption)
                     .accessibilityIdentifier("expand-equalizers")
             }
         }.frame(maxHeight: .infinity, alignment: .top)
@@ -156,5 +148,5 @@ struct ListenView: View {
 struct SoundWorkspaceMetrics {
     let height: CGFloat
     var preview = false
-    var faderHeight: CGFloat { max(56, min(340, height - (preview ? 684 : 654))) }
+    var faderHeight: CGFloat { max(32, min(340, height - (preview ? 684 : 654))) }
 }

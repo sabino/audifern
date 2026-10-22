@@ -10,7 +10,7 @@ struct BatteryNotificationSettingsView: View {
             Picker(L("Battery alerts"), selection: $showingDetails) {
                 Text(L("Alert settings")).tag(false)
                 Text(L("How alerts work")).tag(true)
-            }.pickerStyle(.segmented).labelsHidden()
+            }.pickerStyle(.segmented).tint(Brand.controlTint).labelsHidden()
             if showingDetails {
                 Surface(insets: 20) {
                     VStack(alignment: .leading, spacing: 18) {

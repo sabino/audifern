@@ -62,7 +62,7 @@ struct SaveSoundPresetView: View {
                 HStack {
                     Spacer()
                     Button(L("Cancel")) { navigation.closeSheet() }
-                    Button(L("Save preset")) { save() }.buttonStyle(.borderedProminent).font(AppType.body).disabled(!canSave)
+                    Button(L("Save preset")) { save() }.buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body).disabled(!canSave)
                         .keyboardShortcut(.defaultAction).accessibilityIdentifier("save-sound-preset")
                 }
             }.padding(36).frame(maxWidth: 850)

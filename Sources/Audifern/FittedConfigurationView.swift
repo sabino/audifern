@@ -79,7 +79,7 @@ struct FittedConfigurationView: View {
                     if let decoded {
                         Picker(L("Saved fitting section"), selection: $section) {
                             ForEach(SavedSection.allCases) { Text($0.title).tag($0) }
-                        }.pickerStyle(.segmented).font(AppType.body)
+                        }.pickerStyle(.segmented).tint(Brand.controlTint).font(AppType.body)
                         switch section {
                         case .overview:
                             overview(decoded)
@@ -130,7 +130,7 @@ struct FittedConfigurationView: View {
                         } description: {
                             Text(L("Create a readable-state backup to explore your saved program structure, adaptation and fitted processing. This page never changes the hearing aids."))
                         } actions: {
-                            Button(L("Open backups")) { navigation.show(.backups) }.buttonStyle(.borderedProminent).font(AppType.body)
+                            Button(L("Open backups")) { navigation.show(.backups) }.buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
                         }.frame(minHeight: 330)
                     }
                 }
@@ -160,7 +160,7 @@ struct FittedConfigurationView: View {
             }.labelsHidden().frame(maxWidth: 200)
             Picker(L("Hearing aid"), selection: Binding(get: { side }, set: { preferredSide = $0 })) {
                 ForEach(entry.backup.aids, id: \.side) { aid in Text(L(aid.side.rawValue.capitalized)).tag(aid.side) }
-            }.pickerStyle(.segmented).font(AppType.body).labelsHidden().frame(width: 170)
+            }.pickerStyle(.segmented).tint(Brand.controlTint).font(AppType.body).labelsHidden().frame(width: 170)
         }.padding(18).background(Brand.accent.opacity(0.055), in: RoundedRectangle(cornerRadius: 16))
     }
 

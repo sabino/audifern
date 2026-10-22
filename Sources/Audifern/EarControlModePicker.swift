@@ -47,6 +47,38 @@ struct EarControlModePicker: View {
     }
 }
 
+/// Equal side lanes keep the mode selector at the card's true center, even
+/// when a section has a title on one side and additional controls on the other.
+struct SoundSectionHeader<Leading: View, Center: View, Trailing: View>: View {
+    @ViewBuilder var leading: () -> Leading
+    @ViewBuilder var center: () -> Center
+    @ViewBuilder var trailing: () -> Trailing
+    var body: some View {
+        SoundSectionHeaderLayout {
+            ZStack { Color.clear.frame(width: 0, height: 0); leading() }
+            ZStack { Color.clear.frame(width: 0, height: 0); center() }
+            ZStack { Color.clear.frame(width: 0, height: 0); trailing() }
+        }.frame(maxWidth: .infinity).frame(height: 38)
+    }
+}
+
+private struct SoundSectionHeaderLayout: Layout {
+    private let centerWidth: CGFloat = 236
+    private let gap: CGFloat = 12
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        CGSize(width: proposal.width ?? 672, height: 38)
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let sideWidth = max(0, (bounds.width - centerWidth - gap * 2) / 2)
+        for (index, view) in subviews.enumerated() {
+            let anchor: UnitPoint = index == 0 ? .leading : index == 1 ? .center : .trailing
+            let x = index == 0 ? bounds.minX : index == 1 ? bounds.midX : bounds.maxX
+            view.place(at: CGPoint(x: x, y: bounds.midY), anchor: anchor,
+                       proposal: .init(width: index == 1 ? centerWidth : sideWidth, height: bounds.height))
+        }
+    }
+}
+
 /// All daily sections share these columns. The narrow middle lane lets the
 /// faders sit inward of the artwork without pushing the hearing aids apart.
 struct SoundEarColumns<Left: View, Center: View, Right: View>: View {

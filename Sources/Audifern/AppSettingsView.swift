@@ -66,7 +66,7 @@ struct AppSettingsView: View {
                     Label(L("Appearance"), systemImage: "circle.lefthalf.filled").font(AppType.headline)
                     Picker(L("Appearance"), selection: $preferences.appearance) {
                         ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
-                    }.pickerStyle(.segmented).accessibilityIdentifier("appearance-choice")
+                    }.pickerStyle(.segmented).tint(Brand.controlTint).accessibilityIdentifier("appearance-choice")
                     Text(L("System follows macOS automatically. Your sound settings do not change."))
                         .font(AppType.caption).foregroundStyle(.secondary)
                     Divider()
@@ -114,7 +114,7 @@ struct AppSettingsView: View {
                 Label(L("Connection and device diagnostics"), systemImage: "waveform.path.ecg").font(AppType.headline)
                 Text(L("Inspect connection status, supported services and redacted logs when you need them."))
                     .font(AppType.body).foregroundStyle(.secondary)
-                Button(L("Open diagnostics…")) { navigation.present(.diagnostics) }.buttonStyle(.borderedProminent).font(AppType.body)
+                Button(L("Open diagnostics…")) { navigation.present(.diagnostics) }.buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
                 Text(L("Advanced controls require a compatible credential provisioned locally. No vendor credential, SDK or firmware is included."))
                     .font(AppType.caption).foregroundStyle(.secondary)
             }

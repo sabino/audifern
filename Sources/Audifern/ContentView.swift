@@ -60,15 +60,20 @@ struct ContentView: View {
             if size.width > 0, size.height > 0, size != windowContentSize { windowContentSize = size }
         }
         .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button { navigation.show(.devices) } label: {
-                    Label(store.isDemo ? L("Preview mode") : M(store.bluetoothStatus), systemImage: "dot.radiowaves.left.and.right")
-                        .font(AppType.caption).foregroundStyle(.secondary)
-                }.buttonStyle(.plain).help(L("Connection details"))
-            }
-            ToolbarItem(placement: .automatic) {
-                Button { navigation.present(.settings) } label: { Label(L("Settings"), systemImage: "gearshape") }
-                    .help(L("Settings"))
+            ToolbarItem(id: "audifern-window-actions", placement: .primaryAction) {
+                HStack(spacing: 12) {
+                    Button { navigation.show(.devices) } label: {
+                        Image(systemName: "dot.radiowaves.left.and.right").frame(width: 28, height: 28)
+                    }
+                    .help(L("Connection details") + " · " + (store.isDemo ? L("Preview mode") : M(store.bluetoothStatus)))
+                    .accessibilityLabel(L("Connection details"))
+                    .accessibilityIdentifier("toolbar-connection")
+                    Button { navigation.present(.settings) } label: {
+                        Image(systemName: "gearshape").frame(width: 28, height: 28)
+                    }
+                    .help(L("Settings")).accessibilityLabel(L("Settings"))
+                    .accessibilityIdentifier("toolbar-settings")
+                }.buttonStyle(.borderless).controlSize(.regular).fixedSize()
             }
         }
         .sheet(item: $navigation.sheet, onDismiss: { navigation.sheetPath = [] }) { _ in

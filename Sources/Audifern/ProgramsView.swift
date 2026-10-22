@@ -27,7 +27,7 @@ struct ProgramsView: View {
                             .font(AppType.callout).foregroundStyle(.secondary)
                         HStack(spacing: 12) {
                             Button(L("Read program snapshot")) { store.readProgramSnapshot() }
-                                .buttonStyle(.borderedProminent).font(AppType.body)
+                                .buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
                                 .disabled(store.connectedCount == 0 || store.programSnapshotBusy || store.isDemo)
                                 .accessibilityIdentifier("read-program-snapshot")
                             if store.programSnapshotBusy { ProgressView().controlSize(.small) }

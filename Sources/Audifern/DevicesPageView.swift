@@ -24,7 +24,7 @@ struct DevicesPageView: View {
             }
             if store.pairCandidateIDs.count == 2 {
                 Button(L("Connect both hearing aids")) { store.connectPair() }
-                    .buttonStyle(.borderedProminent).font(AppType.body)
+                    .buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
                     .disabled(!store.isPoweredOn || store.connectedCount == 2 || store.isDemo)
                     .accessibilityIdentifier("connect-matched-pair")
             }

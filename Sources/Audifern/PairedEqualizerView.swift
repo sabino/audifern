@@ -86,17 +86,18 @@ struct PairedEqualizerView: View {
 
     var body: some View {
         VStack(spacing: compact ? 8 : 14) {
-            HStack(spacing: 12) {
+            SoundSectionHeader {
+                EmptyView()
+            } center: {
                 if aids.count == 2 {
                     EarControlModePicker(together: $linked, available: canLink && !frequencyLayoutsConflict,
                                          scope: L(title), identifier: "\(source)-eq-mode")
                 }
-                Spacer(minLength: 0)
-                Picker(L("EQ detail"), selection: detailSelection) {
-                    Text(L("Tone controls")).tag(false)
-                    Text(L("8 bands")).tag(true)
-                }.pickerStyle(.segmented).labelsHidden().frame(maxWidth: 300)
-                    .accessibilityIdentifier("\(source)-eq-detail")
+            } trailing: {
+                ViewThatFits(in: .horizontal) {
+                    detailPicker.pickerStyle(.segmented).tint(Brand.controlTint).fixedSize()
+                    detailPicker.pickerStyle(.menu).frame(width: 174)
+                }.frame(maxWidth: .infinity, alignment: .trailing)
             }
             HStack(alignment: .top, spacing: 20) {
                 if appliesToBoth, let aid = aids.first { editor(aid) }
@@ -137,6 +138,14 @@ struct PairedEqualizerView: View {
         }
     }
 
+    private var detailPicker: some View {
+        Picker(L("EQ detail"), selection: detailSelection) {
+            Text(L("Tone controls")).tag(false)
+            Text(L("8 bands")).tag(true)
+        }.labelsHidden().font(AppType.caption).controlSize(.regular)
+            .accessibilityIdentifier("\(source)-eq-detail")
+    }
+
     private func editor(_ aid: AidConnection) -> some View {
         VStack(spacing: compact ? 6 : 12) {
             HStack(spacing: 8) {
@@ -164,15 +173,16 @@ struct PairedEqualizerView: View {
                 }
             }.frame(height: compact ? faderHeight + 84 : faderHeight + 132)
             HStack(spacing: 8) {
+                if compact && hasDraft(aid) { discardButton(aid) }
+                Spacer(minLength: 0)
                 Button(L("Reset EQ…")) { resetIDs = targets(aid).map(\.id) }
                     .disabled(!ready(aid) || (try? ConsumerControlPlan(aids: targets(aid), change: .restore(microphone ? .microphone : .streaming))) == nil)
                     .accessibilityLabel(L("Restore %@ %@ EQ%@", L(aid.sideLabel), L(source), String(describing: appliesToBoth ? L(" for both ears") : "")))
-                Spacer(minLength: 0)
-                if compact && hasDraft(aid) { discardButton(aid) }
+                    .accessibilityIdentifier("\(source)-eq-reset-\(appliesToBoth ? "together" : aid.sideLabel.lowercased())")
                 Button(L("Apply")) {
                     store.setEqualizerChannels(targets(aid).map(\.id), microphone: microphone, levelsByAid: requestedLevels(aid))
                     for target in targets(aid) { drafts[target.id, microphone: microphone] = nil }
-                }.buttonStyle(.borderedProminent).disabled(!canApply(aid))
+                }.buttonStyle(.borderedProminent).tint(Brand.controlTint).disabled(!canApply(aid))
                     .accessibilityLabel(L("Apply %@ %@ equalizer%@", L(aid.sideLabel), L(source), String(describing: appliesToBoth ? L(" to both ears") : "")))
                     .accessibilityIdentifier("\(source)-eq-apply-\(appliesToBoth ? "together" : aid.sideLabel.lowercased())")
             }.font(AppType.caption).controlSize(.regular)

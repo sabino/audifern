@@ -45,6 +45,11 @@ func renderInlineEqualizersInBothGroupingModesAndAllLanguages() throws {
                 try render(ListenView(store: services.bluetooth), name: "tinnitus-\(language.rawValue)", width: 800, height: 700)
                 services.defaults.set("streaming", forKey: "equalizerSoundSection")
                 try render(ListenView(store: services.bluetooth), name: "short-\(language.rawValue)", width: 740, height: 700)
+                services.defaults.set(true, forKey: "streamingEqualizerDetailed")
+                try render(ListenView(store: services.bluetooth), name: "short-eight-\(language.rawValue)", width: 740, height: 700)
+                services.defaults.set(false, forKey: "streamingEqualizerDetailed")
+                services.defaults.set("streamingVolume", forKey: "equalizerSoundSection")
+                try render(ListenView(store: services.bluetooth), name: "source-volume-\(language.rawValue)", width: 740, height: 700)
                 services.defaults.set("microphone", forKey: "equalizerSoundSection")
             }
             services.defaults.set(true, forKey: "soundDevicesExpanded")

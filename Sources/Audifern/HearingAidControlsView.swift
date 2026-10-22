@@ -16,12 +16,13 @@ struct HearingAidControlsView: View {
     @AppStorage("groupedStreamingControls") private var streamingGrouped = true
     @AppStorage("groupedTinnitusControls") private var tinnitusGrouped = true
     enum SoundSection: String, CaseIterable, Identifiable {
-        case microphone, streaming, tinnitus
+        case microphone, streaming, streamingVolume, tinnitus
         var id: String { rawValue }
         var title: String {
             switch self {
             case .microphone: L("Microphone")
             case .streaming: L("Streaming")
+            case .streamingVolume: L("Source volume")
             case .tinnitus: L("Tinnitus relief")
             }
         }
@@ -42,9 +43,16 @@ struct HearingAidControlsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: embedded ? 8 : 20) {
             if mode == .sound {
-                Picker(L("Sound source"), selection: $soundSection) {
-                    ForEach(SoundSection.allCases) { Text($0.title).tag($0) }
-                }.pickerStyle(.segmented).labelsHidden().font(AppType.body).accessibilityIdentifier("equalizer-source")
+                if embedded {
+                    HStack(spacing: 16) {
+                        Label(L("Equalizers"), systemImage: "slider.vertical.3").font(AppType.headline).fixedSize()
+                        Spacer(minLength: 0)
+                        ViewThatFits(in: .horizontal) {
+                            sourcePicker.pickerStyle(.segmented).tint(Brand.controlTint).fixedSize()
+                            sourcePicker.pickerStyle(.menu).frame(width: 200)
+                        }.frame(maxWidth: 520, alignment: .trailing)
+                    }.frame(height: 32)
+                } else { sourcePicker.pickerStyle(.segmented).tint(Brand.controlTint) }
             }
             controlsContainer {
                 VStack(spacing: embedded ? 8 : 22) {
@@ -72,10 +80,9 @@ struct HearingAidControlsView: View {
                             PairedEqualizerView(store: store, aids: aids, microphone: true, linked: $grouped, canLink: canLink, compact: embedded, faderHeight: faderHeight, detailPreference: embedded ? $microphoneDetailed : nil)
                         case .streaming:
                             PairedEqualizerView(store: store, aids: aids, microphone: false, linked: $streamingGrouped, canLink: canLink, compact: embedded, faderHeight: faderHeight, detailPreference: embedded ? $streamingDetailed : nil)
-                            if !embedded {
-                                Divider()
-                                AuxiliaryVolumeSectionView(store: store, aids: aids, source: .streaming, linked: $streamingGrouped)
-                            }
+                        case .streamingVolume:
+                            AuxiliaryVolumeSectionView(store: store, aids: aids, source: .streaming,
+                                                       linked: $streamingGrouped, compact: embedded)
                         case .tinnitus:
                             AuxiliaryVolumeSectionView(store: store, aids: aids, source: .tinnitus,
                                                        linked: $tinnitusGrouped, compact: embedded)
@@ -83,7 +90,19 @@ struct HearingAidControlsView: View {
                     }
                 }
             }
-            if mode == .sound && !embedded {
+            statusLine
+            if mode == .sound && embedded {
+                Divider().padding(.top, 2)
+                HStack(spacing: 12) {
+                    Label(L("Restore sound defaults"), systemImage: "arrow.counterclockwise")
+                        .font(AppType.caption.weight(.semibold)).lineLimit(1)
+                        .help(L("Restores consumer adjustments. Your fitted programs stay unchanged."))
+                    Spacer(minLength: 0)
+                    ForEach(aids) { restoreMenu($0, compact: true) }
+                    if aids.count == 2 { restoreBothButton }
+                }.font(AppType.caption).controlSize(.regular).frame(height: 32)
+                    .accessibilityIdentifier("sound-restore-defaults")
+            } else if mode == .sound {
                 Surface {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
@@ -92,11 +111,7 @@ struct HearingAidControlsView: View {
                                 Text(L("Restores consumer adjustments. Your fitted programs stay unchanged.")).font(AppType.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            if aids.count == 2 {
-                                Button(L("Restore both ears…")) {
-                                    restoreRequest = .init(ids: aids.map(\.id), target: L("Both ears"), scope: .all)
-                                }.disabled(!canRestore(aids.map(\.id), scope: .all)).accessibilityIdentifier("restore-both-ears")
-                            }
+                            if aids.count == 2 { restoreBothButton }
                         }
                         HStack {
                             ForEach(aids) { aid in restoreMenu(aid); Spacer(minLength: 0) }
@@ -104,9 +119,6 @@ struct HearingAidControlsView: View {
                     }
                 }
             }
-            Text(store.linkedActionStatus.map(M) ?? L("EQ changes remain a draft until you choose Apply."))
-                .font(AppType.caption).foregroundStyle(store.linkedActionFailed ? Color.orange : .secondary)
-                .lineLimit(embedded ? 1 : 2).help(store.linkedActionStatus.map(M) ?? L("EQ changes remain a draft until you choose Apply.")).frame(maxWidth: .infinity, minHeight: embedded ? 18 : 34, maxHeight: embedded ? 18 : 34, alignment: .leading)
         }
         .alert(L("Restore sound defaults?"), isPresented: Binding(get: { restoreRequest != nil }, set: { if !$0 { restoreRequest = nil } }), presenting: restoreRequest) { request in
             Button(L("Restore defaults")) { store.restoreSoundDefaults(request.ids, scope: request.scope); restoreRequest = nil }
@@ -114,6 +126,23 @@ struct HearingAidControlsView: View {
         } message: { request in
             Text(L("%@. %@ Your fitted programs and audiogram are preserved.", request.target, L(request.scope.explanation)))
         }
+    }
+    private var sourcePicker: some View {
+        Picker(L("Sound source"), selection: $soundSection) {
+            ForEach(SoundSection.allCases) { Text($0.title).tag($0) }
+        }.labelsHidden().font(AppType.caption).controlSize(.regular)
+            .accessibilityIdentifier("equalizer-source")
+    }
+    private var statusLine: some View {
+        Text(store.linkedActionStatus.map(M) ?? L("EQ changes remain a draft until you choose Apply."))
+            .font(AppType.caption).foregroundStyle(store.linkedActionFailed ? Color.orange : .secondary)
+            .lineLimit(embedded ? 1 : 2).help(store.linkedActionStatus.map(M) ?? L("EQ changes remain a draft until you choose Apply."))
+            .frame(maxWidth: .infinity, minHeight: embedded ? 18 : 34, maxHeight: embedded ? 18 : 34, alignment: .leading)
+    }
+    private var restoreBothButton: some View {
+        Button(L("Restore both ears…")) {
+            restoreRequest = .init(ids: aids.map(\.id), target: L("Both ears"), scope: .all)
+        }.disabled(!canRestore(aids.map(\.id), scope: .all)).accessibilityIdentifier("restore-both-ears")
     }
     @ViewBuilder private func controlsContainer<Content: View>(@ViewBuilder content: @escaping () -> Content) -> some View {
         if embedded { content() }
@@ -130,15 +159,16 @@ struct HearingAidControlsView: View {
         let targets = ids.compactMap { store.connections[$0] }
         return targets.count == ids.count && !store.linkedActionPending && (try? ConsumerControlPlan(aids: targets, change: .restore(scope))) != nil
     }
-    private func restoreMenu(_ aid: AidConnection) -> some View {
+    private func restoreMenu(_ aid: AidConnection, compact: Bool = false) -> some View {
         Menu {
             ForEach(ConsumerControlPlan.ResetScope.allCases) { scope in
                 if scope == .all { Divider() }
                 Button(L(scope.label)) { restoreRequest = .init(ids: [aid.id], target: L(aid.sideLabel), scope: scope) }
                     .disabled(!canRestore([aid.id], scope: scope))
             }
-        } label: { Label(L("Restore %@…", L(aid.sideLabel)), systemImage: "arrow.counterclockwise") }
-            .menuStyle(.borderlessButton).font(AppType.caption).fixedSize()
+        } label: { Text(compact ? L(aid.sideLabel) : L("Restore %@…", L(aid.sideLabel))) }
+            .font(AppType.caption).fixedSize()
+            .accessibilityLabel(L("Restore %@…", L(aid.sideLabel)))
     }
     private func commonPrograms(_ targets: [AidConnection]) -> [Int] {
         guard targets.count == 2 else { return [] }

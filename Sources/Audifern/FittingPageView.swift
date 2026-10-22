@@ -13,7 +13,7 @@ struct FittingPageView: View {
                 Picker(L("Fitting tools"), selection: $section) {
                     Text(L("Saved fitting")).tag("current")
                     Text(L("Plan a fitting")).tag("plan")
-                }.pickerStyle(.segmented).font(AppType.body).frame(width: 340).accessibilityIdentifier("fitting-section")
+                }.pickerStyle(.segmented).tint(Brand.controlTint).font(AppType.body).frame(width: 340).accessibilityIdentifier("fitting-section")
                 Spacer()
             }.padding(.horizontal, 30).padding(.top, 22).padding(.bottom, 8)
             if section == "current" {

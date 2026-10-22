@@ -2009,13 +2009,11 @@
 "Mixed modes" = "Modos distintos";
 "Sets Together or Separate for every sound section. Section selectors can override it. Changing mode sends no device command." = "Establece Juntos o Separados para todas las secciones de sonido. Los selectores de cada sección pueden cambiar esa elección. Cambiar el modo no envía comandos a los audífonos.";
 "EQ changes remain a draft until you choose Apply." = "Los cambios de EQ quedan como borrador hasta que elija Aplicar.";
-"More sound controls…" = "Más controles de sonido…";
 "Mixed" = "Distintos";
 "%@ · %@ dB" = "%@ · %@ dB";
 "≠ means the ears differ. Together keeps existing settings until you edit and Apply." = "≠ indica valores distintos entre los oídos. Juntos conserva los ajustes actuales hasta editar y Aplicar.";
 "The top selector sets Together or Separate for every sound section, including EQ. A section selector can override that choice; the master then shows Mixed modes. Switching modes never copies settings or sends a hearing-aid command." = "El selector superior establece Juntos o Separados para todas las secciones de sonido, incluido el EQ. Un selector de sección puede cambiar esa elección; el principal muestra Modos distintos. Cambiar el modo nunca copia ajustes ni envía comandos a los audífonos.";
 "In Sound, choose the Microphone EQ tab. Tone controls show three vertical faders; 8 bands uses the device-reported layout. Separate shows both ears side by side, while Together shows one set. Changes remain drafts until Apply. A ≠ marker means the ears currently differ." = "En Sonido, elija la pestaña Micrófono del EQ. Controles de tono muestra tres deslizadores verticales; 8 bandas usa la disposición informada por los audífonos. Separados muestra ambos oídos lado a lado; Juntos muestra un conjunto. Los cambios quedan como borrador hasta Aplicar. El símbolo ≠ indica valores distintos entre los oídos.";
-"In Sound, choose the Streaming EQ tab to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Streaming-source volume is a different control under More sound controls." = "En Sonido, elija la pestaña Streaming del EQ para ajustar graves, medios y agudos u ocho canales del audífono. Separados muestra ambos oídos sin cambiar de pestaña. Aplicar confirma los cambios solicitados. El volumen de la fuente de streaming es otro control en Más controles de sonido.";
 
 /* Compact Sound workspace */
 "Diagnostics…" = "Diagnóstico…";
@@ -2027,3 +2025,5 @@
 "Details…" = "Detalles…";
 
 "Some sections use Together and others use Separate. Choose a mode here to apply it to all sound controls." = "Algunas secciones usan Juntos y otras usan Separados. Elige un modo aquí para aplicarlo a todos los controles de sonido.";
+"In Sound, choose Streaming to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Source volume is a separate tab for supported TV or generic-streamer programs." = "En Sonido, elija Streaming para ajustar graves, medios y agudos u ocho canales del audífono. Separados muestra ambos oídos sin cambiar de pestaña. Aplicar confirma los cambios solicitados. Volumen de fuente es una pestaña separada para programas de TV o transmisores genéricos compatibles.";
+"Source volume" = "Volumen de fuente";

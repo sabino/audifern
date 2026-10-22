@@ -116,7 +116,7 @@ struct DeviceExplorerView: View {
             }
             HStack(spacing: 10) {
                 Button(L("Read additional information")) { store.refreshDeviceMetadata(aid.id) }
-                    .buttonStyle(.borderedProminent).font(AppType.body)
+                    .buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
                     .disabled(!aid.isConnected || aid.actionPending || aid.advancedBusy || aid.groupActionPending || store.isDemo)
                     .accessibilityLabel(L("Read %@ additional information", L(aid.sideLabel)))
                 if aid.advancedBusy { ProgressView().controlSize(.small) }

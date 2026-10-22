@@ -139,7 +139,7 @@ struct AudiogramEditorView: View {
                 Picker(L("Ear"), selection: $quickEar) {
                     Text(L("Left")).tag(AudiogramEar.left)
                     Text(L("Right")).tag(AudiogramEar.right)
-                }.pickerStyle(.segmented).font(AppType.body)
+                }.pickerStyle(.segmented).tint(Brand.controlTint).font(AppType.body)
                 Picker(L("Frequency · Hz"), selection: $quickFrequency) {
                     ForEach(Audiogram.frequenciesHz, id: \.self) { Text(String($0)).tag($0) }
                 }
@@ -153,7 +153,7 @@ struct AudiogramEditorView: View {
                     guard (try? Audiogram.parseLevel(quickLevel, for: quickKey)) != nil else { return }
                     store.setText(quickLevel, for: quickKey)
                     store.setNoResponse(quickNoResponse, for: quickKey)
-                }.buttonStyle(.borderedProminent).font(AppType.body)
+                }.buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
                     .disabled((try? Audiogram.parseLevel(quickLevel, for: quickKey)) == nil)
                     .accessibilityIdentifier("audiogram-add-point")
                 Text(L("Accepted range: −20 to 130 dB HL. Enter the values printed on your exam."))
@@ -190,7 +190,7 @@ struct AudiogramEditorView: View {
             Button(L("Save exam")) {
                 if let exam = store.save() { onSaved?(exam) }
             }
-            .buttonStyle(.borderedProminent).font(AppType.body)
+            .buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
             .keyboardShortcut("s", modifiers: .command)
             .disabled(store.loadFailed || store.validationError != nil)
             .accessibilityIdentifier("audiogram-save")
@@ -245,7 +245,7 @@ struct AudiogramEditorView: View {
             Button(L("Back to simple entry")) { conduction = .air; masked = false; advancedMeasurements = false }
             Picker(L("Measurement"), selection: $conduction) {
                 ForEach(AudiogramConduction.allCases, id: \.self) { Text(L($0.label)).tag($0) }
-            }.pickerStyle(.segmented).font(AppType.body)
+            }.pickerStyle(.segmented).tint(Brand.controlTint).font(AppType.body)
             Toggle(L("Masked measurements"), isOn: $masked).toggleStyle(.checkbox)
                 .font(AppType.callout)
             Text(L("Each condition is stored separately. NR = no response at the entered level."))
@@ -368,7 +368,7 @@ struct AudiogramEditorView: View {
                         exporting = true
                     }
                 }
-                .buttonStyle(.borderedProminent).font(AppType.body)
+                .buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
                 .disabled(hasMasked || (hasAir && himsaTransducer == nil))
             }
         }.padding(20).frame(maxWidth: 700, alignment: .leading)

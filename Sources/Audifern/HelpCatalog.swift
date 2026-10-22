@@ -44,7 +44,7 @@ enum HelpCatalog {
             keywords: "equalizer equaliser bass mid treble lows highs graves médios agudos equalizador ecualizador", destination: .equalizers),
         .init(id: "stream-eq", title: "Streaming EQ", path: ["Sound", "Equalizers"], symbol: "music.note",
             summary: "Adjust the supported equalizer for streamed sound.",
-            guidance: "In Sound, choose the Streaming EQ tab to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Streaming-source volume is a different control under More sound controls.",
+            guidance: "In Sound, choose Streaming to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Source volume is a separate tab for supported TV or generic-streamer programs.",
             keywords: "stream streaming music música audio equalizer", destination: .equalizers),
         .init(id: "tinnitus", title: "Tinnitus relief", path: ["Sound", "Equalizers"], symbol: "waveform.path",
             summary: "Inspect the additional tinnitus consumer control when supported.",

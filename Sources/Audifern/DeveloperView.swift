@@ -21,7 +21,7 @@ struct DeveloperView: View {
             Picker(L("Developer tools"), selection: $section) {
                 Text(L("Activity log")).tag("activity")
                 Text(L("Advanced Bluetooth")).tag("bluetooth")
-            }.pickerStyle(.segmented).font(AppType.body).frame(maxWidth: 430).padding(.horizontal, 30)
+            }.pickerStyle(.segmented).tint(Brand.controlTint).font(AppType.body).frame(maxWidth: 430).padding(.horizontal, 30)
                 .accessibilityIdentifier("developer-section")
             if section == "bluetooth" {
                 DeviceExplorerView(store: store, technicalOnly: true)

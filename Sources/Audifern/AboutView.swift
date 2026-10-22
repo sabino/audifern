@@ -34,7 +34,7 @@ struct AboutView: View {
                         }
                         Picker(L("Ways to support"), selection: $method) {
                             ForEach(ContributionMethod.allCases) { Text($0.title).tag($0) }
-                        }.pickerStyle(.segmented).labelsHidden().accessibilityIdentifier("support-method")
+                        }.pickerStyle(.segmented).tint(Brand.controlTint).labelsHidden().accessibilityIdentifier("support-method")
                         if method == .mercadoPago { mercadoPago }
                         else { cryptocurrency }
                     }
@@ -93,7 +93,7 @@ struct AboutView: View {
                 HStack(spacing: 10) {
                     Link(destination: SupportInfo.mercadoPagoURL) {
                         Label(L("Open donation page"), systemImage: "arrow.up.right")
-                    }.buttonStyle(.borderedProminent).font(AppType.callout)
+                    }.buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.callout)
                         .accessibilityIdentifier("donate-mercado-pago")
                     copyButton(SupportInfo.mercadoPagoURL.absoluteString, title: L("Copy link"))
                 }

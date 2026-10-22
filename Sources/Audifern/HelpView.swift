@@ -33,7 +33,7 @@ struct HelpView: View {
                             Text(L(selected.guidance)).font(AppType.body).lineSpacing(6).textSelection(.enabled)
                             Button { help.openFeature(selected.id) } label: {
                                 Label(L("Open %@", L(selected.title)), systemImage: "arrow.up.forward")
-                            }.buttonStyle(.borderedProminent).font(AppType.body).accessibilityIdentifier("help-open-feature")
+                            }.buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body).accessibilityIdentifier("help-open-feature")
                             Text(selected.localizedPath.joined(separator: " › ")).font(AppType.caption).foregroundStyle(.secondary)
                         }.padding(30).frame(maxWidth: .infinity, alignment: .topLeading)
                     }

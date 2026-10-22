@@ -15,7 +15,7 @@ struct ConnectionSettingsView: View {
                 Text(L("Reconnect")).tag(0)
                 Text(L("Nearby signal")).tag(1)
                 Text(L("Mac audio output")).tag(2)
-            }.pickerStyle(.segmented).labelsHidden()
+            }.pickerStyle(.segmented).tint(Brand.controlTint).labelsHidden()
             switch section {
             case 1: signal
             case 2: audio

@@ -30,7 +30,7 @@ import Foundation
             let service = UTLProtocol.Service(id: OticonBattery.serviceID, handle: 1, major: 2, minor: 0, status: 0xFF)
             aid.batteryTelemetry = try? OticonBattery.fastState(battery, service: service)
             aid.batteryTelemetryUpdatedAt = Date()
-            aid.volume = .init(data: Data([0, 1])); aid.volumeRanges = .init(data: Data([0xFC, 4, 0, 18, 0xFB, 0]))
+            aid.volume = .init(data: Data([0, 1])); aid.volumeRanges = .init(data: Data([0xF8, 3, 0, 18, 0xFB, 0]))
             aid.activeProgram = 0; aid.programIDs = [0]; aid.programNames = [0: "General"]
             aid.programBoostable = [0: true]; aid.programTinnitus = [0: false]; aid.programStreaming = [0: false]
             aid.speechBoosterEnabled = false

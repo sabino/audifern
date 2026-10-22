@@ -31,7 +31,7 @@ struct SavedFittingReportView: View {
                 Text(content.subtitle).font(AppType.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 12) {
                     Button(action: preparePDF) { Label(L("Save PDF…"), systemImage: "arrow.down.doc") }
-                        .buttonStyle(.borderedProminent).font(AppType.body).accessibilityIdentifier("save-fitting-summary-pdf")
+                        .buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body).accessibilityIdentifier("save-fitting-summary-pdf")
                     Button(action: printReport) { Label(L("Print…"), systemImage: "printer") }
                         .buttonStyle(.bordered).font(AppType.body).accessibilityIdentifier("print-fitting-summary")
                 }

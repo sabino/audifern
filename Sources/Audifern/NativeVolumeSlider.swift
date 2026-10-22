@@ -11,11 +11,14 @@ struct NativeVolumeSlider: NSViewRepresentable {
     let label: String
     var style: Style = .standard
     var vertical = true
+    var showsScale = false
+    var identifier: String? = nil
     var preview: (Int?) -> Void
     var commit: (Int) -> Void
 
-    func makeNSView(context: Context) -> ReleaseVolumeSlider {
-        let slider = ReleaseVolumeSlider()
+    func makeNSView(context: Context) -> VolumeSliderHost {
+        let host = VolumeSliderHost()
+        let slider = host.slider
         if style == .capsule { slider.cell = CapsuleVolumeSliderCell() }
         slider.isVertical = vertical
         slider.controlSize = .large
@@ -24,13 +27,17 @@ struct NativeVolumeSlider: NSViewRepresentable {
         slider.action = #selector(Coordinator.changed(_:))
         slider.begin = { [weak coordinator = context.coordinator] in coordinator?.begin() }
         slider.end = { [weak coordinator = context.coordinator] value in coordinator?.end(value) }
-        return slider
+        return host
     }
-    func updateNSView(_ slider: ReleaseVolumeSlider, context: Context) {
+    func updateNSView(_ host: VolumeSliderHost, context: Context) {
+        let slider = host.slider
         context.coordinator.parent = self
+        host.showsScale = showsScale && !vertical
+        host.scaleRange = range
         slider.isVertical = vertical
         slider.isEnabled = enabled && range.lowerBound < range.upperBound
         slider.setAccessibilityLabel(label)
+        slider.setAccessibilityIdentifier(identifier)
         slider.trackFillColor = NSColor(Brand.accent)
         if !slider.tracking {
             slider.minValue = Double(range.lowerBound)
@@ -39,9 +46,12 @@ struct NativeVolumeSlider: NSViewRepresentable {
             slider.allowsTickMarkValuesOnly = true
             slider.doubleValue = Double(value)
         }
+        host.needsLayout = true
+        host.needsDisplay = true
     }
     func makeCoordinator() -> Coordinator { Coordinator(self) }
-    func sizeThatFits(_ proposal: ProposedViewSize, nsView: ReleaseVolumeSlider, context: Context) -> CGSize? {
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: VolumeSliderHost, context: Context) -> CGSize? {
+        if showsScale && !vertical { return CGSize(width: proposal.width ?? 144, height: 48) }
         guard style == .capsule else { return nil }
         return CGSize(width: max(28, proposal.width ?? 52), height: max(72, proposal.height ?? 174))
     }
@@ -67,6 +77,63 @@ struct NativeVolumeSlider: NSViewRepresentable {
             if value != originalValue { originalCommit?(value) }
             originalValue = nil; originalCommit = nil
         }
+    }
+}
+
+/// Keep native tracking, but align the scale with the thumb's actual travel.
+/// AppKit's tick rectangles span the full bar, ignoring the thumb's end insets.
+@MainActor final class VolumeSliderHost: NSView {
+    let slider = ReleaseVolumeSlider()
+    var showsScale = false
+    var scaleRange = 0...0
+    override var isFlipped: Bool { true }
+    override var intrinsicContentSize: NSSize { slider.intrinsicContentSize }
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        addSubview(slider)
+    }
+    required init?(coder: NSCoder) { nil }
+    override func layout() {
+        super.layout()
+        slider.frame = showsScale ? NSRect(x: 0, y: 0, width: bounds.width, height: 28) : bounds
+    }
+    func scalePosition(for value: Int) -> CGFloat {
+        guard let cell = slider.cell as? NSSliderCell else { return 0 }
+        let bar = cell.barRect(flipped: slider.isFlipped)
+        let inset = cell.knobRect(flipped: slider.isFlipped).width / 2
+        let fraction = CGFloat(value - scaleRange.lowerBound) / CGFloat(max(1, scaleRange.upperBound - scaleRange.lowerBound))
+        let x = bar.minX + inset + fraction * max(0, bar.width - inset * 2)
+        return slider.convert(NSPoint(x: x, y: 0), to: self).x
+    }
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard showsScale else { return }
+        let labelFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        let values = VolumeScale.labelledValues(in: scaleRange, width: bounds.width)
+        for value in values {
+            let label = (value > 0 ? "+" : "") + String(value)
+            let color = value == 0 ? NSColor(Brand.accent) : NSColor.secondaryLabelColor
+            let attributes: [NSAttributedString.Key: Any] = [.font: labelFont, .foregroundColor: color]
+            let size = (label as NSString).size(withAttributes: attributes)
+            let x = max(0, min(bounds.width - size.width, scalePosition(for: value) - size.width / 2))
+            (label as NSString).draw(at: NSPoint(x: x, y: 32), withAttributes: attributes)
+            if value == 0 {
+                color.setStroke()
+                let line = NSBezierPath()
+                line.move(to: NSPoint(x: scalePosition(for: value), y: 25))
+                line.line(to: NSPoint(x: scalePosition(for: value), y: 31))
+                line.lineWidth = 1.5
+                line.stroke()
+            }
+        }
+    }
+}
+
+enum VolumeScale {
+    static func labelledValues(in range: ClosedRange<Int>, width: CGFloat) -> [Int] {
+        guard range.lowerBound < range.upperBound else { return [range.lowerBound] }
+        if CGFloat(range.count) * 26 <= width { return Array(range) }
+        return Array(Set([range.lowerBound, range.upperBound] + (range.contains(0) ? [0] : []))).sorted()
     }
 }
 

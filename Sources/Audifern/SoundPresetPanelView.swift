@@ -28,7 +28,7 @@ struct SoundPresetPanelView: View {
                     } description: {
                         Text(L("Adjust your sound, then save it as a preset. You can apply it again from here."))
                     } actions: {
-                        Button(L("Save current sound")) { navigation.present(.savePreset) }.buttonStyle(.borderedProminent).font(AppType.body)
+                        Button(L("Save current sound")) { navigation.present(.savePreset) }.buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body)
                     }.frame(minHeight: 260)
                 }
             }
@@ -45,7 +45,7 @@ struct SoundPresetPanelView: View {
                         }
                         Spacer(minLength: 12)
                         Button(L("Apply")) { selectedID = preset.id; applySelected() }
-                            .buttonStyle(.borderedProminent).font(AppType.body).disabled(isApplying || !canCapture)
+                            .buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body).disabled(isApplying || !canCapture)
                         Menu {
                             Button(L("Update from current sound")) { saveCurrent(replacing: preset) }.disabled(!canCapture || isApplying)
                             Button(L("Delete preset"), role: .destructive) { selectedID = preset.id; confirmingDelete = true }.disabled(isApplying)

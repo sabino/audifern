@@ -15,11 +15,15 @@ struct PairedSoundCard: View {
     var body: some View {
         Surface(insets: compact ? 12 : 16) {
             VStack(spacing: compact ? 6 : 8) {
-                ZStack {
-                    HStack {
+                SoundSectionHeader {
                         Text(masterMixed ? L("Mixed modes") : L("Hearing aids")).font(AppType.callout.weight(.semibold)).lineLimit(1)
                             .help(masterMixed ? L("Some sections use Together and others use Separate. Choose a mode here to apply it to all sound controls.") : L("All sound controls"))
-                        Spacer(minLength: 0)
+                } center: {
+                    EarControlModePicker(together: $together, available: store.connectedPair.count == 2,
+                                         isMixed: masterMixed, affectsAllSections: true,
+                                         scope: L("All sound controls"), identifier: "ear-control-mode")
+                } trailing: {
+                    HStack(spacing: 8) {
                         SpeechBoosterQuickButton(store: store, aids: pair)
                         Button { expanded.toggle() } label: {
                             Label(compact ? L("Expand volume controls") : L("Compact volume controls"),
@@ -29,10 +33,7 @@ struct PairedSoundCard: View {
                             .help(compact ? L("Expand volume controls") : L("Compact volume controls"))
                             .accessibilityIdentifier("toggle-device-size")
                     }
-                    EarControlModePicker(together: $together, available: store.connectedPair.count == 2,
-                                         isMixed: masterMixed, affectsAllSections: true,
-                                         scope: L("All sound controls"), identifier: "ear-control-mode")
-                }.frame(height: 38)
+                }
                 volumeControls
                 SoundDeviceColumns {
                     DeviceSoundButtons(aid: left)

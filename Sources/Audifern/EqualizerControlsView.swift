@@ -30,7 +30,7 @@ struct EqualizerControlsView: View {
                     .accessibilityIdentifier("eq-\(aid?.sideLabel.lowercased() ?? "aid")-microphone")
                 Text(L("Streaming")).tag(false)
                     .accessibilityIdentifier("eq-\(aid?.sideLabel.lowercased() ?? "aid")-streaming")
-            }.pickerStyle(.segmented).font(AppType.body)
+            }.pickerStyle(.segmented).tint(Brand.controlTint).font(AppType.body)
 
             if let equalizer {
                 ForEach(0..<3) { index in
@@ -55,7 +55,7 @@ struct EqualizerControlsView: View {
                         if microphone { store.setMicrophoneEqualizer(aidID, bandsDB: draft) }
                         else { store.setStreamingEqualizer(aidID, bandsDB: draft) }
                         edited = false
-                    }.buttonStyle(.borderedProminent).font(AppType.body).disabled(!canApply)
+                    }.buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.body).disabled(!canApply)
                         .accessibilityLabel(L("Apply %@ %@ equalizer", String(describing: aid?.sideLabel.lowercased() ?? L("hearing aid")), String(describing: microphone ? "microphone" : "streaming")))
                 }.font(AppType.caption)
                 Text(microphone ? L("Adjusts sound from the hearing-aid microphones.") : L("Adjusts audio streamed to the hearing aids."))

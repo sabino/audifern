@@ -35,7 +35,7 @@ struct DeviceInformationPanel: View {
                 }.frame(height: 92)
                 Picker(L("Device information"), selection: $section) {
                     ForEach(Section.allCases, id: \.self) { Text($0.title).tag($0) }
-                }.pickerStyle(.segmented).labelsHidden().accessibilityIdentifier("device-information-section")
+                }.pickerStyle(.segmented).tint(Brand.controlTint).labelsHidden().accessibilityIdentifier("device-information-section")
                 Surface(insets: 18) {
                     VStack(alignment: .leading, spacing: 12) {
                         switch section {
@@ -48,7 +48,7 @@ struct DeviceInformationPanel: View {
                 }.frame(maxHeight: .infinity)
                 HStack(spacing: 12) {
                     Button(L("Read additional information")) { store.refreshDeviceMetadata(id) }
-                        .buttonStyle(.borderedProminent).font(AppType.caption)
+                        .buttonStyle(.borderedProminent).tint(Brand.controlTint).font(AppType.caption)
                         .disabled(!aid.isConnected || aid.actionPending || aid.advancedBusy || aid.groupActionPending || store.isDemo)
                         .accessibilityLabel(L("Read %@ additional information", L(aid.sideLabel)))
                     if aid.advancedBusy { ProgressView().controlSize(.small) }

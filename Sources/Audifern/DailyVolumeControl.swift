@@ -27,16 +27,18 @@ struct DailyVolumeControl: View {
                 NativeVolumeSlider(value: preview ?? aid.volume?.level ?? 0,
                     range: captured?.range ?? aid.volumeRanges?.main ?? 0...0,
                     enabled: !store.isDemo && captured != nil, label: L("%@ volume", subject),
-                    vertical: false, preview: { preview = $0 }, commit: { target in
+                    vertical: false, showsScale: aid.volumeRanges != nil,
+                    identifier: "volume-fader-\(targets.count == 2 ? "together" : aid.sideLabel.lowercased())",
+                    preview: { preview = $0 }, commit: { target in
                         guard let captured, target != captured.level else { preview = nil; return }
                         preview = target; store.setMainVolume(captured, level: target)
                     })
-                    .frame(minWidth: 76, maxWidth: .infinity).frame(height: 24)
-                    .accessibilityIdentifier("volume-fader-\(targets.count == 2 ? "together" : aid.sideLabel.lowercased())")
+                    .frame(minWidth: 76, maxWidth: .infinity).frame(height: 48)
                 step(1, symbol: "plus")
-            }.frame(height: 26).buttonStyle(.bordered).controlSize(.regular)
+                    .padding(.bottom, 20)
+            }.frame(height: 48).buttonStyle(.bordered).controlSize(.regular)
             if showsMute { StableMuteToggle(store: store, targets: targets).controlSize(.regular) }
-        }.frame(minWidth: 160, maxWidth: .infinity).frame(height: showsMute ? 86 : 52)
+        }.frame(minWidth: 160, maxWidth: .infinity).frame(height: showsMute ? 110 : 76)
             .accessibilityElement(children: .contain).accessibilityLabel(L("%@ volume", subject))
             .accessibilityIdentifier("daily-volume-\(targets.count == 2 ? "together" : aid.sideLabel.lowercased())")
             .onChange(of: aid.volume?.level) { _, _ in preview = nil }
@@ -50,5 +52,6 @@ struct DailyVolumeControl: View {
         } label: { Image(systemName: symbol).frame(width: 18, height: 20) }
             .disabled(store.isDemo || selection.map { !$0.range.contains($0.level + delta) } ?? true)
             .accessibilityLabel(delta < 0 ? L("Decrease %@ microphone level", subject) : L("Increase %@ microphone level", subject))
+            .padding(.bottom, delta < 0 ? 20 : 0)
     }
 }

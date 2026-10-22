@@ -168,3 +168,30 @@ GPG signatures are retained as requested.
   README captures and an extracted app-icon image were exported without
   nonessential PNG metadata. No real-device data or Bluetooth central was used.
   The temporary capture app was closed and demo preferences and focus restored.
+
+
+## Sound-control clarity follow-up
+
+- White labels on native filled buttons and segmented controls now use a deeper
+  green, with a tested contrast ratio of at least 4.5:1. Ordinary button text,
+  icons and slider tracks retain the adaptive semantic accent.
+- Connectivity and Settings share one fixed toolbar group. Native accessibility
+  measurements show separated targets; both buttons open the intended panel.
+- Hearing-aid and EQ grouping selectors use the same centered header layout,
+  including when a section has no title in its leading lane. Native measurements
+  confirm that their centers match within half a point.
+- Removed the extra sound-controls destination from the inline EQ card. Restore
+  sound defaults is directly underneath; each Reset EQ action is beside Apply.
+  Dedicated streaming-source gain remains accessible through Source volume.
+- The microphone-volume scale uses the device-reported bounds, with every native
+  step marked and explicit minimum, zero and maximum labels in narrow controls.
+  Wider controls label each step. Zero follows the native thumb travel rather
+  than assuming a symmetric range; the synthetic sample uses -8 through +3.
+- The full Swift test run passed: 68 XCTest cases (one optional fixture skipped),
+  131 core Swift Testing cases and 174 app cases. The separate opt-in rendering
+  check passed for English, Brazilian Portuguese and Spanish, both grouping
+  modes, eight-band EQ and the 740 x 700-point workspace. Rendering is run
+  separately so it cannot block the protocol tests' response deadlines.
+- Strict localization and canonical-brand checks passed. The debug app, including
+  its widget extension, built and passed bundle/signature verification. Native
+  UI checks used an isolated sample app; no physical sound-change test was made.

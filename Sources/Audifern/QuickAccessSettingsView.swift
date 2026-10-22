@@ -9,7 +9,7 @@ struct QuickAccessSettingsView: View {
             Picker(L("Quick access"), selection: $section) {
                 Text(L("Menu bar")).tag(0)
                 Text(L("Widgets and Control Center")).tag(1)
-            }.pickerStyle(.segmented).labelsHidden()
+            }.pickerStyle(.segmented).tint(Brand.controlTint).labelsHidden()
             if section == 0 {
                 Surface(insets: 18) {
                     VStack(alignment: .leading, spacing: 16) {
