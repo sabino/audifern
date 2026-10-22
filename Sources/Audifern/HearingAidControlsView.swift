@@ -41,7 +41,7 @@ struct HearingAidControlsView: View {
     private var canLink: Bool { aids.count == 2 && Set(aids.map(\.id)) == Set(store.connectedPair.map(\.id)) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: embedded ? 8 : 20) {
+        VStack(alignment: .leading, spacing: embedded ? 4 : 20) {
             if mode == .sound {
                 if embedded {
                     HStack(spacing: 16) {

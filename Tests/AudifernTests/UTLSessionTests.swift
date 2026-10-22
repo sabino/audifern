@@ -375,14 +375,21 @@ private func syntheticEUSInventory(access: String = "NVRAM") -> Data {
 @MainActor @Test func endUserDeadlineKeepsCompletedScopesAndStopsFurtherReads() async throws {
     let peer = SyntheticUTLPeer(); peer.advertiseEndUserSettings = true; peer.expectedSessionType = 4
     peer.endUserInventory = syntheticEUSInventory()
-    peer.suppressResponse = { handle, opcode, payload in handle == 14 && opcode == 2 && payload == Data([1, 0]) }
+    var now = Date(timeIntervalSince1970: 1_000)
+    let deadline = now.addingTimeInterval(1)
+    peer.suppressResponse = { handle, opcode, payload in
+        guard handle == 14 && opcode == 2 && payload == Data([1, 0]) else { return false }
+        // Expire at the unanswered second scope, independent of CI/main-actor
+        // scheduling. The first scope must still complete and be preserved.
+        now = deadline
+        return true
+    }
     let info = try UTLProtocol.GattInformation(data: Data([1, 0, 1, 0, 0, 244, 1, 1, 0x80, 0x80, 0x80, 0x80]))
-    let session = try UTLSession(info: info, physicalATTMTU: 247) { uuid, data in try await peer.write(uuid, data) }
+    let session = try UTLSession(info: info, physicalATTMTU: 247, acquisitionNow: { now }) { uuid, data in try await peer.write(uuid, data) }
     peer.session = session
     try await session.start(key: peer.key, purpose: .readOnlyBackup)
-    let deadline = Date().addingTimeInterval(1)
     let result = try await session.readEndUserSettings(deadline: deadline)
-    #expect(Date() >= deadline)
+    #expect(now == deadline)
     #expect(result.partial && result.data.inventory == peer.endUserInventory && result.data.metadata == Data([0xA0]))
     #expect(result.data.records.map { [$0.scope, $0.id] } == [[0, 0]])
     #expect(peer.serviceTrace.filter { $0.handle == 14 && $0.opcode == 2 }.map(\.payload) == [Data([0, 0]), Data([1, 0])])
@@ -395,12 +402,19 @@ private func syntheticEUSInventory(access: String = "NVRAM") -> Data {
 @MainActor @Test func endUserMetadataDeadlineKeepsInventoryWithoutStartingScopeReads() async throws {
     let peer = SyntheticUTLPeer(); peer.advertiseEndUserSettings = true; peer.expectedSessionType = 4
     peer.endUserInventory = syntheticEUSInventory()
-    peer.suppressResponse = { handle, opcode, _ in handle == 14 && opcode == 1 }
+    var now = Date(timeIntervalSince1970: 1_000)
+    let deadline = now.addingTimeInterval(1)
+    peer.suppressResponse = { handle, opcode, _ in
+        guard handle == 14 && opcode == 1 else { return false }
+        now = deadline
+        return true
+    }
     let info = try UTLProtocol.GattInformation(data: Data([1, 0, 1, 0, 0, 244, 1, 1, 0x80, 0x80, 0x80, 0x80]))
-    let session = try UTLSession(info: info, physicalATTMTU: 247) { uuid, data in try await peer.write(uuid, data) }
+    let session = try UTLSession(info: info, physicalATTMTU: 247, acquisitionNow: { now }) { uuid, data in try await peer.write(uuid, data) }
     peer.session = session
     try await session.start(key: peer.key, purpose: .readOnlyBackup)
-    let result = try await session.readEndUserSettings(deadline: Date().addingTimeInterval(0.5))
+    let result = try await session.readEndUserSettings(deadline: deadline)
+    #expect(now == deadline)
     #expect(result.partial && result.data.inventory == peer.endUserInventory)
     #expect(result.data.metadata == nil && result.data.records.isEmpty)
     #expect(peer.serviceTrace.filter { $0.handle == 14 }.map(\.opcode) == [0, 1])

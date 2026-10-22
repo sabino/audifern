@@ -85,7 +85,7 @@ struct PairedEqualizerView: View {
     }
 
     var body: some View {
-        VStack(spacing: compact ? 8 : 14) {
+        VStack(spacing: compact ? 4 : 14) {
             SoundSectionHeader {
                 EmptyView()
             } center: {
