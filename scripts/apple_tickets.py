@@ -17,7 +17,8 @@ def run(operation: str, path: Path, label: str, logs: Path | None = None) -> Non
     output = ""
     for attempt, delay in enumerate([0, 15, 30, 60], 1):
         if delay:
-            print(f"Apple ticket retrieval ({label}): retrying in {delay} seconds", flush=True)
+            # Callers may reserve stdout for the release's JSON manifest.
+            print(f"Apple ticket retrieval ({label}): retrying in {delay} seconds", file=sys.stderr, flush=True)
             time.sleep(delay)
         try:
             result = subprocess.run(["xcrun", "stapler", operation, str(path)],

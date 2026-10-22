@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 import importlib.util
+from contextlib import redirect_stderr, redirect_stdout
+import io
+import json
 from pathlib import Path
 import tempfile
 import sys
@@ -129,6 +132,32 @@ class ReleaseMetadataTests(unittest.TestCase):
             self.assertEqual([call.args[0][:3] for call in run.call_args_list],
                              [['xcrun', 'stapler', 'validate']] * 2 + [['spctl', '--assess', '--type']])
             sleep.assert_called_once_with(15)
+
+    def test_ticket_retry_keeps_manifest_stdout_valid_json(self):
+        details = {'signing': 'developer-id', 'hardenedRuntime': True,
+                   'secureTimestamp': True, 'teamID': 'A1B2C3D4E5'}
+        failures = [subprocess.CompletedProcess([], 68, 'service unavailable', ''),
+                    subprocess.TimeoutExpired(['xcrun', 'stapler'], 60)]
+        for failure in failures:
+            with self.subTest(failure=type(failure).__name__):
+                output = io.StringIO(); diagnostics = io.StringIO()
+                with patch.object(sys, 'argv', ['release_metadata.py', 'manifest', '/synthetic.app', '--notarized']), \
+                        patch.object(release, 'verify_app', return_value={'version': '0.6.0'}), \
+                        patch.object(release, 'version', return_value='0.6.0'), \
+                        patch.object(release, 'source_commit', return_value='a' * 40), \
+                        patch.object(release, 'signing_details', return_value=details), \
+                        patch.object(release.subprocess, 'run') as run, \
+                        patch.object(release.apple_tickets.time, 'sleep') as sleep, \
+                        redirect_stdout(output), redirect_stderr(diagnostics):
+                    run.side_effect = [failure, subprocess.CompletedProcess([], 0, '', ''),
+                                       subprocess.CompletedProcess([], 0, '', 'source=Notarized Developer ID\n')]
+                    release.main()
+                manifest = json.loads(output.getvalue())
+                self.assertIs(manifest['notarized'], True)
+                self.assertEqual(manifest['teamID'], details['teamID'])
+                self.assertIn('retrying in 15 seconds', diagnostics.getvalue())
+                sleep.assert_called_once_with(15)
+                self.assertEqual(run.call_args.args[0][:3], ['spctl', '--assess', '--type'])
 
     def test_invalid_or_revoked_ticket_stops_before_gatekeeper(self):
         details = {'signing': 'developer-id', 'hardenedRuntime': True,
