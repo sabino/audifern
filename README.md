@@ -28,8 +28,9 @@ Audifern is not affiliated with or endorsed by Oticon or Demant.
 [Packaged app icon](docs/images/audifern-app-icon.png) ·
 [Design concept, artwork and prompts](docs/design/prompts.md)
 
-These screenshots show the native 0.8.1 app with synthetic preview devices;
-preview controls cannot change hearing aids. See [capture details](docs/images/README.md).
+The original screenshots show the native 0.8.1 app; the revised Sound preview
+shows the controls released in 0.8.2. All use synthetic devices, and preview
+controls cannot change hearing aids. See [capture details](docs/images/README.md).
 
 ## Around the app
 
