@@ -47,6 +47,7 @@ jobs:
           python3 -m unittest discover -s Tests -p 'test_*.py'
           python3 scripts/test-audit-localization.py
           python3 scripts/audit-localization.py --strict
+          python3 scripts/export-help.py --check
           python3 scripts/generate-widget-project.py
           git diff --exit-code -- WidgetExtension
           bash -n scripts/build-app.sh scripts/package-release.sh

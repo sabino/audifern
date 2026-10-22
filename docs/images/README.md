@@ -1,79 +1,59 @@
-# Screenshot provenance
+# Screenshots
 
-The original README screenshots show **Audifern 0.8.1 (17)**, captured on macOS
-on 2026-10-21. They are native window and AppKit popover captures from a
-separately packaged documentation app launched with `--demo`.
+The current screenshots show **Audifern 0.8.4 (20)** with synthetic sample
+hearing aids. The app's original device artwork and canonical
+[`branding/mark.svg`](../../branding/mark.svg) are preserved.
 
-Demo mode uses synthetic devices, batteries, programs, exams and fitting plans.
-It never creates a Bluetooth central, changes a hearing aid or reads the normal
-exam library. The regular app and real-device information were not used. Preview
-preferences, the existing preview window's layout and the user's focus were
-restored after capture; the temporary documentation app was closed.
+## Compact app window
 
-All current marks come from the unchanged canonical `branding/mark.svg`.
-`audifern-app-icon.png` is extracted from the packaged ICNS; it is the same mark
-on the existing native rounded tile, rather than a separate logo concept.
+The following are native macOS window captures at **1120 × 860 pixels**, taken
+on 2026-10-22 from a separate documentation build running in demo mode:
 
-## Current captures
+| Image | View |
+| --- | --- |
+| [Light](audifern-light.png) | Sound, grouped volume and three-band EQ |
+| [Dark](audifern-dark.png) | The same Sound workspace in dark appearance |
+| [Separate](audifern-sound-separate.png) | Independent left and right controls |
+| [Eight bands](audifern-eq-eight-bands.png) | Independent eight-band EQ in dark appearance |
+| [Settings](audifern-settings-es.png) | General settings in Español |
+| [Help](audifern-help.png) | Battery search with a direct Battery alerts action |
+| [Device details](audifern-device-details.png) | Synthetic model and software values; identifiers hidden |
+| [Hearing profile](hearing-profile-light.png) | Local records and fitting plans |
+| [About](audifern-about.png) | Version, maintainer and optional contributions |
 
-- `audifern-light.png` and `audifern-sound-together.png`: English Sound overview
-  in light mode, with all sections Together and three tone controls.
-- `audifern-dark.png`: Brazilian Portuguese Sound overview in dark mode, with
-  all sections Separate and both eight-band editors visible.
-- `audifern-sound-separate.png`: English Sound overview with separate controls.
-- `audifern-eq-eight-bands.png`: English Sound with both eight-band EQ editors.
-- `audifern-menu-bar.png`: the native AppKit popover, with centered green and
-  purple mode selectors, device art, runtime and expanded volume controls.
-- `audifern-quick-access.png`: menu-panel customization in the Settings sheet.
-- `audifern-settings-es.png`: Spanish General settings in light mode.
-- `audifern-settings-battery.png` and `audifern-settings-privacy.png`: Spanish
-  battery-alert and privacy settings.
-- `audifern-connections.png`: the opt-in connection preferences.
-- `audifern-device-details.png`: the device panel's Overview tab, with synthetic
-  model/software values and no serial number.
-- `audifern-help.png`: searching Battery in the attached Help sheet, with its
-  direct Battery alerts settings action.
-- `hearing-profile-light.png`: the Hearing profile overview.
-- `audifern-about.png` and `audifern-settings-about.png`: the compact About
-  view, including the maintainer's intentionally public contribution link and
-  locally generated QR code. The centered footer appears in the standalone view.
+Each window was revealed, sized and checked to fit the display before capture.
+The user's focus was restored after each bounded capture. The temporary app was
+closed and existing preview preferences restored afterward.
 
-Captures were reviewed visually. Export removes nonessential PNG metadata
-while preserving pixel/color data. Real-device captures, private backups and
-credentials remain outside this repository. Screenshots establish the shown
-interface, not physical interoperability or complete clinical fitting.
+## Menu-bar panel
+
+[English](audifern-menu-bar.png) and
+[Português (Brasil)](audifern-program-menu.png) show the compact menu panel,
+with its optional Mac audio card hidden. These are direct SwiftUI/AppKit renders
+of the same native panel at 382 points wide and 2× scale, using sample devices.
+They do not include window chrome or establish native popover interaction.
+
+## Privacy and interpretation
+
+Demo mode never creates a Bluetooth central, changes hearing aids or reads the
+normal exam library. No real device identifiers, credentials or audiograms were
+used. Nonessential PNG metadata is removed; pixel data and color profiles are
+preserved. Preview controls are intentionally disabled where they would normally
+send device commands.
+
+Screenshots illustrate the interface. They do not establish physical device
+compatibility, audio routing or clinical fitting support. Native Help, widget
+and Control Center checks are recorded in the [validation ledger](../quick-access-validation.md).
 
 ## Earlier supporting images
 
-The historical fitting-plan light/dark captures and `consumer-eq-eight-bands.png`
-show the native 0.7.0 demo app with the earlier generated mark. The latter predates the inline EQ editor now
-shown in the README. Fitting-plan-history light/dark images are direct
-SwiftUI/AppKit renders with synthetic revision history.
+Files outside the current set above are retained as historical supporting
+images. Generic quick-access and settings captures date from 0.8.1;
+`audifern-sound-clarity.png` shows the 0.8.2 revision, and
+`audifern-program-shortcuts.png` is a headless 0.8.3 Sound render. The
+fitting-plan light/dark images and `consumer-eq-eight-bands.png` show the earlier
+0.7.0 demo app. Their marks may predate the canonical export.
 
-Original branding and the generic hearing-aid illustration are described in
-[the design provenance](../design/prompts.md). The generated quick-access
-concepts remain labeled as concepts in [their provenance](../design/quick-access-prompts.md).
-
-Native Help-menu search, widget-gallery and Control Center registration checks
-are recorded in [the validation ledger](../quick-access-validation.md).
-Physical sound changes through every widget/control action remain unverified.
-
-## Sound-control clarity — 0.8.2
-
-`audifern-sound-clarity.png` is a native dark-mode Sound capture of the revised
-controls, using synthetic devices with all sections Together. It was captured
-on 2026-10-22 from implementation commit `1628ba8`, before the release-only
-version metadata was incremented to 0.8.2 (18). It shows the same control
-implementation released in 0.8.2, including centered grouping, the asymmetric
-volume scale and the relocated reset/restore actions. Nonessential PNG metadata
-was removed. The existing supporting screenshots remain from 0.8.1.
-
-## Program shortcuts in 0.8.3
-
-`audifern-program-shortcuts.png` shows the native Sound workspace in English
-with one shared EQ status below Together/Separate. `audifern-program-menu.png`
-shows the menu-bar panel in Brazilian Portuguese and dark appearance. Both are
-headless SwiftUI/AppKit renders from the local rendering tests, using synthetic
-General/Comfort programs, devices and battery readings. No hearing aids,
-identifiers or personal settings are used. Demo mode disables device writes;
-the EQ refresh action is omitted in these synthetic captures.
+The [design provenance](../design/prompts.md) describes the original artwork.
+Generated [quick-access concepts](../design/quick-access-prompts.md) remain
+labeled as concepts rather than app screenshots.

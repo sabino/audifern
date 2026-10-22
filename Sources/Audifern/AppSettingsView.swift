@@ -90,7 +90,7 @@ struct AppSettingsView: View {
                     Text(L("An independent project, licensed under GNU GPLv3. Not affiliated with or endorsed by the hearing-aid manufacturer."))
                         .font(AppType.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-            }
+            }.id(preferences.language)
         }
     }
     private var privacy: some View {

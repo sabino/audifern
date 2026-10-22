@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 1,
+  "application": "Audifern",
+  "appVersion": "0.8.4",
+  "language": "en",
+  "languageName": "English",
+  "license": "GPL-3.0-only",
+  "source": "Sources/Audifern/HelpCatalog.swift",
+  "topics": [
+    {
+      "id": "getting-started",
+      "title": "Getting started",
+      "path": [
+        "Help"
+      ],
+      "summary": "Connect your hearing aids and make your first adjustment.",
+      "guidance": "In Sound, choose Find hearing aids, scan and select your devices. Device details are below each hearing aid. A Bluetooth control connection reads supported values and adjusts consumer controls. Audio streaming is managed separately by macOS.",
+      "keywords": "setup start pairing connect configurar começar conectar emparejar inicio",
+      "appURL": "audifern://feature/getting-started"
+    },
+    {
+      "id": "volume",
+      "title": "Volume and mute",
+      "path": [
+        "Sound"
+      ],
+      "summary": "Adjust listening level without changing your clinical fitting.",
+      "guidance": "Use Together to control both ears, or Separate for independent adjustments. Together preserves the difference between left and right volume levels. Mute keeps your level ready for unmuting. Wait for a change to finish before sending another.",
+      "keywords": "volume level mute unmute sound som silenciar nível volumen sonido",
+      "appURL": "audifern://feature/volume"
+    },
+    {
+      "id": "grouping",
+      "title": "Together and Separate",
+      "path": [
+        "Sound"
+      ],
+      "summary": "Choose whether future sound changes affect both ears.",
+      "guidance": "The top selector sets Together or Separate for every sound section, including EQ. A section selector can override that choice; the master then shows Mixed modes. Switching modes never copies settings or sends a hearing-aid command.",
+      "keywords": "sync synchronize group ungroup linked ears agrupar desagrupar juntos separados sincronizar vincular",
+      "appURL": "audifern://feature/grouping"
+    },
+    {
+      "id": "speech-booster",
+      "title": "SpeechBooster",
+      "path": [
+        "Sound"
+      ],
+      "summary": "Use speech support in a program that reports support for it.",
+      "guidance": "SpeechBooster is available only when the current program reports a supported consumer control. If unavailable, connect the aids and wait for the device-feature reading. Together applies the requested state to both compatible ears.",
+      "keywords": "speech clarity voice conversa fala voz refuerzo",
+      "appURL": "audifern://feature/speech-booster"
+    },
+    {
+      "id": "programs",
+      "title": "Listening program",
+      "path": [
+        "Sound"
+      ],
+      "summary": "Choose a program already fitted to your hearing aids.",
+      "guidance": "Program names come from the devices, so Geral or General stays exactly as reported. A grouped change requires matching program identifiers and names. Audifern does not create or write a new clinical program.",
+      "keywords": "program profile Geral General perfil programa",
+      "appURL": "audifern://feature/programs"
+    },
+    {
+      "id": "microphone-eq",
+      "title": "Microphone EQ",
+      "path": [
+        "Sound",
+        "Equalizers"
+      ],
+      "summary": "Fine-tune lows, mids and highs for sound around you.",
+      "guidance": "In Sound, choose the Microphone EQ tab. Tone controls show three vertical faders; 8 bands uses the device-reported layout. Separate shows both ears side by side, while Together shows one set. Changes remain drafts until Apply. A ≠ marker means the ears currently differ.",
+      "keywords": "equalizer equaliser bass mid treble lows highs graves médios agudos equalizador ecualizador",
+      "appURL": "audifern://feature/microphone-eq"
+    },
+    {
+      "id": "stream-eq",
+      "title": "Streaming EQ",
+      "path": [
+        "Sound",
+        "Equalizers"
+      ],
+      "summary": "Adjust the supported equalizer for streamed sound.",
+      "guidance": "In Sound, choose Streaming to adjust lows, mids and highs or eight device channels. Separate shows both ears without switching tabs. Apply confirms the requested changes. Source volume is a separate tab for supported TV or generic-streamer programs.",
+      "keywords": "stream streaming music música audio equalizer",
+      "appURL": "audifern://feature/stream-eq"
+    },
+    {
+      "id": "tinnitus",
+      "title": "Tinnitus relief",
+      "path": [
+        "Sound",
+        "Equalizers"
+      ],
+      "summary": "Inspect the additional tinnitus consumer control when supported.",
+      "guidance": "The additional-control section is separate from everyday equalizers. It appears only for supported, reported controls and does not add a clinical tinnitus program. Use a clinician-fitted tinnitus plan for treatment decisions.",
+      "keywords": "tinnitus zumbido acufeno extra advanced",
+      "appURL": "audifern://feature/tinnitus"
+    },
+    {
+      "id": "presets",
+      "title": "Presets",
+      "path": [
+        "Library"
+      ],
+      "summary": "Save a local consumer sound preset and reuse it.",
+      "guidance": "Save sound captures supported consumer adjustments on this Mac. Review a preset before applying it to compatible connected aids. A local preset is not a new program stored in the hearing aids and does not replace a clinical fitting.",
+      "keywords": "save restore presets favorites favoritos predefinições ajustes",
+      "appURL": "audifern://feature/presets"
+    },
+    {
+      "id": "device-information",
+      "title": "Device information",
+      "path": [
+        "Sound"
+      ],
+      "summary": "Inspect model, software, firmware and supported features for each ear.",
+      "guidance": "Each aid has its own information. Unknown values remain unknown until read. Private identifiers are hidden by default; enable their display in Privacy only when needed. Diagnostic exports remain redacted.",
+      "keywords": "model firmware software version serial number modelo versão número série informacion",
+      "appURL": "audifern://feature/device-information"
+    },
+    {
+      "id": "battery-time",
+      "title": "Battery time remaining",
+      "path": [
+        "Sound"
+      ],
+      "summary": "Understand the local countdown and the age of its device reading.",
+      "guidance": "Audifern reads available runtime telemetry after connecting when a compatible local credential is provisioned. It caches the timestamped reading, counts down locally and refreshes about hourly while connected. Runtime comes from reported charge and current draw, never a percentage conversion. Charging stops the countdown. Cached estimates expire after two hours; hover over the estimate to see its reading time.",
+      "keywords": "battery remaining runtime time left charge charging bateria tempo restante carga batería duración",
+      "appURL": "audifern://feature/battery-time"
+    },
+    {
+      "id": "battery-alerts",
+      "title": "Battery alerts",
+      "path": [
+        "Settings"
+      ],
+      "summary": "Choose local low-battery notifications for each hearing aid.",
+      "guidance": "Open Battery alerts to enable thresholds such as 50%, 30%, 20% and below 10%. macOS notification permission is required. Alerts use device-reported charge; a countdown reaching zero is not a new battery reading.",
+      "keywords": "battery alert notification low 50 30 20 10 bateria bateria baixa notificações alerta batería baja",
+      "appURL": "audifern://feature/battery-alerts"
+    },
+    {
+      "id": "reconnection",
+      "title": "Automatically reconnect app controls",
+      "path": [
+        "Settings",
+        "Connections"
+      ],
+      "summary": "Reconnect only your chosen hearing aids while this Mac is unlocked.",
+      "guidance": "Automatic connection starts off. Connect your aids in Sound, then remember them in Connections. Nearby retry and wake/unlock attempts are optional. Pause persists until you resume or connect manually. This controls Audifern’s BLE link, not the operating system’s audio profile.",
+      "keywords": "auto connect reconnect bluetooth wake unlock nearby automático reconectar desbloquear despertar",
+      "appURL": "audifern://feature/reconnection"
+    },
+    {
+      "id": "nearby-signal",
+      "title": "Nearby signal",
+      "path": [
+        "Settings",
+        "Connections"
+      ],
+      "summary": "Tune the signal threshold used before automatic reconnection.",
+      "guidance": "Measure the signal at your desk, then adjust the minimum dBm value. A less-negative threshold requires a stronger signal. Walls, your body and interference affect it; it cannot reliably identify an exact distance, room or floor. Fresh readings are required before connecting.",
+      "keywords": "distance proximity signal rssi range alcance distância proximidade sinal señal",
+      "appURL": "audifern://feature/nearby-signal"
+    },
+    {
+      "id": "mac-audio",
+      "title": "Mac audio output",
+      "path": [
+        "Settings",
+        "Connections"
+      ],
+      "summary": "Choose an output already available to macOS.",
+      "guidance": "Choose the preferred hearing-aid output and a fallback output. Mac audio selects between those available outputs. Pausing app controls does not necessarily release a Bluetooth audio profile owned by macOS. Moving an audio stream between Android and Mac may require the other host to release its connection; no successful phone handoff is assumed.",
+      "keywords": "audio sound output speaker android phone handoff switch disconnect som saída alto falante teléfono salida",
+      "appURL": "audifern://feature/mac-audio"
+    },
+    {
+      "id": "menu-bar",
+      "title": "Menu bar",
+      "path": [
+        "Settings",
+        "Quick access"
+      ],
+      "summary": "Keep batteries and sound controls one click away.",
+      "guidance": "Show or hide the menu-bar item in Quick access. Choose the compact or expanded panel, battery text and the sections you use. The menu-bar app stays available when the main window closes. Hiding the icon does not quit Audifern.",
+      "keywords": "menu bar taskbar tray status icon codexbar barra menus ícone bandeja",
+      "appURL": "audifern://feature/menu-bar"
+    },
+    {
+      "id": "widgets",
+      "title": "Widgets and Control Center",
+      "path": [
+        "Settings",
+        "Quick access"
+      ],
+      "summary": "Add battery widgets and separate quick controls using macOS.",
+      "guidance": "Add Audifern from the desktop widget gallery. On macOS 26 or later, add its controls through Edit Controls in Control Center and place supported controls in the menu bar. Widget buttons need Audifern running with current device values. macOS manages sizes and placement. Sliders are available in Audifern’s panel; system controls use supported buttons and toggles.",
+      "keywords": "widget control center centre quick shortcut central controle controles atalho centro",
+      "appURL": "audifern://feature/widgets"
+    },
+    {
+      "id": "appearance",
+      "title": "Appearance",
+      "path": [
+        "Settings",
+        "General"
+      ],
+      "summary": "Follow the system appearance or choose Light or Dark.",
+      "guidance": "Appearance changes only Audifern’s interface. System follows macOS automatically. Hearing-aid sound settings remain unchanged.",
+      "keywords": "theme dark light system tema escuro claro apariencia oscuro",
+      "appURL": "audifern://feature/appearance"
+    },
+    {
+      "id": "language",
+      "title": "Language",
+      "path": [
+        "Settings",
+        "General"
+      ],
+      "summary": "Use English, Português (Brasil), Español or the system language.",
+      "guidance": "Change the interface language in General. Help search accepts common feature names in all three supported languages. Device program names remain exactly as reported.",
+      "keywords": "language translate english português español idioma tradução traducción",
+      "appURL": "audifern://feature/language"
+    },
+    {
+      "id": "privacy",
+      "title": "Privacy",
+      "path": [
+        "Settings"
+      ],
+      "summary": "Review identifier visibility and local data handling.",
+      "guidance": "Audifern has no account or telemetry service. Audiograms, local presets and caches stay on this Mac. Widgets receive only the state needed for their controls, without serial numbers or raw Bluetooth identifiers. Exports and external links require an explicit action.",
+      "keywords": "privacy identifiers data serial private account privacidade dados privacidad",
+      "appURL": "audifern://feature/privacy"
+    },
+    {
+      "id": "audiogram",
+      "title": "Audiogram",
+      "path": [
+        "Hearing profile"
+      ],
+      "summary": "Keep your hearing-test results in a local record.",
+      "guidance": "Enter results from your hearing test and save them locally. The audiogram helps document and prepare a fitting discussion. Saving it does not calculate or program a clinical hearing-aid prescription.",
+      "keywords": "audiogram hearing test exam audiometry audiometria exame audiograma",
+      "appURL": "audifern://feature/audiogram"
+    },
+    {
+      "id": "fitting-plan",
+      "title": "Prepare a fitting plan",
+      "path": [
+        "Hearing profile"
+      ],
+      "summary": "Organize your audiogram, listening goals and fitting preferences.",
+      "guidance": "The guided plan records hearing aids, acoustics and listening preferences for review. These are local planning records. Clinical programming, firmware installation and a full Genie fitting replacement are not available.",
+      "keywords": "genie plan fitting receiver acoustics adaptation plano adaptação receptor adaptación",
+      "appURL": "audifern://feature/fitting-plan"
+    },
+    {
+      "id": "saved-fitting",
+      "title": "Saved fitting",
+      "path": [
+        "Hearing profile"
+      ],
+      "summary": "Review supported readable state without changing the hearing aids.",
+      "guidance": "Saved fitting summaries expose supported records captured in a private backup. Unknown fields stay unknown. A readable checkpoint is not a complete firmware image, clinical calibration backup or verified restore mechanism.",
+      "keywords": "fitting saved configuration read only configuração salva adaptación guardada",
+      "appURL": "audifern://feature/saved-fitting"
+    },
+    {
+      "id": "backups",
+      "title": "Backups",
+      "path": [
+        "Hearing profile"
+      ],
+      "summary": "Save and compare private checkpoints of supported readable state.",
+      "guidance": "Backups never overwrite an older checkpoint. They can contain private device and fitting information, so store exports carefully. Clinical restore and firmware restore are not implemented.",
+      "keywords": "backup compare snapshot export restore cópia segurança comparar copia respaldo",
+      "appURL": "audifern://feature/backups"
+    },
+    {
+      "id": "diagnostics",
+      "title": "Diagnostics",
+      "path": [
+        "Settings"
+      ],
+      "summary": "Inspect connection state and redacted logs when troubleshooting.",
+      "guidance": "Diagnostics separates discovery, connection and supported feature reads. Connected app controls do not prove audio is routed to the aids. Review redacted logs locally before exporting; Audifern does not send them automatically.",
+      "keywords": "debug log troubleshooting error bluetooth diagnóstico registros erro diagnóstico",
+      "appURL": "audifern://feature/diagnostics"
+    },
+    {
+      "id": "about",
+      "title": "About Audifern",
+      "path": [
+        "Help"
+      ],
+      "summary": "Find the version, open-source license and support options.",
+      "guidance": "About contains the maintainer link, source code, GNU GPLv3 license and optional contributions. Donation QR codes are generated locally. Payment providers control the personal information shown on their own payment pages.",
+      "keywords": "about version donate support license github sabino sobre versão doar doação ayuda donar",
+      "appURL": "audifern://feature/about"
+    }
+  ]
+}

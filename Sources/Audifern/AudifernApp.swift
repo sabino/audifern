@@ -48,7 +48,7 @@ struct AudifernApp: App {
                 .defaultAppStorage(services.defaults)
                 .onAppear { services.installMenuBar() }
         }
-            .defaultSize(width: 1240, height: 920)
+            .defaultSize(width: 1120, height: 860)
             .commands { CompanionCommands(navigation: services.navigation, preferences: services.preferences, help: services.help) }
     }
 }

@@ -41,7 +41,7 @@ struct ContentView: View {
                         Spacer(minLength: 0)
                     }.padding(.horizontal, 6).padding(.vertical, 14)
                 }.buttonStyle(.plain).padding(10)
-            }.navigationSplitViewColumnWidth(min: 220, ideal: 245, max: 280)
+            }.navigationSplitViewColumnWidth(min: 220, ideal: 220, max: 280)
         } detail: {
             pageContent.frame(maxWidth: .infinity, maxHeight: .infinity).background(Brand.background)
         }

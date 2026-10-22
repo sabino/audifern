@@ -166,9 +166,15 @@ struct HearingAidControlsView: View {
                 Button(L(scope.label)) { restoreRequest = .init(ids: [aid.id], target: L(aid.sideLabel), scope: scope) }
                     .disabled(!canRestore([aid.id], scope: scope))
             }
-        } label: { Text(compact ? L(aid.sideLabel) : L("Restore %@…", L(aid.sideLabel))) }
-            .font(AppType.caption).fixedSize()
+        } label: {
+            Text(compact ? L(aid.sideLabel) : L("Restore %@…", L(aid.sideLabel)))
+                .foregroundStyle(.primary)
+        }
+            .menuStyle(.borderlessButton).font(AppType.caption).fixedSize()
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(Brand.accent.opacity(0.07), in: RoundedRectangle(cornerRadius: 6))
             .accessibilityLabel(L("Restore %@…", L(aid.sideLabel)))
+            .accessibilityIdentifier("restore-menu-\(aid.sideLabel.lowercased())")
     }
     private func commonPrograms(_ targets: [AidConnection]) -> [Int] {
         guard targets.count == 2 else { return [] }

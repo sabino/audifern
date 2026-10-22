@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 1,
+  "application": "Audifern",
+  "appVersion": "0.8.4",
+  "language": "es",
+  "languageName": "Español",
+  "license": "GPL-3.0-only",
+  "source": "Sources/Audifern/HelpCatalog.swift",
+  "topics": [
+    {
+      "id": "getting-started",
+      "title": "Primeros pasos",
+      "path": [
+        "Ayuda"
+      ],
+      "summary": "Conecta tus audífonos y realiza el primer ajuste.",
+      "guidance": "En Sonido, elija Buscar audífonos, busque y seleccione sus dispositivos. Los detalles están debajo de cada audífono. La conexión Bluetooth lee los valores disponibles y ajusta los controles de uso diario. La transmisión de audio se gestiona por separado en macOS.",
+      "keywords": "setup start pairing connect configurar começar conectar emparejar inicio",
+      "appURL": "audifern://feature/getting-started"
+    },
+    {
+      "id": "volume",
+      "title": "Volumen y silencio",
+      "path": [
+        "Sonido"
+      ],
+      "summary": "Ajusta el volumen sin cambiar la adaptación clínica.",
+      "guidance": "Usa Juntos para controlar ambos oídos o Separados para ajustes independientes. Juntos conserva la diferencia entre los niveles izquierdo y derecho. El silencio conserva el nivel para volver a activar el sonido. Espera a que termine un cambio antes de enviar otro.",
+      "keywords": "volume level mute unmute sound som silenciar nível volumen sonido",
+      "appURL": "audifern://feature/volume"
+    },
+    {
+      "id": "grouping",
+      "title": "Juntos y Separados",
+      "path": [
+        "Sonido"
+      ],
+      "summary": "Elige si los próximos cambios afectan a ambos oídos.",
+      "guidance": "El selector superior establece Juntos o Separados para todas las secciones de sonido, incluido el EQ. Un selector de sección puede cambiar esa elección; el principal muestra Modos distintos. Cambiar el modo nunca copia ajustes ni envía comandos a los audífonos.",
+      "keywords": "sync synchronize group ungroup linked ears agrupar desagrupar juntos separados sincronizar vincular",
+      "appURL": "audifern://feature/grouping"
+    },
+    {
+      "id": "speech-booster",
+      "title": "Refuerzo de voz",
+      "path": [
+        "Sonido"
+      ],
+      "summary": "Usa el apoyo de habla en un programa compatible.",
+      "guidance": "SpeechBooster solo está disponible si el programa actual informa de un control compatible. Si no está disponible, conecta los audífonos y espera a la lectura de funciones. Juntos aplica el estado solicitado a ambos oídos compatibles.",
+      "keywords": "speech clarity voice conversa fala voz refuerzo",
+      "appURL": "audifern://feature/speech-booster"
+    },
+    {
+      "id": "programs",
+      "title": "Programa auditivo",
+      "path": [
+        "Sonido"
+      ],
+      "summary": "Elige un programa ya adaptado a tus audífonos.",
+      "guidance": "Los nombres de los programas vienen de los audífonos; Geral o General permanece como se informa. Un cambio agrupado requiere identificadores y nombres de programa coincidentes. Audifern no crea ni escribe un nuevo programa clínico.",
+      "keywords": "program profile Geral General perfil programa",
+      "appURL": "audifern://feature/programs"
+    },
+    {
+      "id": "microphone-eq",
+      "title": "Ecualizador del micrófono",
+      "path": [
+        "Sonido",
+        "Ecualizadores"
+      ],
+      "summary": "Ajusta graves, medios y agudos del sonido a tu alrededor.",
+      "guidance": "En Sonido, elija la pestaña Micrófono del EQ. Controles de tono muestra tres deslizadores verticales; 8 bandas usa la disposición informada por los audífonos. Separados muestra ambos oídos lado a lado; Juntos muestra un conjunto. Los cambios quedan como borrador hasta Aplicar. El símbolo ≠ indica valores distintos entre los oídos.",
+      "keywords": "equalizer equaliser bass mid treble lows highs graves médios agudos equalizador ecualizador",
+      "appURL": "audifern://feature/microphone-eq"
+    },
+    {
+      "id": "stream-eq",
+      "title": "Ecualizador de transmisión",
+      "path": [
+        "Sonido",
+        "Ecualizadores"
+      ],
+      "summary": "Ajusta el ecualizador compatible para el sonido transmitido.",
+      "guidance": "En Sonido, elija Streaming para ajustar graves, medios y agudos u ocho canales del audífono. Separados muestra ambos oídos sin cambiar de pestaña. Aplicar confirma los cambios solicitados. Volumen de fuente es una pestaña separada para programas de TV o transmisores genéricos compatibles.",
+      "keywords": "stream streaming music música audio equalizer",
+      "appURL": "audifern://feature/stream-eq"
+    },
+    {
+      "id": "tinnitus",
+      "title": "Alivio del acúfeno",
+      "path": [
+        "Sonido",
+        "Ecualizadores"
+      ],
+      "summary": "Inspecciona el control adicional de tinnitus cuando sea compatible.",
+      "guidance": "La sección de controles adicionales es independiente de los ecualizadores cotidianos. Solo aparece para controles compatibles informados y no añade un programa clínico de tinnitus. Usa un plan adaptado por un profesional para decisiones de tratamiento.",
+      "keywords": "tinnitus zumbido acufeno extra advanced",
+      "appURL": "audifern://feature/tinnitus"
+    },
+    {
+      "id": "presets",
+      "title": "Preajustes",
+      "path": [
+        "Biblioteca"
+      ],
+      "summary": "Guarda un preajuste sonoro local para reutilizarlo.",
+      "guidance": "Guardar sonido captura ajustes de uso cotidiano en este Mac. Revisa un preajuste antes de aplicarlo a audífonos compatibles conectados. Un preajuste local no es un programa nuevo en los audífonos ni sustituye una adaptación clínica.",
+      "keywords": "save restore presets favorites favoritos predefinições ajustes",
+      "appURL": "audifern://feature/presets"
+    },
+    {
+      "id": "device-information",
+      "title": "Información del dispositivo",
+      "path": [
+        "Sonido"
+      ],
+      "summary": "Consulta modelo, software, firmware y funciones de cada oído.",
+      "guidance": "Cada audífono tiene información propia. Los valores desconocidos siguen así hasta su lectura. Los identificadores privados se ocultan de forma predeterminada; activa su visualización en Privacidad solo cuando sea necesario. Las exportaciones de diagnóstico siguen ocultando los datos.",
+      "keywords": "model firmware software version serial number modelo versão número série informacion",
+      "appURL": "audifern://feature/device-information"
+    },
+    {
+      "id": "battery-time",
+      "title": "Autonomía de la batería",
+      "path": [
+        "Sonido"
+      ],
+      "summary": "Comprende la cuenta atrás local y la antigüedad de la lectura del audífono.",
+      "guidance": "Audifern lee la autonomía disponible tras conectar si hay una credencial local compatible. Guarda la lectura con su fecha y hora, hace la cuenta atrás localmente y actualiza aproximadamente cada hora mientras está conectado. La autonomía proviene de la carga y el consumo informados, nunca de convertir el porcentaje. La carga detiene la cuenta atrás. Las estimaciones en caché caducan a las dos horas; coloca el cursor sobre la estimación para ver la hora de lectura.",
+      "keywords": "battery remaining runtime time left charge charging bateria tempo restante carga batería duración",
+      "appURL": "audifern://feature/battery-time"
+    },
+    {
+      "id": "battery-alerts",
+      "title": "Avisos de batería",
+      "path": [
+        "Ajustes"
+      ],
+      "summary": "Elige notificaciones locales de batería baja para cada audífono.",
+      "guidance": "Abre Avisos de batería para activar umbrales como 50%, 30%, 20% y menos del 10%. Se requiere permiso de notificaciones de macOS. Los avisos usan la carga informada por los audífonos; que una cuenta atrás llegue a cero no es una nueva lectura.",
+      "keywords": "battery alert notification low 50 30 20 10 bateria bateria baixa notificações alerta batería baja",
+      "appURL": "audifern://feature/battery-alerts"
+    },
+    {
+      "id": "reconnection",
+      "title": "Reconectar los controles automáticamente",
+      "path": [
+        "Ajustes",
+        "Conexiones"
+      ],
+      "summary": "Reconecta solo tus audífonos elegidos mientras este Mac está desbloqueado.",
+      "guidance": "La conexión automática empieza desactivada. Conecte los audífonos en Sonido y recuérdelos en Conexiones. Los intentos por proximidad y al despertar o desbloquear son opcionales. La pausa continúa hasta reanudar o conectar manualmente. Esto controla el enlace BLE de Audifern, no el perfil de audio del sistema.",
+      "keywords": "auto connect reconnect bluetooth wake unlock nearby automático reconectar desbloquear despertar",
+      "appURL": "audifern://feature/reconnection"
+    },
+    {
+      "id": "nearby-signal",
+      "title": "Señal de proximidad",
+      "path": [
+        "Ajustes",
+        "Conexiones"
+      ],
+      "summary": "Ajusta el umbral de señal para la reconexión automática.",
+      "guidance": "Mide la señal en tu escritorio y ajusta el valor mínimo en dBm. Un umbral menos negativo exige una señal más fuerte. Las paredes, tu cuerpo y las interferencias afectan a la señal; no identifica con precisión una distancia, una habitación o una planta. Se necesitan lecturas recientes antes de conectar.",
+      "keywords": "distance proximity signal rssi range alcance distância proximidade sinal señal",
+      "appURL": "audifern://feature/nearby-signal"
+    },
+    {
+      "id": "mac-audio",
+      "title": "Salida de audio del Mac",
+      "path": [
+        "Ajustes",
+        "Conexiones"
+      ],
+      "summary": "Elige una salida ya disponible en macOS.",
+      "guidance": "Elige la salida preferida de los audífonos y una salida alternativa. Audio del Mac alterna entre esas salidas disponibles. Pausar los controles de la app no necesariamente libera el perfil de audio Bluetooth gestionado por macOS. Transferir audio entre Android y Mac puede exigir que el otro dispositivo libere su conexión; no se presupone una transferencia correcta.",
+      "keywords": "audio sound output speaker android phone handoff switch disconnect som saída alto falante teléfono salida",
+      "appURL": "audifern://feature/mac-audio"
+    },
+    {
+      "id": "menu-bar",
+      "title": "Barra de menús",
+      "path": [
+        "Ajustes",
+        "Acceso rápido"
+      ],
+      "summary": "Ten las baterías y los controles sonoros a un clic.",
+      "guidance": "Muestra u oculta el icono en Acceso rápido. Elige el panel compacto o ampliado, el texto de batería y las secciones que usas. El panel sigue disponible al cerrar la ventana principal. Ocultar el icono no cierra Audifern.",
+      "keywords": "menu bar taskbar tray status icon codexbar barra menus ícone bandeja",
+      "appURL": "audifern://feature/menu-bar"
+    },
+    {
+      "id": "widgets",
+      "title": "Widgets y Centro de control",
+      "path": [
+        "Ajustes",
+        "Acceso rápido"
+      ],
+      "summary": "Añade widgets de batería y controles individuales mediante macOS.",
+      "guidance": "Añade Audifern desde la galería de widgets del escritorio. En macOS 26 o posterior, añade controles mediante Editar controles en el Centro de control y coloca los compatibles en la barra de menús. Los botones necesitan Audifern abierto con valores actuales de los audífonos. macOS gestiona tamaños y posiciones. Los deslizadores están en el panel de Audifern; los controles del sistema usan botones e interruptores compatibles.",
+      "keywords": "widget control center centre quick shortcut central controle controles atalho centro",
+      "appURL": "audifern://feature/widgets"
+    },
+    {
+      "id": "appearance",
+      "title": "Apariencia",
+      "path": [
+        "Ajustes",
+        "General"
+      ],
+      "summary": "Sigue el sistema o elige Claro u Oscuro.",
+      "guidance": "La apariencia solo cambia la interfaz de Audifern. Sistema sigue macOS automáticamente. Los ajustes sonoros de los audífonos permanecen iguales.",
+      "keywords": "theme dark light system tema escuro claro apariencia oscuro",
+      "appURL": "audifern://feature/appearance"
+    },
+    {
+      "id": "language",
+      "title": "Idioma",
+      "path": [
+        "Ajustes",
+        "General"
+      ],
+      "summary": "Usa English, Português (Brasil), Español o el idioma del sistema.",
+      "guidance": "Cambia el idioma en General. La búsqueda de Ayuda acepta nombres habituales de funciones en los tres idiomas disponibles. Los nombres de los programas permanecen como los informan los audífonos.",
+      "keywords": "language translate english português español idioma tradução traducción",
+      "appURL": "audifern://feature/language"
+    },
+    {
+      "id": "privacy",
+      "title": "Privacidad",
+      "path": [
+        "Ajustes"
+      ],
+      "summary": "Revisa la visibilidad de identificadores y el tratamiento local de los datos.",
+      "guidance": "Audifern no tiene cuentas ni servicio de telemetría. Los audiogramas, preajustes y cachés se guardan en este Mac. Los widgets reciben solo los datos necesarios para sus controles, sin números de serie ni identificadores Bluetooth. Las exportaciones y los enlaces externos requieren una acción explícita.",
+      "keywords": "privacy identifiers data serial private account privacidade dados privacidad",
+      "appURL": "audifern://feature/privacy"
+    },
+    {
+      "id": "audiogram",
+      "title": "Audiograma",
+      "path": [
+        "Perfil auditivo"
+      ],
+      "summary": "Guarda los resultados de tu prueba auditiva localmente.",
+      "guidance": "Introduce los resultados de tu prueba auditiva y guárdalos localmente. El audiograma ayuda a documentar y preparar una conversación sobre adaptación. Guardarlo no calcula ni programa una prescripción clínica en los audífonos.",
+      "keywords": "audiogram hearing test exam audiometry audiometria exame audiograma",
+      "appURL": "audifern://feature/audiogram"
+    },
+    {
+      "id": "fitting-plan",
+      "title": "Preparar un plan de adaptación",
+      "path": [
+        "Perfil auditivo"
+      ],
+      "summary": "Organiza tu audiograma, objetivos y preferencias de adaptación.",
+      "guidance": "El plan guiado registra audífonos, acústica y preferencias para su revisión. Son registros locales de planificación. No están disponibles la programación clínica, la instalación de firmware ni una sustitución completa de Genie.",
+      "keywords": "genie plan fitting receiver acoustics adaptation plano adaptação receptor adaptación",
+      "appURL": "audifern://feature/fitting-plan"
+    },
+    {
+      "id": "saved-fitting",
+      "title": "Adaptación guardada",
+      "path": [
+        "Perfil auditivo"
+      ],
+      "summary": "Revisa los datos legibles compatibles sin cambiar los audífonos.",
+      "guidance": "Los resúmenes de adaptación muestran registros compatibles capturados en una copia privada. Los campos desconocidos permanecen así. Un punto de recuperación legible no es una imagen completa de firmware, una copia de la calibración clínica ni un mecanismo de restauración verificado.",
+      "keywords": "fitting saved configuration read only configuração salva adaptación guardada",
+      "appURL": "audifern://feature/saved-fitting"
+    },
+    {
+      "id": "backups",
+      "title": "Copias de seguridad",
+      "path": [
+        "Perfil auditivo"
+      ],
+      "summary": "Guarda y compara puntos de recuperación privados de datos legibles compatibles.",
+      "guidance": "Las copias nunca sustituyen un punto de recuperación anterior. Pueden contener datos privados de los audífonos y su adaptación; guarda las exportaciones con cuidado. La restauración clínica y de firmware no está implementada.",
+      "keywords": "backup compare snapshot export restore cópia segurança comparar copia respaldo",
+      "appURL": "audifern://feature/backups"
+    },
+    {
+      "id": "diagnostics",
+      "title": "Diagnóstico",
+      "path": [
+        "Ajustes"
+      ],
+      "summary": "Inspecciona la conexión y los registros con datos ocultos para resolver problemas.",
+      "guidance": "Diagnóstico separa el descubrimiento, la conexión y las lecturas compatibles. Conectar los controles no demuestra que el audio se dirija a los audífonos. Revisa localmente los registros con datos ocultos antes de exportarlos; Audifern no los envía automáticamente.",
+      "keywords": "debug log troubleshooting error bluetooth diagnóstico registros erro diagnóstico",
+      "appURL": "audifern://feature/diagnostics"
+    },
+    {
+      "id": "about",
+      "title": "Acerca de Audifern",
+      "path": [
+        "Ayuda"
+      ],
+      "summary": "Consulta la versión, la licencia de código abierto y las opciones de apoyo.",
+      "guidance": "Acerca de incluye el enlace del desarrollador, el código fuente, la licencia GNU GPLv3 y aportaciones opcionales. Los códigos QR se generan localmente. Los proveedores de pago controlan los datos personales que muestran en sus páginas.",
+      "keywords": "about version donate support license github sabino sobre versão doar doação ayuda donar",
+      "appURL": "audifern://feature/about"
+    }
+  ]
+}

@@ -25,7 +25,7 @@ avoid tests that merely reproduce a view's implementation.
 
 ## Interface and translations
 
-Everyday controls belong in Listen; detailed adjustments and diagnostics
+Everyday controls belong in Sound; detailed adjustments and diagnostics
 should remain discoverable without crowding that page. Keep feature navigation
 in the main window, use system colors and controls, and preserve keyboard and
 accessibility behavior. Check both light and dark appearance.
