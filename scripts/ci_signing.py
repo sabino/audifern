@@ -175,8 +175,15 @@ def prepare(project: Path, directory: Path, tag: str, commit: str, tag_object: s
         for entry in zipped.infolist():
             path = PurePosixPath(entry.filename)
             if not path.parts or entry.filename.startswith("/") or ".." in path.parts or "\\" in entry.filename \
-                    or path.parts[0] not in {"Audifern.app", "__MACOSX"} or stat.S_ISLNK(entry.external_attr >> 16):
+                    or path.parts[0] not in {"Audifern.app", "__MACOSX"}:
                 raise ValueError("Unsafe path in the unsigned application ZIP.")
+            if stat.S_ISLNK(entry.external_attr >> 16):
+                manifest_path = project / 'scripts/sparkle-payload.json'
+                links = json.loads(manifest_path.read_text())['symlinks'] if manifest_path.exists() else {}
+                prefix = 'Audifern.app/Contents/Frameworks/Sparkle.framework/'
+                expected = links.get(entry.filename[len(prefix):]) if entry.filename.startswith(prefix) else None
+                if expected is None or entry.file_size > 4096 or zipped.read(entry).decode('utf-8') != expected:
+                    raise ValueError('Unsafe path or unreviewed updater symlink in the unsigned application ZIP.')
     command("Extracting the verified app", ["ditto", "-x", "-k", str(archive), str(project / "build")])
     command("Validating the unsigned application", ["python3", str(project / "scripts/release_metadata.py"),
             "verify-app", str(project / "build/Audifern.app"), "--architecture", "universal"])

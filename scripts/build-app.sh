@@ -25,6 +25,9 @@ app_dir="$staging/Audifern.app"
 mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
 cp "$binary_dir/Audifern" "$app_dir/Contents/MacOS/Audifern"
 cp "$project_dir/Resources/Info.plist" "$app_dir/Contents/Info.plist"
+if [[ "$configuration" == debug ]]; then
+    /usr/libexec/PlistBuddy -c 'Add :AudifernDevelopmentBuild bool true' "$app_dir/Contents/Info.plist"
+fi
 chmod +x "$app_dir/Contents/MacOS/Audifern"
 if [[ "$configuration" == release ]]; then strip -S -x "$app_dir/Contents/MacOS/Audifern"; fi
 swift "$project_dir/scripts/make-icon.swift" "$staging/Audifern.iconset" "$project_dir/Sources/Audifern/Resources/BrandMark.png"
@@ -35,6 +38,8 @@ for resource_bundle in "$binary_dir"/Audifern_*.bundle; do
 done
 cp "$project_dir/LICENSE" "$app_dir/Contents/Resources/LICENSE.txt"
 cp "$project_dir/THIRD_PARTY_NOTICES.md" "$app_dir/Contents/Resources/THIRD_PARTY_NOTICES.md"
+cp "$project_dir/docs/licenses/Sparkle.txt" "$app_dir/Contents/Resources/Sparkle-LICENSE.txt"
+python3 scripts/sparkle_framework.py "$app_dir"
 python3 scripts/release_metadata.py source-notice > "$app_dir/Contents/Resources/SOURCE.txt"
 widget_configuration=Debug
 if [[ "$configuration" == release ]]; then widget_configuration=Release; fi

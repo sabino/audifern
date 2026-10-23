@@ -8,7 +8,13 @@ struct MenuBarPanel: View {
     @EnvironmentObject private var preferences: AppPreferences
     @AppStorage("groupedHearingAidControls") private var together = true
     @AppStorage("groupedSpeechBoosterControls") private var speechTogether = true
-    private var aids: [AidConnection] { store.orderedConnections.filter { ["Left", "Right"].contains($0.sideLabel) }.sorted { $0.sideLabel < $1.sideLabel } }
+    private var aids: [AidConnection] { store.orderedConnections.filter { $0.isConnected && ["Left", "Right"].contains($0.sideLabel) }.sorted { $0.sideLabel < $1.sideLabel } }
+    private var connecting: Bool { store.orderedConnections.contains { $0.phase == .connecting || $0.phase == .disconnecting } }
+    private var reconnectStatus: String {
+        if !store.isPoweredOn { return M(store.bluetoothStatus) }
+        if automation.status == "Waiting before trying again.", let seconds = automation.retryDelay { return L("Trying again in %d seconds", seconds) }
+        return L(automation.status)
+    }
     var body: some View {
         VStack(spacing: 12) {
             HStack(spacing: 10) {
@@ -18,14 +24,13 @@ struct MenuBarPanel: View {
                 Menu {
                     Button(L("Quick access settings…")) { help.openFeature("menu-bar") }
                     Button(L("Battery alerts…")) { help.openFeature("battery-alerts") }
+                    Button(L("Connection settings…")) { help.openFeature("reconnection") }
+                    Button(L("Updates & changelog…")) { help.openFeature("updates") }
                     Divider()
                     Button(L("Quit Audifern")) { NSApplication.shared.terminate(nil) }
                 } label: { Image(systemName: "gearshape").font(.system(size: 18)) }.menuStyle(.borderlessButton).fixedSize()
             }
-            HStack(spacing: 6) {
-                Circle().fill(store.connectedCount > 0 ? Brand.accent : .secondary).frame(width: 6, height: 6)
-                Text(store.isDemo ? L("Preview mode") : store.connectedCount > 0 ? L("%d connected", store.connectedCount) : L("Disconnected"))
-            }.font(AppType.caption).foregroundStyle(.secondary).frame(height: 20)
+            connectionControls
             if preferences.menuBarPrograms, !aids.isEmpty {
                 QuickProgramPicker(store: store, aids: aids, identifier: "menu-quick-programs")
             }
@@ -36,25 +41,6 @@ struct MenuBarPanel: View {
             }.padding(.vertical, 2)
             if preferences.menuBarSound { soundControls }
             if preferences.menuBarAudio { audioControls }
-            panel {
-                HStack(spacing: 10) {
-                    Image(systemName: automation.paused ? "link.badge.plus" : "link").foregroundStyle(.secondary)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(L("App controls")).font(AppType.callout.weight(.medium))
-                        Text(automation.paused ? L("Paused") : store.connectedCount > 0 ? L("Connected") : L("Disconnected"))
-                            .font(AppType.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 2)
-                    Button(automation.paused || store.connectedCount == 0 ? L("Reconnect") : L("Pause")) {
-                        if automation.paused || store.connectedCount == 0 {
-                            if !automation.remembered.isEmpty { automation.connectNow() }
-                            else if store.pairCandidateIDs.count == 2 { store.connectPair() }
-                            else { help.openFeature("getting-started") }
-                        }
-                        else { automation.pause() }
-                    }.frame(width: 100).controlSize(.regular)
-                }.frame(height: 43)
-            }
             Divider()
             HStack {
                 Button { help.openFeature("volume") } label: { Label(L("Open Audifern"), systemImage: "arrow.up.forward.square") }
@@ -65,9 +51,18 @@ struct MenuBarPanel: View {
             .background(.regularMaterial).tint(Brand.accent)
             .preferredColorScheme(preferences.appearance.colorScheme)
             .accessibilityIdentifier("menu-bar-panel")
-            .onAppear { automation.refreshAudio() }
+            .onAppear { automation.tick() }
             .onChange(of: together) { _, _ in didChangeLayout?() }
             .onChange(of: speechTogether) { _, _ in didChangeLayout?() }
+    }
+    private var connectionControls: some View {
+        MenuConnectionControls(connectedCount: store.connectedCount, targetCount: automation.remembered.count,
+            connecting: connecting, disconnecting: store.orderedConnections.contains { $0.phase == .disconnecting },
+            preview: store.isDemo, poweredOn: store.isPoweredOn, status: reconnectStatus, connect: {
+                if !automation.remembered.isEmpty { automation.connectNow() }
+                else if store.pairCandidateIDs.count == 2 { store.connectPair() }
+                else { help.openFeature("getting-started") }
+            }, disconnect: { automation.pause() })
     }
     private func panel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content().padding(13).frame(maxWidth: .infinity).background(Brand.surface.opacity(0.85), in: RoundedRectangle(cornerRadius: 15))
@@ -150,6 +145,46 @@ struct MenuBarPanel: View {
                     Button(L("Audio output settings…")) { help.openFeature("mac-audio") }
                 } label: { Text(L("Switch…")) }.menuStyle(.borderlessButton).fixedSize()
             }.frame(height: 43)
+        }
+    }
+}
+
+struct MenuConnectionControls: View {
+    let connectedCount: Int
+    let targetCount: Int
+    let connecting: Bool
+    let disconnecting: Bool
+    let preview: Bool
+    let poweredOn: Bool
+    let status: String
+    let connect: () -> Void
+    let disconnect: () -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 8) {
+                Circle().fill(connectedCount > 0 ? Brand.accent : .secondary).frame(width: 7, height: 7)
+                Text(preview ? L("Preview mode") : disconnecting ? L("Disconnecting…") : connecting ? L("Connecting…") : connectedCount > 0 ? L("%d connected", connectedCount) : L("Disconnected"))
+                    .font(AppType.callout.weight(.medium))
+                Spacer(minLength: 4)
+                if connecting || connectedCount >= max(1, targetCount) {
+                    Button(connecting ? L("Cancel") : L("Disconnect"), action: disconnect)
+                        .accessibilityIdentifier("menu-disconnect").disabled(preview || disconnecting)
+                } else {
+                    if connectedCount > 0 {
+                        Button(action: disconnect) { Image(systemName: "xmark") }
+                            .help(L("Disconnect")).accessibilityLabel(L("Disconnect"))
+                            .accessibilityIdentifier("menu-disconnect-partial").disabled(preview)
+                    }
+                    Button(action: connect) { Label(L("Connect"), systemImage: "link") }
+                        .buttonStyle(.borderedProminent).tint(Brand.controlTint)
+                        .accessibilityIdentifier("menu-connect").disabled(preview || !poweredOn)
+                }
+            }.controlSize(.regular).frame(height: 30)
+            if !preview, connectedCount == 0 {
+                Text(status).font(AppType.caption).foregroundStyle(.secondary)
+                    .lineLimit(2).frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                    .accessibilityIdentifier("menu-reconnect-status")
+            }
         }
     }
 }

@@ -33,6 +33,8 @@ mt install --cask sabino/tap/audifern
 
 **Homebrew**: `brew install --cask sabino/tap/audifern`.
 
+For release notes and the correct update method, open **Settings → Updates**.
+
 ## What you can do
 
 - Adjust volume and mute for each ear, or both together.

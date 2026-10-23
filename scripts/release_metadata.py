@@ -13,6 +13,7 @@ import re
 import subprocess
 
 import apple_tickets
+import sparkle_framework
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
@@ -84,11 +85,18 @@ def vet_payload(app: Path) -> None:
     allowed = set(required)
     # Apple's stapler places the app's notarization ticket here.
     allowed.add("Contents/CodeResources")
+    updater = app / sparkle_framework.RELATIVE
+    if updater.exists() or updater.is_symlink():
+        sparkle_framework.verify_payload(updater, ROOT)
+        allowed.add("Contents/Resources/Sparkle-LICENSE.txt")
+        required.add("Contents/Resources/Sparkle-LICENSE.txt")
     for prefix in ["Contents/_CodeSignature/", bundle + "_CodeSignature/", WIDGET + "Contents/_CodeSignature/"]:
         allowed.update(prefix + name for name in SIGNATURE_FILES)
     if app.is_symlink() or not app.is_dir(): raise ValueError("Expected a regular app bundle.")
     present = set()
     for path in app.rglob("*"):
+        if updater.exists() and path.is_relative_to(updater):
+            continue  # The exact updater file set and internal links were vetted above.
         if path.is_symlink(): raise ValueError("Unexpected symlink in the application payload.")
         if path.is_file():
             name = path.relative_to(app).as_posix()
@@ -104,6 +112,14 @@ def verify_app(app: Path, architecture: str) -> dict:
             or info.get("CFBundleShortVersionString") != version() or info.get("LSMinimumSystemVersion") != "14.0"):
         raise ValueError("Application identity, version or deployment target does not match this source.")
     executable = app / "Contents/MacOS/Audifern"
+    source_info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())
+    if source_info.get('SUPublicEDKey'):
+        for key in ['SUPublicEDKey', 'SUFeedURL', 'SURequireSignedFeed', 'SUVerifyUpdateBeforeExtraction',
+                    'SUEnableAutomaticChecks', 'SUAutomaticallyUpdate', 'SUSendProfileInfo']:
+            if info.get(key) != source_info.get(key):
+                raise ValueError('The update policy or verification key differs from the reviewed source.')
+        sparkle_framework.verify_payload(app / sparkle_framework.RELATIVE, ROOT)
+        sparkle_framework.verify_signatures(app, signing_details(app)['teamID'])
     architectures = set(subprocess.check_output(["lipo", "-archs", str(executable)], text=True).split())
     if architectures != expected_architectures(architecture): raise ValueError("The executable does not contain the requested architecture slices.")
     widget = app / WIDGET

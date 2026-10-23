@@ -10,6 +10,7 @@ take you directly to the relevant control or setting.
 | --- | --- |
 | Setup, everyday controls and troubleshooting | [User guide](user-guide.md) |
 | Downloads, installation and updates | [Installation](distribution.md#install-and-verify) |
+| Changelog and updating the app | [App updates](app-updates.md) |
 | Reconnection and Mac audio preferences | [Connections](connections.md) |
 | Menu bar, widgets, Control Center and Help | [Quick access](quick-access.md) |
 | Battery notifications | [Battery alerts](battery-alerts.md) |

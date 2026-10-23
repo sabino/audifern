@@ -6,6 +6,7 @@ struct AppSettingsView: View {
     var connectionAutomation: ConnectionAutomation? = nil
     @EnvironmentObject private var preferences: AppPreferences
     @EnvironmentObject private var navigation: AppNavigation
+    @Environment(\.appUpdates) private var updates
     @AppStorage("settingsSection") private var section = "general"
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? L("Development") }
     private var title: String {
@@ -16,6 +17,7 @@ struct AppSettingsView: View {
         case "about": L("About Audifern")
         case "connections": L("Connections")
         case "quickAccess": L("Quick access")
+        case "updates": L("Updates & changelog")
         default: L("General")
         }
     }
@@ -27,6 +29,7 @@ struct AppSettingsView: View {
                 category("connections", title: L("Connections"), symbol: "antenna.radiowaves.left.and.right")
                 category("quickAccess", title: L("Quick access"), symbol: "menubar.rectangle")
                 category("battery", title: L("Battery alerts"), symbol: "battery.75percent")
+                category("updates", title: L("Updates"), symbol: "arrow.down.circle")
                 category("privacy", title: L("Privacy"), symbol: "lock.shield")
                 category("diagnostics", title: L("Diagnostics"), symbol: "waveform.path.ecg")
                 category("about", title: L("About"), symbol: "info.circle")
@@ -47,6 +50,8 @@ struct AppSettingsView: View {
                     case "privacy": privacy
                     case "diagnostics": diagnostics
                     case "quickAccess": QuickAccessSettingsView()
+                    case "updates":
+                        if let updates { UpdatesView(controller: updates) }
                     default: general
                     }
                     Spacer(minLength: 0)

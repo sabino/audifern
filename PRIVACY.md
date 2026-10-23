@@ -61,6 +61,20 @@ enable alerts. Notifications may be visible on your display or lock screen
 according to macOS settings. Closing the main window keeps existing Bluetooth
 connections and monitoring running in the menu bar; quitting stops them.
 
+## Application updates
+
+Opening Updates or choosing Check for Updates fetches public release information
+from GitHub. Direct-download installations can optionally check automatically
+using Sparkle. Downloads and update checks contact GitHub, which receives normal
+network metadata such as the IP address and request headers. No hearing-aid
+identifiers, audiograms, credentials or diagnostic logs are sent. Sparkle's
+optional system-profile reporting is disabled.
+
+The app reads local package-manager receipts to identify Malt/Homebrew installs;
+it does not run their upgrade commands. Managed installations keep their own
+update method. Update history requests use an ephemeral session without cookies
+or a persistent URL cache. See [app updates](docs/app-updates.md).
+
 ## Exports and diagnostics
 
 JSON/XML exam exports contain the exam you choose to export. Consumer-program

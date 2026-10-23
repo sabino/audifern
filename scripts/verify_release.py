@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import plistlib
 from pathlib import Path
 import re
 import subprocess
@@ -13,12 +14,14 @@ import tempfile
 
 import apple_tickets
 import release_metadata as metadata
+import sparkle_appcast
 
 
 def verify_downloads(directory: Path, tag: str = "") -> dict:
     version = metadata.release_version(metadata.version(), tag)
     prefix = f"Audifern-{version}-macos-universal"
     expected = {prefix + ".dmg", prefix + ".zip", "build-info.json", "SHA256SUMS"}
+    if (directory / 'appcast.xml').exists(): expected.add('appcast.xml')
     paths = list(directory.iterdir())
     if {path.name for path in paths} != expected or any(not path.is_file() or path.is_symlink() for path in paths):
         raise ValueError("Release downloads must contain exactly a regular DMG, ZIP, manifest and checksums.")
@@ -47,12 +50,14 @@ def verify_downloads(directory: Path, tag: str = "") -> dict:
     return data
 
 
-def verify_release(directory: Path, tag: str, team: str) -> dict:
+def verify_release(directory: Path, tag: str, team: str, *, require_feed: bool = False) -> dict:
     if not re.fullmatch(r"[A-Z0-9]{10}", team):
         raise ValueError("Provide the expected public Apple developer team ID.")
     data = verify_downloads(directory, tag)
     if data["teamID"] != team:
         raise ValueError("The release manifest identifies a different signing team.")
+    if require_feed and plistlib.loads((metadata.ROOT / 'Resources/Info.plist').read_bytes()).get('SUPublicEDKey'):
+        sparkle_appcast.verify(directory, metadata.ROOT)
     prefix = f"Audifern-{data['releaseVersion']}-macos-universal"
     dmg = directory / (prefix + ".dmg")
     subprocess.run(["hdiutil", "verify", "-quiet", str(dmg)], check=True)
@@ -103,7 +108,7 @@ def main() -> None:
     parser.add_argument("--team", required=True, help="Expected public Apple developer team ID.")
     args = parser.parse_args()
     metadata.ROOT = args.project.resolve()
-    verify_release(args.directory.resolve(), args.tag, args.team)
+    verify_release(args.directory.resolve(), args.tag, args.team, require_feed=True)
 
 
 if __name__ == "__main__":

@@ -96,6 +96,11 @@ Pause persists until you resume or reconnect manually. A signal threshold can
 favor closer devices; Bluetooth signal strength does not measure exact distance,
 rooms or floors.
 
+The menu-bar panel has **Connect** and **Disconnect** at the top, and shows why
+automatic reconnection is waiting. Connect can briefly scan for your remembered
+aids even when automatic reconnection is off. Grouping stays disabled until both
+aids are connected.
+
 A control connection does not mean Mac audio is using the hearing aids. Check
 **Control Center → Sound → Output** for audio routing. Mac/Android handoff is
 not automatic or verified, and pausing Audifern may leave the system's audio
@@ -109,6 +114,13 @@ Readable checkpoints can be saved and compared privately.
 
 These records do not calculate a prescription, program a clinical fitting,
 restore a complete fitting or install firmware.
+
+## Updates and changelog
+
+Open **Audifern → Check for Updates…** or **Settings → Updates**. Read the
+changelog and check for a newer version. Direct-download installations use a
+signed in-app updater; Malt and Homebrew installations show their matching
+upgrade command. See [app updates](app-updates.md).
 
 ## If something is unavailable
 

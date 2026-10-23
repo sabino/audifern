@@ -131,6 +131,10 @@ jobs:
       - name: Remove signing credentials before uploading anything
         if: always()
         run: python3 automation/scripts/ci_signing.py cleanup --state "$RUNNER_TEMP/audifern-signing-state.json"
+      - name: Generate the signed in-app update feed
+        env:
+          AUDIFERN_UPDATE_PRIVATE_KEY: ${{ secrets.AUDIFERN_UPDATE_PRIVATE_KEY }}
+        run: python3 automation/scripts/sparkle_appcast.py create product/build/release --project product
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos-universal-notarized
@@ -139,6 +143,7 @@ jobs:
             product/build/release/*.zip
             product/build/release/SHA256SUMS
             product/build/release/build-info.json
+            product/build/release/appcast.xml
           if-no-files-found: error
           retention-days: 14
 
@@ -217,7 +222,7 @@ jobs:
             if [[ ! -f "$notes" ]]; then notes=docs/releases/default.md; fi
             gh release create "$RELEASE_TAG" --verify-tag --draft --title "Audifern ${RELEASE_TAG#v}" --notes-file "$notes"
           fi
-          gh release upload "$RELEASE_TAG" downloads/*.dmg downloads/*.zip downloads/SHA256SUMS downloads/build-info.json --clobber
+          gh release upload "$RELEASE_TAG" downloads/*.dmg downloads/*.zip downloads/SHA256SUMS downloads/build-info.json downloads/appcast.xml --clobber
           release_api_url="$(gh release view "$RELEASE_TAG" --json apiUrl --jq .apiUrl)"
           gh api "$release_api_url" > release-assets.json
           python3 - <<'PY'

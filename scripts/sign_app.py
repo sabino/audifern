@@ -13,6 +13,7 @@ import plistlib
 import re
 import subprocess
 import tempfile
+import sparkle_framework
 
 WIDGET = Path("Contents/PlugIns/AudifernWidgets.appex")
 
@@ -58,6 +59,19 @@ def sign(app: Path, identity: str, *, hardened: bool) -> None:
         info["AudifernAppGroupIdentifier"] = group
         info_path.write_bytes(plistlib.dumps(info))
     with tempfile.TemporaryDirectory(prefix="audifern-entitlements-") as folder:
+        framework = app / sparkle_framework.RELATIVE
+        if framework.exists():
+            sparkle_framework.verify_payload(framework)
+            for relative in sparkle_framework.BUNDLES:
+                bundle = framework / relative
+                # Preserve Sparkle's reviewed helper entitlements when signing
+                # its nested code with the selected app identity.
+                existing = subprocess.run(['codesign', '-d', '--entitlements', ':-', str(bundle)],
+                                          capture_output=True, check=True).stdout
+                path = Path(folder) / 'sparkle.plist'
+                path.write_bytes(plistlib.dumps(plistlib.loads(existing) if existing else {}))
+                codesign(bundle, path)
+            codesign(framework)
         for bundle, is_widget in [(widget, True), (app, False)]:
             path = Path(folder) / ("widget.plist" if is_widget else "app.plist")
             path.write_bytes(plistlib.dumps(entitlements(team, widget=is_widget)))

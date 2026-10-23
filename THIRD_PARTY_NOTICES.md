@@ -57,3 +57,9 @@ Contribute original implementations and synthetic fixtures; do not copy vendor
 code or bundle material merely because it was accessible during analysis. See
 [CONTRIBUTING.md](CONTRIBUTING.md) and the
 [public-source audit](docs/public-release-audit.md).
+
+## Sparkle
+
+Sparkle 2.10.0 provides signed application updates. Copyright Sparkle Project.
+Distributed under its MIT license and the notices in [Sparkle license](docs/licenses/Sparkle.txt).
+Source: https://github.com/sparkle-project/Sparkle/tree/2.10.0.

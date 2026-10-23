@@ -1,12 +1,23 @@
 {
   "schemaVersion": 1,
   "application": "Audifern",
-  "appVersion": "0.8.4",
+  "appVersion": "0.9.0",
   "language": "es",
   "languageName": "Español",
   "license": "GPL-3.0-only",
   "source": "Sources/Audifern/HelpCatalog.swift",
   "topics": [
+    {
+      "id": "updates",
+      "title": "Actualizaciones y novedades",
+      "path": [
+        "Ajustes"
+      ],
+      "summary": "Lee las notas de versión y actualiza Audifern con el método adecuado a tu instalación.",
+      "guidance": "Abre Actualizaciones en Ajustes o elige Buscar actualizaciones en el menú Audifern. Las instalaciones por descarga directa usan actualizaciones firmadas desde la app y permiten elegir cuándo instalar y volver a abrir. Las instalaciones con Malt y Homebrew muestran el comando correspondiente; el actualizador de la app nunca sustituye sus archivos. El historial se carga desde GitHub al abrir esta página. No se actualiza el firmware de los audífonos.",
+      "keywords": "update upgrade changelog release version what's new atualizar atualizações novidades versión actualizar cambios",
+      "appURL": "audifern://feature/updates"
+    },
     {
       "id": "getting-started",
       "title": "Primeros pasos",

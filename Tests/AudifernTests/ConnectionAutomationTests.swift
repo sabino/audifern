@@ -48,17 +48,56 @@ import Testing
     let clock = AutomationClock()
     let aids = [RememberedHearingAid(id: UUID(), side: "Left"), RememberedHearingAid(id: UUID(), side: "Right")]
     let automation: ConnectionAutomation
-    init() throws {
+    init(readSession: (() -> Bool)? = nil) throws {
         defaults = UserDefaults(suiteName: suite)!
         defaults.set(try JSONEncoder().encode(aids), forKey: "autoConnectionKnownAids")
         transport.available = Set(aids.map(\.id))
         let clock = clock
         automation = ConnectionAutomation(defaults: defaults, transport: transport, audio: audio,
-            now: { clock.date }, runTimer: false, observeSession: false)
+            now: { clock.date }, runTimer: false, observeSession: false, readSession: readSession)
     }
     func clean() { defaults.removePersistentDomain(forName: suite) }
     func connected() { transport.automationPhases = Dictionary(uniqueKeysWithValues: aids.map { ($0.id, .connected) }) }
     func failed() { transport.automationPhases = Dictionary(uniqueKeysWithValues: aids.map { ($0.id, .failed) }) }
+}
+
+@MainActor private final class SessionProbe { var unlocked = false }
+
+@Test func currentSessionSnapshotRequiresAnAwakeUnlockedConsole() {
+    #expect(ConnectionSessionSnapshot(onConsole: true, displayAwake: true, screenLocked: nil, foregroundBundle: "com.apple.finder").isUnlocked)
+    #expect(!ConnectionSessionSnapshot(onConsole: true, displayAwake: true, screenLocked: true, foregroundBundle: "com.apple.finder").isUnlocked)
+    #expect(!ConnectionSessionSnapshot(onConsole: true, displayAwake: false, screenLocked: false, foregroundBundle: "com.apple.finder").isUnlocked)
+    #expect(!ConnectionSessionSnapshot(onConsole: false, displayAwake: true, screenLocked: false, foregroundBundle: "com.apple.finder").isUnlocked)
+    #expect(!ConnectionSessionSnapshot(onConsole: true, displayAwake: true, screenLocked: nil, foregroundBundle: "com.apple.loginwindow").isUnlocked)
+    #expect(!ConnectionSessionSnapshot(onConsole: true, displayAwake: true, screenLocked: nil, foregroundBundle: nil).isUnlocked)
+}
+
+@MainActor @Test func reconnectRecoversAMissedUnlockNotificationAndStillStopsWhileLocked() throws {
+    let session = SessionProbe()
+    let f = try AutomationFixture(readSession: { session.unlocked }); defer { f.clean() }
+    f.transport.automationPoweredOn = true; f.automation.enabled = true; f.automation.releaseOnLock = true
+    f.automation.tick()
+    #expect(f.transport.requested.isEmpty && f.automation.status == "Waiting for this Mac to unlock.")
+    // No notification: the next background tick must read the actual session.
+    session.unlocked = true; f.automation.tick()
+    #expect(f.transport.requested.count == 2)
+    f.connected(); f.automation.tick()
+    session.unlocked = false; f.automation.tick(); f.automation.tick()
+    #expect(f.transport.disconnects == 1 && f.transport.requested.count == 2)
+    session.unlocked = true; f.automation.tick()
+    #expect(f.transport.requested.count == 4)
+}
+
+@MainActor @Test func explicitReconnectCanDiscoverRememberedAidsWithAutomationOffAndExpires() throws {
+    let f = try AutomationFixture(); defer { f.clean() }
+    f.transport.automationPoweredOn = true; f.transport.available = []
+    f.automation.connectNow()
+    #expect(!f.automation.enabled && f.transport.scans == 1 && f.transport.requested.isEmpty)
+    f.clock.date += 4; f.transport.available = Set(f.aids.map(\.id)); f.automation.tick()
+    #expect(f.transport.requested.count == 2)
+    f.failed(); f.clock.date += 21; f.automation.tick()
+    f.clock.date += 1_000; f.automation.tick()
+    #expect(f.transport.requested.count == 2 && f.transport.scans == 1 && !f.automation.enabled)
 }
 
 @MainActor @Test func connectionAutomationDefaultsOffAndDisablingItStopsAllAutomaticActions() throws {

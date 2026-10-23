@@ -60,6 +60,10 @@ struct ConnectionSignal {
     private let runTimer: Bool
     private var task: Task<Void, Never>?
     private var observer: ConnectionSessionObserver?
+    private var readSession: (() -> Bool)?
+    private var manualDeadline: Date?
+    private var manualTask: Task<Void, Never>?
+    private var observedPhases: [UUID: ConnectionPhase] = [:]
     private var unlocked = true
     private var unlockWindow: Date = .distantPast
     private var nextScan: Date = .distantPast
@@ -74,7 +78,7 @@ struct ConnectionSignal {
 
     init(defaults: UserDefaults, transport: any AutomaticConnectionTransport,
          audio: any MacAudioOutputClient, now: @escaping () -> Date = Date.init,
-         runTimer: Bool = true, observeSession: Bool = true) {
+         runTimer: Bool = true, observeSession: Bool = true, readSession: (() -> Bool)? = nil) {
         self.defaults = defaults; self.transport = transport; self.audio = audio; self.now = now; self.runTimer = runTimer
         enabled = defaults.bool(forKey: "autoConnectionEnabled")
         whenNearby = defaults.object(forKey: "autoConnectionNearby") as? Bool ?? true
@@ -90,10 +94,12 @@ struct ConnectionSignal {
         paused = defaults.bool(forKey: "autoConnectionPaused")
         let saved = defaults.data(forKey: "autoConnectionKnownAids").flatMap { try? JSONDecoder().decode([RememberedHearingAid].self, from: $0) } ?? []
         remembered = Self.validTargets(saved) ? saved : []
+        self.readSession = readSession
         if observeSession {
             observer = ConnectionSessionObserver { [weak self] in self?.sessionChanged(unlocked: $0) }
-            unlocked = observer?.isUnlocked ?? false
+            if readSession == nil { self.readSession = { [weak observer] in observer?.isUnlocked ?? false } }
         }
+        if let readSession = self.readSession { unlocked = readSession() }
         unlockWindow = now().addingTimeInterval(45)
         settingsChanged()
     }
@@ -116,6 +122,7 @@ struct ConnectionSignal {
         retryAt = [:]; attempts = [:]; transport.stopAutomaticScan(); tick()
     }
     func pause(disconnect: Bool = true) {
+        endManualAttempt()
         paused = true; defaults.set(true, forKey: "autoConnectionPaused")
         transport.stopAutomaticScan()
         if disconnect { transport.disconnectAutomaticConnections() }
@@ -130,6 +137,10 @@ struct ConnectionSignal {
         resume()
     }
     func connectionStateChanged() {
+        defer {
+            let phases = transport.automationPhases
+            if phases != observedPhases { observedPhases = phases; tick() }
+        }
         guard !pendingManualTargets.isEmpty else { return }
         let ids = Set(transport.automationCurrentAids.map(\.id))
         guard pendingManualTargets.isSubset(of: ids), Self.validTargets(transport.automationCurrentAids) else { return }
@@ -137,16 +148,28 @@ struct ConnectionSignal {
     }
     /// Explicit quick reconnect works independently of the automatic preference.
     func connectNow() {
+        manualDeadline = now().addingTimeInterval(20)
         resume()
-        guard unlocked, transport.automationPoweredOn, !remembered.isEmpty else { return }
-        transport.retrieveRemembered(remembered.map(\.id))
-        for aid in remembered where ![ConnectionPhase.connected, .connecting, .disconnecting].contains(transport.automationPhases[aid.id] ?? .disconnected) {
-            _ = transport.connectRemembered(aid.id)
+        guard unlocked, transport.automationPoweredOn, !remembered.isEmpty else { endManualAttempt(); return }
+        if runTimer, manualDeadline != nil {
+            manualTask?.cancel()
+            manualTask = Task { [weak self] in
+                for _ in 0..<21 {
+                    do { try await Task.sleep(for: .seconds(1)) } catch { return }
+                    guard let self, self.manualDeadline != nil else { return }
+                    self.tick()
+                }
+            }
         }
     }
     func sessionChanged(unlocked value: Bool) {
+        updateSession(unlocked: value)
+        tick()
+    }
+    private func updateSession(unlocked value: Bool) {
         let wasUnlocked = unlocked; unlocked = value
-        if !value {
+        if !value && wasUnlocked {
+            endManualAttempt()
             transport.stopAutomaticScan()
             if enabled && releaseOnLock { transport.disconnectAutomaticConnections() }
             if enabled && restoreAudioOnLock { restoreOwnedAudio() }
@@ -154,7 +177,14 @@ struct ConnectionSignal {
             if afterUnlock { unlockWindow = now().addingTimeInterval(45); retryAt = [:]; nextScan = .distantPast }
             audioContext = nil
         }
-        tick()
+    }
+    private func endManualAttempt() {
+        manualDeadline = nil; manualTask?.cancel(); manualTask = nil
+    }
+    var retryDelay: Int? {
+        let phases = transport.automationPhases
+        return remembered.filter { phases[$0.id] != .connected }.compactMap { retryAt[$0.id] }
+            .filter { $0 > now() }.min().map { Int(ceil($0.timeIntervalSince(now()))) }
     }
     private func settingsChanged() {
         if enabled && afterUnlock { unlockWindow = now().addingTimeInterval(45) }
@@ -240,8 +270,13 @@ struct ConnectionSignal {
         }
     }
     func tick() {
+        // Notifications can be missed during sleep or fast user switching.
+        // Re-read the current session instead of keeping a stale lock latch.
+        if let readSession { updateSession(unlocked: readSession()) }
         refreshAudio(); updateSignal()
-        guard enabled else { status = "Automatic connection is off."; return }
+        if let manualDeadline, now() >= manualDeadline { endManualAttempt(); transport.stopAutomaticScan() }
+        let manual = manualDeadline != nil
+        guard enabled || manual else { status = "Automatic connection is off."; return }
         guard !paused else { status = "App connection is paused."; return }
         guard unlocked else { status = "Waiting for this Mac to unlock."; return }
         guard !remembered.isEmpty else { status = "Choose your hearing aids first."; return }
@@ -250,6 +285,7 @@ struct ConnectionSignal {
         let phases = transport.automationPhases
         let missing = ids.filter { ![ConnectionPhase.connected, .connecting, .disconnecting].contains(phases[$0] ?? .disconnected) }
         if ids.allSatisfy({ phases[$0] == .connected }) {
+            endManualAttempt()
             retryAt = [:]; attempts = [:]; transport.stopAutomaticScan(); status = "App controls connected."
             let context = ids.map(\.uuidString).joined() + preferredOutputUID
             if preferMacAudio && audioContext != context && availableOutputs.contains(where: { $0.id == preferredOutputUID }) {
@@ -258,7 +294,7 @@ struct ConnectionSignal {
             return
         }
         audioContext = nil
-        guard whenNearby || (afterUnlock && now() < unlockWindow) else {
+        guard manual || whenNearby || (afterUnlock && now() < unlockWindow) else {
             status = afterUnlock ? "Waiting for the next unlock." : "Choose a reconnect trigger."
             return
         }
@@ -269,7 +305,7 @@ struct ConnectionSignal {
         var attempted = false
         var needsScan = false
         for id in eligible {
-            if limitSignal {
+            if limitSignal && !manual {
                 guard let signal = transport.automationSignals[id], signal.isFresh(at: now()), Double(signal.rssi) >= minimumRSSI else { needsScan = true; continue }
             }
             guard transport.connectRemembered(id) else { needsScan = true; continue }
@@ -284,44 +320,48 @@ struct ConnectionSignal {
     }
 }
 
+struct ConnectionSessionSnapshot {
+    let onConsole: Bool
+    let displayAwake: Bool
+    let screenLocked: Bool?
+    let foregroundBundle: String?
+    var isUnlocked: Bool {
+        guard onConsole, displayAwake else { return false }
+        if let screenLocked { return !screenLocked }
+        // macOS normally omits the lock flag in an unlocked session.
+        return foregroundBundle != nil && foregroundBundle != "com.apple.loginwindow"
+    }
+}
+
 /// Workspace sleep/session events plus macOS screen-lock notifications. No
 /// Accessibility, screen recording, login-item or Bluetooth power permission.
 @MainActor private final class ConnectionSessionObserver {
     private var tokens: [(NotificationCenter, NSObjectProtocol)] = []
     private let changed: (Bool) -> Void
-    private var sleeping = false
-    private var lockedByNotification = false
-    private var receivedUnlock = false
-    private var foregroundSessionIsUsable: Bool {
-        guard let foreground = NSWorkspace.shared.frontmostApplication?.bundleIdentifier else { return false }
-        return foreground != "com.apple.loginwindow"
-    }
+    private var blockedUntil = Date.distantPast
     var isUnlocked: Bool {
-        guard let session = CGSessionCopyCurrentDictionary() as? [String: Any],
-              session[kCGSessionOnConsoleKey as String] as? Bool == true else { return false }
-        guard !sleeping, !lockedByNotification else { return false }
-        if let locked = session["CGSSessionScreenIsLocked"] as? Bool { return !locked }
-        // The field is normally absent while unlocked. Require evidence of
-        // a usable foreground session as well as our observed session state.
-        return receivedUnlock && foregroundSessionIsUsable
+        guard Date() >= blockedUntil, let session = CGSessionCopyCurrentDictionary() as? [String: Any] else { return false }
+        return ConnectionSessionSnapshot(onConsole: session[kCGSessionOnConsoleKey as String] as? Bool == true,
+            displayAwake: CGDisplayIsAsleep(CGMainDisplayID()) == 0,
+            screenLocked: session["CGSSessionScreenIsLocked"] as? Bool,
+            foregroundBundle: NSWorkspace.shared.frontmostApplication?.bundleIdentifier).isUnlocked
     }
     init(changed: @escaping (Bool) -> Void) {
         self.changed = changed
-        receivedUnlock = foregroundSessionIsUsable
         let workspace = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification, NSWorkspace.sessionDidResignActiveNotification] {
-            observe(workspace, name) { [weak self] in self?.sleeping = true; self?.changed(false) }
+            observe(workspace, name) { [weak self] in self?.blockedUntil = Date().addingTimeInterval(2); self?.changed(false) }
         }
         for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification, NSWorkspace.sessionDidBecomeActiveNotification] {
-            observe(workspace, name) { [weak self] in guard let self else { return }; self.sleeping = false; self.changed(self.isUnlocked) }
+            observe(workspace, name) { [weak self] in guard let self else { return }; self.blockedUntil = .distantPast; self.changed(self.isUnlocked) }
         }
         let distributed = DistributedNotificationCenter.default()
         observe(distributed, .init("com.apple.screenIsLocked")) { [weak self] in
-            self?.lockedByNotification = true; self?.receivedUnlock = false; self?.changed(false)
+            self?.blockedUntil = Date().addingTimeInterval(2); self?.changed(false)
         }
         observe(distributed, .init("com.apple.screenIsUnlocked")) { [weak self] in
             guard let self else { return }
-            self.sleeping = false; self.lockedByNotification = false; self.receivedUnlock = true; self.changed(self.isUnlocked)
+            self.blockedUntil = .distantPast; self.changed(self.isUnlocked)
         }
     }
     private func observe(_ center: NotificationCenter, _ name: Notification.Name, action: @escaping @MainActor () -> Void) {

@@ -44,12 +44,13 @@ struct AudifernApp: App {
                 .environmentObject(services.preferences)
                 .environmentObject(services.equalizerDrafts)
                 .environmentObject(services.help)
+                .environment(\.appUpdates, services.updates)
                 .modifier(HelpPresentationAccess(help: services.help))
                 .defaultAppStorage(services.defaults)
                 .onAppear { services.installMenuBar() }
         }
             .defaultSize(width: 1120, height: 860)
-            .commands { CompanionCommands(navigation: services.navigation, preferences: services.preferences, help: services.help) }
+            .commands { CompanionCommands(navigation: services.navigation, preferences: services.preferences, help: services.help, updates: services.updates) }
     }
 }
 
@@ -63,6 +64,7 @@ private struct CompanionCommands: Commands {
     @ObservedObject var navigation: AppNavigation
     @ObservedObject var preferences: AppPreferences
     let help: AppHelpController
+    let updates: AppUpdateController
     @Environment(\.openWindow) private var openWindow
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
@@ -72,6 +74,12 @@ private struct CompanionCommands: Commands {
             Button(L("Open Audifern")) { show(.hearingAids) }.keyboardShortcut("1", modifiers: .command)
         }
         CommandGroup(after: .appInfo) {
+            Button(L("Check for Updates…")) {
+                help.openFeature("updates")
+                Task { await updates.checkForUpdates(presentingInstaller: true) }
+            }
+            Button(L("What’s New…")) { help.openFeature("updates") }
+            Divider()
             Button(L("Settings…")) { show(.settings) }.keyboardShortcut(",", modifiers: .command)
         }
         CommandGroup(replacing: .help) {
@@ -103,6 +111,7 @@ final class AudifernServices: ObservableObject {
     let connectionAutomation: ConnectionAutomation
     let help: AppHelpController
     let equalizerDrafts = EqualizerDraftStore()
+    let updates: AppUpdateController
     private var quickAccess: QuickAccessHost?
     private var menuBar: MenuBarController?
     let defaults: UserDefaults
@@ -112,12 +121,13 @@ final class AudifernServices: ObservableObject {
 
     func installMenuBar() {
         guard menuBar == nil else { return }
-        menuBar = MenuBarController(store: bluetooth, automation: connectionAutomation, help: help, preferences: preferences, defaults: defaults)
+        menuBar = MenuBarController(store: bluetooth, automation: connectionAutomation, help: help, preferences: preferences, defaults: defaults, updates: updates)
     }
 
     init(demo: Bool = CommandLine.arguments.contains("--demo")) {
         let defaults = demo ? UserDefaults(suiteName: "org.audifern.preview")! : .standard
         self.defaults = defaults
+        updates = AppUpdateController(demo: demo)
         if defaults.object(forKey: "groupedHearingAidControls") == nil {
             defaults.set(defaults.object(forKey: "linkedHearingAidControls") as? Bool ?? true, forKey: "groupedHearingAidControls")
         }

@@ -20,18 +20,20 @@ names and nearby advertisements are never used to select an unknown aid.
   Turn off nearby retries to use only this trigger.
 - **Disconnect app controls when this Mac locks** optionally cancels Audifern's
   own connections. macOS may retain its separate audio connection.
-- **Pause app connection**, also in the menu bar, disconnects Audifern and
+- **Disconnect**, at the top of the menu-bar panel, disconnects Audifern and
   suspends automatic retries. Pause survives a restart and an unlock. Resume or
   manually connect to end the pause. A manual Disconnect also pauses retries,
   so the app does not immediately undo it.
 
 Turning automation off stops its scanning and retries while preserving existing
 connections. No Bluetooth power toggle or sound-setting command is part of an
-automatic reconnection. Sleep/session events and macOS screen-lock notifications
-gate the policy. The latter notifications and lock-state dictionary field are
-OS-specific. When the lock field is absent, a usable foreground application
-and the observed session state are required; a login window or unknown session
-does not start automatic retries.
+automatic reconnection. Current console, display and lock state are rechecked
+on each background tick, so a missed wake/unlock notification does not leave a
+permanent pause. The lock-state dictionary field is OS-specific. When it is
+absent, a usable foreground application is required; a login window or unknown
+session does not start automatic retries. The menu panel shows the current
+waiting reason and retry countdown. An explicit Connect opens a bounded
+20-second attempt, including discovery when needed, even with automation off.
 Real lock/wake behavior still needs a user check on the target macOS installation.
 
 ## Nearby signal

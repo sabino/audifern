@@ -51,7 +51,9 @@ workflow receive Apple secrets. That trusted workflow:
    temporary Keychain.
 4. Signs with hardened runtime and secure timestamps, notarizes the app and
    DMG, staples their tickets and checks the extracted copies. It deletes the
-   temporary Keychain and credential files before uploading four release files.
+   temporary Keychain and credential files before generating the separately
+   signed update feed. The DMG, ZIP, manifest, checksums and feed are verified
+   before upload. See [in-app update signing](app-updates.md#release-setup).
 5. Uses a fresh Mac runner without Apple credentials to verify both CPU slices,
    signatures, tickets, Gatekeeper, source notices and hashes. Only then can a
    separate job create a draft and publish it after checking remote asset digests.

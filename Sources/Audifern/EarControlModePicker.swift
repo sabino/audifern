@@ -19,6 +19,7 @@ struct EarControlModePicker: View {
         .padding(4).frame(width: 236, height: 38)
         .background(accent.opacity(0.07), in: Capsule())
         .overlay(Capsule().strokeBorder(accent.opacity(0.12)))
+        .opacity(available ? 1 : 0.45)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(scope)
         .accessibilityIdentifier(identifier)
@@ -40,7 +41,7 @@ struct EarControlModePicker: View {
             .background(!isMixed && together == value ? Brand.surface : .clear, in: Capsule())
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain).disabled(value && !available)
+        .buttonStyle(.plain).disabled(!available)
         .accessibilityLabel(L("%@ · %@", scope, title))
         .accessibilityAddTraits(!isMixed && together == value ? [.isSelected] : [])
         .accessibilityIdentifier("\(identifier)-\(value ? "together" : "separate")")

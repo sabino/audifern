@@ -7,6 +7,8 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import stat
+import shutil
 import sys
 import tempfile
 import unittest
@@ -135,6 +137,31 @@ class CISigningTests(unittest.TestCase):
                            ('GITHUB_EVENT_NAME', 'pull_request'), ('GITHUB_REPOSITORY', 'fork/audifern')]:
             with self.subTest(key=key, value=value), patch.dict(os.environ, dict(CONTEXT, **{key: value}), clear=True):
                 with self.assertRaises(ValueError): signing.trusted_context()
+
+    def test_only_the_reviewed_sparkle_symlink_is_allowed_before_extraction(self):
+        with tempfile.TemporaryDirectory() as folder:
+            directory = Path(folder); self.artifact_fixture(directory)
+            (directory / 'scripts').mkdir()
+            (directory / 'scripts/sparkle-payload.json').write_text(json.dumps({'symlinks': {'Versions/Current': 'B'}}))
+            for target in ['B', '../../../../outside']:
+                with self.subTest(target=target):
+                    with zipfile.ZipFile(directory / 'Audifern-1.2.3-macos-universal.zip', 'w') as archive:
+                        link = zipfile.ZipInfo('Audifern.app/Contents/Frameworks/Sparkle.framework/Versions/Current')
+                        link.create_system = 3; link.external_attr = (stat.S_IFLNK | 0o777) << 16
+                        archive.writestr(link, target)
+                    # Keep only the expected release files in the artifact directory.
+                    paths = sorted(path for path in directory.iterdir() if path.is_file() and path.name != 'SHA256SUMS')
+                    (directory / 'SHA256SUMS').write_text(''.join(hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + path.name + '\n' for path in paths))
+                    artifacts = directory / 'artifacts'; artifacts.mkdir(exist_ok=True)
+                    for path in paths + [directory / 'SHA256SUMS']: shutil.copyfile(path, artifacts / path.name)
+                    with patch.dict(os.environ, CONTEXT), patch.object(signing, 'command', side_effect=['a' * 40, 'b' * 40 + '\trefs/tags/v1.2.3\n', '', '']) as command:
+                        if target == 'B':
+                            signing.prepare(directory, artifacts, 'v1.2.3', 'a' * 40, 'b' * 40)
+                            self.assertEqual(command.call_count, 4)
+                        else:
+                            with self.assertRaisesRegex(ValueError, 'symlink'):
+                                signing.prepare(directory, artifacts, 'v1.2.3', 'a' * 40, 'b' * 40)
+                            self.assertEqual(command.call_count, 2)
 
     def test_missing_or_malformed_credentials_fail_before_keychain_mutation(self):
         values = secret_fixture()

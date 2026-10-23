@@ -1,8 +1,8 @@
 # Building and developing Audifern
 
 Use macOS 14 or later, Swift 6, Python 3 and Xcode with a macOS 26 SDK or newer
-for the packaged widget extension. The Swift package has no external package
-dependencies.
+for the packaged widget extension. Sparkle 2.10.0 is the pinned external package
+used for signed application updates. SwiftPM verifies its binary checksum.
 
 ```sh
 ./scripts/build-app.sh

@@ -12,12 +12,14 @@ import SwiftUI
     private let help: AppHelpController
     private let preferences: AppPreferences
     private let defaults: UserDefaults
+    private let updates: AppUpdateController?
     private let item: NSStatusItem
     private let popover = NSPopover()
     private var observations: [AnyCancellable] = []
     private var layoutSignature = ""
-    init(store: BluetoothStore, automation: ConnectionAutomation, help: AppHelpController, preferences: AppPreferences, defaults: UserDefaults) {
+    init(store: BluetoothStore, automation: ConnectionAutomation, help: AppHelpController, preferences: AppPreferences, defaults: UserDefaults, updates: AppUpdateController? = nil) {
         self.store = store; self.automation = automation; self.help = help; self.preferences = preferences; self.defaults = defaults
+        self.updates = updates
         item = NSStatusBar.system.statusItem(withLength: 25)
         super.init()
         item.button?.target = self; item.button?.action = #selector(togglePanel)
@@ -52,6 +54,7 @@ import SwiftUI
         item.button?.toolTip = Brand.name
         let layout = [preferences.menuBarExpanded, preferences.menuBarArtwork, preferences.menuBarTime,
                       preferences.menuBarSound, preferences.menuBarPrograms, preferences.menuBarAudio].map(String.init).joined()
+            + store.orderedConnections.map { "\($0.phase.rawValue):\($0.sideLabel):\($0.programIDs.count)" }.joined(separator: "|")
         if layout != layoutSignature {
             layoutSignature = layout
             if popover.isShown { sizePanel() }
@@ -65,7 +68,7 @@ import SwiftUI
                 self.sizePanel()
             }
         })
-            .environmentObject(preferences).defaultAppStorage(defaults)
+            .environmentObject(preferences).environment(\.appUpdates, updates).defaultAppStorage(defaults)
     }
     private func sizePanel() {
         popover.appearance = preferences.appearance == .system ? nil : NSAppearance(named: preferences.appearance == .light ? .aqua : .darkAqua)

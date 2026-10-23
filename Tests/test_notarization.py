@@ -141,7 +141,8 @@ class NotarizationTests(unittest.TestCase):
             (project / 'Resources/Info.plist').write_bytes(plistlib.dumps({'CFBundleShortVersionString': '1.2.3'}))
             arguments = ['verify_release.py', '/synthetic/downloads', '--project', str(project),
                          '--tag', 'v1.2.3', '--team', 'A1B2C3D4E5']
-            def verify(directory, tag, team):
+            def verify(directory, tag, team, *, require_feed):
+                self.assertTrue(require_feed)
                 self.assertEqual(verification.metadata.ROOT, project.resolve())
                 self.assertEqual(verification.metadata.version(), '1.2.3')
                 self.assertEqual((directory, tag, team), (Path('/synthetic/downloads'), 'v1.2.3', 'A1B2C3D4E5'))

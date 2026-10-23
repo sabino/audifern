@@ -18,6 +18,10 @@ struct HelpTopic: Identifiable, Sendable {
 
 enum HelpCatalog {
     static let topics: [HelpTopic] = [
+        .init(id: "updates", title: "Updates & changelog", path: ["Settings"], symbol: "arrow.down.circle",
+            summary: "Read release notes and update Audifern using the right installation method.",
+            guidance: "Open Updates in Settings, or choose Check for Updates in the Audifern menu. Direct-download installations use signed in-app updates and let you choose when to install and reopen. Malt and Homebrew installations show the matching upgrade command; their files are never replaced by the in-app updater. Release history is loaded from GitHub when you open this page. Hearing-aid firmware is not updated.",
+            keywords: "update upgrade changelog release version what's new atualizar atualizações novidades versión actualizar cambios", destination: .settings("updates", nil)),
         .init(id: "getting-started", title: "Getting started", path: ["Help"], symbol: "sparkles",
             summary: "Connect your hearing aids and make your first adjustment.",
             guidance: "In Sound, choose Find hearing aids, scan and select your devices. Device details are below each hearing aid. A Bluetooth control connection reads supported values and adjusts consumer controls. Audio streaming is managed separately by macOS.",
