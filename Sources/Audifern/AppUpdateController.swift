@@ -26,6 +26,30 @@ enum AppInstallation: Equatable, Sendable {
 }
 
 enum AppInstallationDetector {
+    struct Locations {
+        let prefixes: [String]
+        let maltExecutables: [String]
+        let brewExecutables: [String]
+
+        static var current: Locations {
+            let environment = ProcessInfo.processInfo.environment
+            let paths = (environment["PATH"] ?? "").split(separator: ":").filter { $0.hasPrefix("/") }.map(String.init)
+            var prefixes = ["/opt/malt", "/opt/homebrew", "/usr/local"]
+            for name in ["MALT_PREFIX", "HOMEBREW_PREFIX"] {
+                if let prefix = environment[name], prefix.hasPrefix("/") { prefixes.append(prefix) }
+            }
+            for directory in paths {
+                let executable = URL(fileURLWithPath: directory).appendingPathComponent("mt")
+                if FileManager.default.isExecutableFile(atPath: executable.path) {
+                    prefixes.append(executable.resolvingSymlinksInPath().deletingLastPathComponent().deletingLastPathComponent().path)
+                }
+            }
+            return Locations(prefixes: Set(prefixes).sorted(),
+                             maltExecutables: Set(["/usr/local/bin/mt", "/opt/malt/bin/mt", "/opt/homebrew/bin/mt"] + paths.map { $0 + "/mt" }).sorted(),
+                             brewExecutables: Set(["/opt/homebrew/bin/brew", "/usr/local/bin/brew"] + paths.map { $0 + "/brew" }).sorted())
+        }
+    }
+
     static func maltDatabase(_ path: String, matches bundle: URL) -> AppInstallation? {
         guard FileManager.default.fileExists(atPath: path) else { return nil }
         var database: OpaquePointer?
@@ -43,24 +67,17 @@ enum AppInstallationDetector {
         let path = String(cString: text)
         return URL(fileURLWithPath: path).resolvingSymlinksInPath().standardizedFileURL == bundle.resolvingSymlinksInPath().standardizedFileURL ? .malt : nil
     }
-    static func quickOwnership(bundle: URL = Bundle.main.bundleURL) -> AppInstallation? {
-        let environment = ProcessInfo.processInfo.environment
-        let paths = (environment["PATH"] ?? "").split(separator: ":").filter { $0.hasPrefix("/") }.map(String.init)
-        var prefixes = ["/opt/malt", "/opt/homebrew", "/usr/local"]
-        for name in ["MALT_PREFIX", "HOMEBREW_PREFIX"] {
-            if let prefix = environment[name], prefix.hasPrefix("/") { prefixes.append(prefix) }
-        }
-        for directory in paths {
-            let executable = URL(fileURLWithPath: directory).appendingPathComponent("mt")
-            if FileManager.default.isExecutableFile(atPath: executable.path) {
-                prefixes.append(executable.resolvingSymlinksInPath().deletingLastPathComponent().deletingLastPathComponent().path)
+    static func quickOwnership(bundle: URL = Bundle.main.bundleURL, locations: Locations = .current) -> AppInstallation? {
+        var unresolved = false
+        for prefix in locations.prefixes {
+            if let source = maltDatabase(prefix + "/db/malt.db", matches: bundle) {
+                if source != .uncertain { return source }
+                unresolved = true
+                continue
             }
-        }
-        for prefix in Set(prefixes).sorted() {
-            if let source = maltDatabase(prefix + "/db/malt.db", matches: bundle) { return source }
             if FileManager.default.fileExists(atPath: prefix + "/Caskroom/audifern/.metadata") { return .homebrew }
         }
-        return nil
+        return unresolved ? .uncertain : nil
     }
     static func maltReceipt(_ data: Data, matches bundle: URL) -> AppInstallation? {
         guard let receipt = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -70,26 +87,34 @@ enum AppInstallationDetector {
         return URL(fileURLWithPath: path).resolvingSymlinksInPath().standardizedFileURL == bundle.resolvingSymlinksInPath().standardizedFileURL ? .malt : nil
     }
     static func detect(bundle: URL = Bundle.main.bundleURL, identifier: String? = Bundle.main.bundleIdentifier,
-                       development: Bool = Bundle.main.object(forInfoDictionaryKey: "AudifernDevelopmentBuild") as? Bool == true) -> AppInstallation {
+                       development: Bool = Bundle.main.object(forInfoDictionaryKey: "AudifernDevelopmentBuild") as? Bool == true,
+                       locations: Locations = .current) -> AppInstallation {
         guard !development, bundle.pathExtension == "app", identifier == "org.audifern.app" else { return .development }
-        if let source = quickOwnership(bundle: bundle) { return source }
+        let native = quickOwnership(bundle: bundle, locations: locations)
+        if let native, native != .uncertain { return native }
+        // A read-only WAL query can fail when Malt's journal files are absent
+        // or busy. Its CLI can still identify the exact app from its receipt.
+        // Keep unresolved probes conservative if no later receipt confirms it.
+        var unresolved = native == .uncertain
         let fm = FileManager.default
         // A known receipt owns the install even if the user has replaced its
         // files manually. Never silently bypass a package manager's database.
-        let searchPaths = (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":").filter { $0.hasPrefix("/") }.map(String.init)
-        let maltPaths = Set(["/usr/local/bin/mt", "/opt/malt/bin/mt", "/opt/homebrew/bin/mt"] + searchPaths.map { $0 + "/mt" })
-        for executable in maltPaths.sorted() where fm.isExecutableFile(atPath: executable) {
-            guard let data = command(executable, ["info", "--cask", "audifern", "--json"]) else { return .uncertain }
-            if let installation = maltReceipt(data, matches: bundle) { return installation }
+        for executable in locations.maltExecutables where fm.isExecutableFile(atPath: executable) {
+            guard let data = command(executable, ["info", "--cask", "audifern", "--json"]) else { unresolved = true; continue }
+            if let installation = maltReceipt(data, matches: bundle) {
+                if installation != .uncertain { return installation }
+                unresolved = true
+            }
         }
-        var rooms = ["/opt/homebrew/Caskroom/audifern", "/usr/local/Caskroom/audifern"]
-        let brewPaths = Set(["/opt/homebrew/bin/brew", "/usr/local/bin/brew"] + searchPaths.map { $0 + "/brew" })
-        for executable in brewPaths.sorted() where fm.isExecutableFile(atPath: executable) {
-            guard let data = command(executable, ["--caskroom", "audifern"]), let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), path.hasPrefix("/") else { return .uncertain }
+        // Prefix metadata was already checked above. For an unreadable Malt
+        // prefix, only a manager's own successful receipt can resolve ownership.
+        var rooms: [String] = []
+        for executable in locations.brewExecutables where fm.isExecutableFile(atPath: executable) {
+            guard let data = command(executable, ["--caskroom", "audifern"]), let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), path.hasPrefix("/") else { unresolved = true; continue }
             rooms.append(path)
         }
         if rooms.contains(where: { fm.fileExists(atPath: $0 + "/.metadata") }) { return .homebrew }
-        return .direct
+        return unresolved ? .uncertain : .direct
     }
     private static func command(_ executable: String, _ arguments: [String]) -> Data? {
         let process = Process(); let pipe = Pipe()
@@ -183,8 +208,8 @@ struct AppRelease: Identifiable, Decodable, Sendable {
          startAutomatically: Bool = true, makeUpdater: ((AppUpdateController) -> any ApplicationUpdating)? = nil) {
         self.demo = demo; self.detect = detect; self.fetch = fetch
         self.makeUpdater = makeUpdater
-        installedVersion = version ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.9.0"
-        installedBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "21"
+        installedVersion = version ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.9.1"
+        installedBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "22"
         super.init()
         if !demo && startAutomatically { Task { [weak self] in await self?.refreshInstallation() } }
     }

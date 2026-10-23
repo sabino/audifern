@@ -47,6 +47,119 @@ private func release(_ version: String, draft: Bool = false, prerelease: Bool = 
     #expect(AppInstallationDetector.maltDatabase(databaseURL.path, matches: app) == .uncertain)
 }
 
+private struct InstallationFixture {
+    let root: URL
+    let app: URL
+    init() throws {
+        root = FileManager.default.temporaryDirectory.appendingPathComponent("Audifern-installation-" + UUID().uuidString)
+        app = root.appendingPathComponent("Audifern.app", isDirectory: true)
+        try FileManager.default.createDirectory(at: app, withIntermediateDirectories: true)
+    }
+    func remove() { try? FileManager.default.removeItem(at: root) }
+    func database(prefix name: String, owner: URL, wal: Bool = false) throws -> URL {
+        let prefix = root.appendingPathComponent(name)
+        let directory = prefix.appendingPathComponent("db")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let path = directory.appendingPathComponent("malt.db").path
+        var database: OpaquePointer?
+        try #require(sqlite3_open(path, &database) == SQLITE_OK)
+        defer { sqlite3_close(database) }
+        try #require(sqlite3_exec(database, "CREATE TABLE casks (token TEXT, app_path TEXT)", nil, nil, nil) == SQLITE_OK)
+        var statement: OpaquePointer?
+        try #require(sqlite3_prepare_v2(database, "INSERT INTO casks VALUES ('audifern', ?)", -1, &statement, nil) == SQLITE_OK)
+        defer { sqlite3_finalize(statement) }
+        try owner.path.withCString { path in
+            try #require(sqlite3_bind_text(statement, 1, path, -1, nil) == SQLITE_OK)
+            try #require(sqlite3_step(statement) == SQLITE_DONE)
+        }
+        if wal {
+            try #require(sqlite3_exec(database, "PRAGMA journal_mode=WAL", nil, nil, nil) == SQLITE_OK)
+            try #require(sqlite3_wal_checkpoint_v2(database, nil, SQLITE_CHECKPOINT_TRUNCATE, nil, nil) == SQLITE_OK)
+        }
+        return prefix
+    }
+    func cli(_ name: String = "mt", receipt: [String: Any]) throws -> URL {
+        let executable = root.appendingPathComponent(name)
+        try JSONSerialization.data(withJSONObject: receipt).write(to: root.appendingPathComponent(name + ".json"))
+        // Use a real Process/pipe and receipt file, without invoking the host's managers.
+        try """
+        #!/bin/sh
+        [ "$*" = 'info --cask audifern --json' ] || exit 64
+        exec /bin/cat "$0.json"
+        """.write(to: executable, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+        return executable
+    }
+    func detect(prefixes: [URL], executables: [URL]) -> AppInstallation {
+        AppInstallationDetector.detect(bundle: app, identifier: "org.audifern.app", development: false,
+                                       locations: .init(prefixes: prefixes.map(\.path), maltExecutables: executables.map(\.path), brewExecutables: []))
+    }
+}
+
+@Test func missingReadOnlyWALJournalsFallBackToTheExactMaltCLIReceipt() throws {
+    let fixture = try InstallationFixture()
+    defer { fixture.remove() }
+    let prefix = try fixture.database(prefix: "malt", owner: fixture.app, wal: true)
+    let directory = prefix.appendingPathComponent("db")
+    let path = directory.appendingPathComponent("malt.db").path
+    // Only this closed, checkpointed synthetic database is changed. Never remove
+    // the live package manager's journals or bypass them with immutable=1.
+    for suffix in ["-wal", "-shm"] where FileManager.default.fileExists(atPath: path + suffix) {
+        try FileManager.default.removeItem(atPath: path + suffix)
+    }
+    try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: directory.path)
+    defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path) }
+    #expect(AppInstallationDetector.maltDatabase(path, matches: fixture.app) == .uncertain)
+    let cli = try fixture.cli(receipt: ["installed": true, "app_path": fixture.app.path])
+    #expect(fixture.detect(prefixes: [prefix], executables: [cli]) == .malt)
+    #expect(!FileManager.default.fileExists(atPath: path + "-wal"))
+    #expect(!FileManager.default.fileExists(atPath: path + "-shm"))
+
+    for receipt: [String: Any] in [["installed": false], ["installed": true, "app_path": "/Other/Audifern.app"], ["installed": true]] {
+        _ = try fixture.cli(receipt: receipt)
+        #expect(fixture.detect(prefixes: [prefix], executables: [cli]) == .uncertain)
+    }
+}
+
+@Test func anUnreadableReceiptOrFailedExecutableDoesNotHideAnotherMatchingReceipt() throws {
+    let fixture = try InstallationFixture()
+    defer { fixture.remove() }
+    let broken = fixture.root.appendingPathComponent("broken")
+    try FileManager.default.createDirectory(at: broken.appendingPathComponent("db"), withIntermediateDirectories: true)
+    try Data("not a SQLite database".utf8).write(to: broken.appendingPathComponent("db/malt.db"))
+    let matching = try fixture.database(prefix: "matching", owner: fixture.app)
+    let locations = AppInstallationDetector.Locations(prefixes: [broken.path, matching.path], maltExecutables: [], brewExecutables: [])
+    #expect(AppInstallationDetector.quickOwnership(bundle: fixture.app, locations: locations) == .malt)
+    #expect(fixture.detect(prefixes: [broken, matching], executables: []) == .malt)
+
+    let failedCLI = try fixture.cli("failed-mt", receipt: [:])
+    try "#!/bin/sh\nexit 1\n".write(to: failedCLI, atomically: true, encoding: .utf8)
+    let goodCLI = try fixture.cli(receipt: ["installed": true, "app_path": fixture.app.path])
+    #expect(fixture.detect(prefixes: [broken], executables: [failedCLI, goodCLI]) == .malt)
+    #expect(fixture.detect(prefixes: [broken], executables: [failedCLI]) == .uncertain)
+    #expect(fixture.detect(prefixes: [], executables: [failedCLI]) == .uncertain)
+    #expect(fixture.detect(prefixes: [], executables: []) == .direct)
+}
+
+@Test func nativeMaltOwnershipIncludesCommittedChangesStillInTheWAL() throws {
+    let fixture = try InstallationFixture()
+    defer { fixture.remove() }
+    let prefix = try fixture.database(prefix: "malt", owner: fixture.root.appendingPathComponent("Old.app"), wal: true)
+    let path = prefix.appendingPathComponent("db/malt.db").path
+    var writer: OpaquePointer?
+    try #require(sqlite3_open(path, &writer) == SQLITE_OK)
+    defer { sqlite3_close(writer) }
+    var statement: OpaquePointer?
+    try #require(sqlite3_prepare_v2(writer, "UPDATE casks SET app_path = ?", -1, &statement, nil) == SQLITE_OK)
+    try fixture.app.path.withCString { path in
+        try #require(sqlite3_bind_text(statement, 1, path, -1, nil) == SQLITE_OK)
+        try #require(sqlite3_step(statement) == SQLITE_DONE)
+    }
+    sqlite3_finalize(statement)
+    #expect(AppInstallationDetector.maltDatabase(path, matches: fixture.app) == .malt)
+    #expect(fixture.detect(prefixes: [prefix], executables: []) == .malt)
+}
+
 @Test func releaseComparisonAndURLsRejectUnrelatedOrUnstableDownloads() {
     #expect(AppRelease.newer("0.10.0", than: "0.9.9"))
     #expect(!AppRelease.newer("0.9.0", than: "0.9.0"))
